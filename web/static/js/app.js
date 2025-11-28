@@ -1309,7 +1309,7 @@ async function unlockNote() {
       markNoteUnlocked(state.currentNote.id);
       closeModal("password-modal");
       renderEditor();
-      showNotification(t("unlock_note") + " " + (t("saved") || "Success"), "success");
+      showNotification(t("unlock_success") || "Note unlocked", "success");
     } else {
       showNotification(t("password_incorrect") || "Incorrect password", "error");
       document.getElementById("note-password-unlock").value = "";
