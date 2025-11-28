@@ -15,7 +15,8 @@ let state = {
     backupConfig: null,
     unlockedNotes: new Set(), // Track unlocked notes in this session
     markdownViewMode: 'source', // 'source' or 'preview'
-    sidebarExpanded: true // Track if sidebar is expanded
+    sidebarExpanded: true, // Track if sidebar is expanded
+    attachmentsExpanded: true // Track if attachments section is expanded
 };
 
 // Auth functions
@@ -458,12 +459,17 @@ function renderEditor() {
         </div>
         ${format === 'richtext' ? renderRichTextEditor(note, isTrash) : renderMarkdownEditor(note, isTrash)}
         ${!isTrash ? `
-        <div class="attachments-section" style="padding: 20px 40px; border-top: 1px solid #f0f0f0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 16px; color: #666;">${t('attachments') || 'Attachments'}</h3>
-                <button class="btn-secondary" onclick="uploadAttachment('${note.id}')" style="padding: 6px 12px; font-size: 13px;">
-                    <i data-feather="upload" style="width: 14px; height: 14px;"></i> ${t('upload_file') || 'Upload'}
-                </button>
+        <div class="attachments-section ${state.attachmentsExpanded ? '' : 'collapsed'}" style="padding: 15px 40px; border-top: 1px solid #f0f0f0;">
+            <div class="attachments-header" onclick="toggleAttachments()">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0; font-size: 16px; color: #666; display: flex; align-items: center; gap: 8px;">
+                        <i data-feather="chevron-down" class="attachments-toggle-icon"></i>
+                        ${t('attachments') || 'Attachments'}
+                    </h3>
+                    <button class="btn-secondary" onclick="event.stopPropagation(); uploadAttachment('${note.id}')" style="padding: 6px 12px; font-size: 13px;">
+                        <i data-feather="upload" style="width: 14px; height: 14px;"></i> ${t('upload_file') || 'Upload'}
+                    </button>
+                </div>
             </div>
             <div class="attachment-list" id="attachment-list" style="display: flex; flex-direction: column; gap: 10px;">
                 <!-- Attachments will be loaded here -->
@@ -503,12 +509,12 @@ function renderMarkdownEditor(note, isTrash) {
             <div id="markdown-preview"
                  class="markdown-preview"
                  style="display: ${previewDisplay};"></div>
-        </div>
-        <div class="markdown-status-bar">
-            <button class="mode-toggle-btn" onclick="toggleMarkdownMode()" title="${t('toggle_preview') || 'Toggle Preview'}">
-                <i data-feather="${viewMode === 'source' ? 'eye' : 'edit-3'}"></i>
-                <span>${viewMode === 'source' ? (t('preview') || 'Preview') : (t('source') || 'Source')}</span>
-            </button>
+            <div class="markdown-status-bar">
+                <button class="mode-toggle-btn" onclick="toggleMarkdownMode()" title="${t('toggle_preview') || 'Toggle Preview'}">
+                    <i data-feather="${viewMode === 'source' ? 'eye' : 'edit-3'}"></i>
+                    <span>${viewMode === 'source' ? (t('preview') || 'Preview') : (t('source') || 'Source')}</span>
+                </button>
+            </div>
         </div>
     `;
 }
@@ -807,6 +813,31 @@ function exportNote() {
 // Backup Configuration
 async function showBackupConfig() {
     await loadBackupConfig();
+
+    // Update modal title and labels with translations
+    const modal = document.getElementById('backup-modal');
+    modal.querySelector('.modal-header h2').textContent = t('backup_restore') || 'Backup & Restore';
+
+    // WebDAV section
+    const webdavConfig = modal.querySelector('#webdav-config');
+    webdavConfig.querySelectorAll('label')[1].textContent = t('username') || 'Username';
+    webdavConfig.querySelectorAll('label')[2].textContent = t('password') || 'Password';
+    const webdavBtns = webdavConfig.querySelectorAll('.btn-primary, .btn-secondary');
+    webdavBtns[0].textContent = t('save_config') || 'Save Config';
+    webdavBtns[1].textContent = t('backup_now') || 'Backup Now';
+    webdavBtns[2].textContent = t('restore') || 'Restore';
+
+    // S3 section
+    const s3Config = modal.querySelector('#s3-config');
+    s3Config.querySelectorAll('label')[0].textContent = t('endpoint') || 'Endpoint';
+    s3Config.querySelectorAll('label')[1].textContent = t('bucket') || 'Bucket';
+    s3Config.querySelectorAll('label')[2].textContent = t('access_key') || 'Access Key';
+    s3Config.querySelectorAll('label')[3].textContent = t('secret_key') || 'Secret Key';
+    const s3Btns = s3Config.querySelectorAll('.btn-primary, .btn-secondary');
+    s3Btns[0].textContent = t('save_config') || 'Save Config';
+    s3Btns[1].textContent = t('backup_now') || 'Backup Now';
+    s3Btns[2].textContent = t('restore') || 'Restore';
+
     showModal('backup-modal');
     // Refresh icons in modal
     setTimeout(() => feather.replace(), 10);
@@ -1174,6 +1205,12 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+// Toggle attachments section visibility
+function toggleAttachments() {
+    state.attachmentsExpanded = !state.attachmentsExpanded;
+    renderEditor();
+}
 
 // ====== User Management Functions ======
 

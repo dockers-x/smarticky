@@ -113,7 +113,14 @@
     "rendering": "渲染中...",
     "share_as_image": "分享为图片",
     "generating_image": "生成图片中...",
-    "generate_image_failed": "生成图片失败"
+    "generate_image_failed": "生成图片失败",
+    "backup_restore": "备份与恢复",
+    "save_config": "保存配置",
+    "backup_now": "立即备份",
+    "endpoint": "端点",
+    "bucket": "存储桶",
+    "access_key": "访问密钥",
+    "secret_key": "密钥"
   },
   "en": {
     "app_title": "Smarticky Notes",
@@ -229,6 +236,13 @@
     "rendering": "Rendering...",
     "share_as_image": "Share as Image",
     "generating_image": "Generating image...",
-    "generate_image_failed": "Failed to generate image"
+    "generate_image_failed": "Failed to generate image",
+    "backup_restore": "Backup & Restore",
+    "save_config": "Save Config",
+    "backup_now": "Backup Now",
+    "endpoint": "Endpoint",
+    "bucket": "Bucket",
+    "access_key": "Access Key",
+    "secret_key": "Secret Key"
   }
 }

@@ -272,10 +272,10 @@ body.sidebar-collapsed .sidebar-expander {
 }
 
 .expander-line {
-    width: 6px;
+    width: 10px;
     height: 100%;
     background: #d9534f;
-    border-radius: 3px;
+    border-radius: 4px;
     transition: all 0.2s;
     box-shadow: 0 2px 12px rgba(217, 83, 79, 0.5), 0 0 20px rgba(217, 83, 79, 0.3);
     position: relative;
@@ -305,7 +305,7 @@ body.sidebar-collapsed .expander-line::after {
 }
 
 .sidebar-expander:hover .expander-line {
-    width: 8px;
+    width: 14px;
     background: #c9302c;
     box-shadow: 0 3px 16px rgba(217, 83, 79, 0.6), 0 0 24px rgba(217, 83, 79, 0.4);
 }
@@ -1711,4 +1711,81 @@ body.dark-mode select {
     background: #333;
     color: #eee;
     border-color: #555;
+}
+/* Attachments Section - Collapsible */
+.attachments-section {
+    transition: all 0.3s ease;
+}
+
+.attachments-header {
+    cursor: pointer;
+    user-select: none;
+    padding: 5px 0;
+}
+
+.attachments-header:hover {
+    opacity: 0.8;
+}
+
+.attachments-toggle-icon {
+    transition: transform 0.2s;
+}
+
+.attachments-section.collapsed .attachments-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.attachments-section.collapsed .attachment-list {
+    display: none !important;
+}
+
+/* Sidebar Expander - Smartisan Thin Red Line Design */
+.sidebar-expander {
+    position: fixed;
+    left: 250px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 100px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: left 0.3s ease;
+    padding: 0;
+    outline: none;
+}
+
+.sidebar.collapsed + .sidebar-expander,
+body.sidebar-collapsed .sidebar-expander {
+    left: 0;
+}
+
+.expander-line {
+    width: 10px;
+    height: 100%;
+    background: #d9534f;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(217, 83, 79, 0.5);
+    transition: all 0.2s;
+    position: relative;
+}
+
+.sidebar-expander:hover .expander-line {
+    width: 14px;
+    background: #ff6b6b;
+    box-shadow: 0 0 15px rgba(217, 83, 79, 0.8);
+}
+
+body.dark-mode .expander-line {
+    background: #d9534f;
+    box-shadow: 0 0 10px rgba(217, 83, 79, 0.6);
+}
+
+body.dark-mode .sidebar-expander:hover .expander-line {
+    background: #ff6b6b;
+    box-shadow: 0 0 15px rgba(217, 83, 79, 0.9);
 }
