@@ -311,7 +311,7 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 	}
 
 	if !valid {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "incorrect password"})
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "incorrect password"})
 	}
 
 	// Return success with note content
