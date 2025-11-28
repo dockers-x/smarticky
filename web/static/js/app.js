@@ -1,0 +1,2252 @@
+const API_BASE = '/api';
+
+// Auth state
+let currentUser = null;
+let jwtToken = null;
+
+let state = {
+    notes: [],
+    currentFilter: 'all',
+    currentNote: null,
+    searchQuery: '',
+    sortBy: 'updated_desc',
+    lang: 'zh',
+    i18n: {},
+    backupConfig: null,
+    unlockedNotes: new Set(), // Track unlocked notes in this session
+    markdownViewMode: 'source', // 'source' or 'preview'
+    sidebarExpanded: true // Track if sidebar is expanded
+};
+
+// Auth functions
+function getAuthToken() {
+    return localStorage.getItem('jwt_token');
+}
+
+function getCurrentUser() {
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson) : null;
+}
+
+function isAuthenticated() {
+    return !!getAuthToken();
+}
+
+function logout() {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+}
+
+// Check authentication and setup status
+async function checkAuth() {
+    // Check if setup is needed
+    try {
+        const res = await fetch(`${API_BASE}/setup/check`);
+        const data = await res.json();
+
+        if (data.setup_needed) {
+            window.location.href = '/setup';
+            return false;
+        }
+    } catch (e) {
+        console.error('Failed to check setup status', e);
+    }
+
+    // Check if authenticated
+    if (!isAuthenticated()) {
+        window.location.href = '/login';
+        return false;
+    }
+
+    // Load current user
+    currentUser = getCurrentUser();
+    jwtToken = getAuthToken();
+
+    return true;
+}
+
+// Fetch with auth
+async function fetchWithAuth(url, options = {}) {
+    const token = getAuthToken();
+    if (!token) {
+        logout();
+        return null;
+    }
+
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    // If unauthorized, logout
+    if (response.status === 401) {
+        logout();
+        return null;
+    }
+
+    return response;
+}
+
+// Session management for unlocked notes
+function isNoteUnlocked(noteId) {
+    // Check sessionStorage (survives page refresh within same tab)
+    const sessionKey = `unlocked_${noteId}`;
+    return sessionStorage.getItem(sessionKey) === 'true' || state.unlockedNotes.has(noteId);
+}
+
+function markNoteUnlocked(noteId) {
+    state.unlockedNotes.add(noteId);
+    const sessionKey = `unlocked_${noteId}`;
+    sessionStorage.setItem(sessionKey, 'true');
+}
+
+function clearNoteUnlock(noteId) {
+    state.unlockedNotes.delete(noteId);
+    const sessionKey = `unlocked_${noteId}`;
+    sessionStorage.removeItem(sessionKey);
+}
+
+// Load i18n
+async function loadI18n() {
+    try {
+        const res = await fetch('/static/js/i18n.json');
+        const data = await res.json();
+        state.i18n = data;
+    } catch (e) {
+        console.error('Failed to load i18n', e);
+    }
+}
+
+// Get translation
+function t(key) {
+    return state.i18n[state.lang]?.[key] || key;
+}
+
+// Update UI text with translations
+function updateUIText() {
+    // Sidebar menu
+    const menuTexts = {
+        'menu-all': 'all_notes',
+        'menu-starred': 'starred',
+        'menu-trash': 'trash',
+        'menu-users': 'user_management',
+        'menu-profile': 'profile_settings'
+    };
+
+    for (const [id, key] of Object.entries(menuTexts)) {
+        const el = document.getElementById(id);
+        if (el) {
+            const textEl = el.querySelector('.menu-text');
+            if (textEl) {
+                textEl.textContent = t(key);
+            }
+        }
+    }
+
+    // Search placeholder
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.placeholder = t('search_placeholder');
+    }
+
+    // Button titles
+    const titleMappings = [
+        { selector: '.btn-new-note', key: 'new_note' },
+        { selector: 'button[onclick="toggleLanguage()"]', key: 'language' },
+        { selector: 'button[onclick="toggleTheme()"]', key: 'toggle_theme' },
+        { selector: 'button[onclick="showBackupConfig()"]', key: 'backup_settings' },
+        { selector: 'button[onclick="showSortMenu()"]', key: 'sort' },
+        { selector: '.panel-expander', key: 'toggle_panel' }
+    ];
+
+    titleMappings.forEach(({ selector, key }) => {
+        const el = document.querySelector(selector);
+        if (el) {
+            el.title = t(key);
+        }
+    });
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check authentication first
+    const authenticated = await checkAuth();
+    if (!authenticated) {
+        return; // Will redirect to login or setup
+    }
+
+    // Detect language - check localStorage first, then browser language
+    const savedLang = localStorage.getItem('language');
+    if (savedLang) {
+        state.lang = savedLang;
+    } else {
+        const browserLang = navigator.language || navigator.userLanguage;
+        state.lang = browserLang.startsWith('zh') ? 'zh' : 'en';
+    }
+
+    await loadI18n();
+    updateUIText(); // Update UI text with translations
+
+    // Load and display user info
+    if (currentUser) {
+        document.getElementById('user-name').textContent = currentUser.username;
+        document.getElementById('user-role').textContent = currentUser.role;
+        document.getElementById('user-avatar-img').src = currentUser.avatar || '/static/img/default-avatar.svg';
+
+        // Show admin menu if admin
+        if (currentUser.role === 'admin') {
+            document.getElementById('menu-users').style.display = 'flex';
+        }
+    }
+
+    await fetchNotes();
+    await loadBackupConfig();
+
+    // Theme check
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+
+    // Sort preference
+    const savedSort = localStorage.getItem('sortBy');
+    if (savedSort) {
+        state.sortBy = savedSort;
+    }
+
+    // Keyboard shortcuts
+    initKeyboardShortcuts();
+
+    // Close modals on click outside
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+});
+
+// Keyboard Shortcuts
+function initKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Cmd/Ctrl + N: New Note
+        if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+            e.preventDefault();
+            createNote();
+        }
+        // Cmd/Ctrl + F: Focus Search
+        if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+            e.preventDefault();
+            document.getElementById('search-input').focus();
+        }
+        // Cmd/Ctrl + S: Save (show feedback)
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+            e.preventDefault();
+            if (state.currentNote) {
+                showSaveNotification();
+            }
+        }
+        // Cmd/Ctrl + D: Toggle Dark Mode
+        if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+            e.preventDefault();
+            toggleTheme();
+        }
+        // Escape: Close modals
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal.show').forEach(modal => {
+                closeModal(modal.id);
+            });
+        }
+    });
+}
+
+// Fetch Notes
+async function fetchNotes() {
+    let url = `${API_BASE}/notes?`;
+    if (state.currentFilter === 'starred') url += 'starred=true&';
+    if (state.currentFilter === 'trash') url += 'trash=true&';
+    if (state.searchQuery) url += `q=${encodeURIComponent(state.searchQuery)}&`;
+
+    try {
+        const res = await fetchWithAuth(url);
+        if (!res) return;
+
+        const notes = await res.json();
+        state.notes = notes || [];
+        applySorting();
+        renderList();
+    } catch (e) {
+        console.error('Failed to fetch notes', e);
+    }
+}
+
+// Apply Sorting
+function applySorting() {
+    switch (state.sortBy) {
+        case 'updated_desc':
+            state.notes.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            break;
+        case 'updated_asc':
+            state.notes.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+            break;
+        case 'title_asc':
+            state.notes.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+            break;
+        case 'title_desc':
+            state.notes.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+            break;
+        case 'color':
+            state.notes.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
+            break;
+    }
+}
+
+// Render List
+function renderList() {
+    const listEl = document.getElementById('note-list');
+    listEl.innerHTML = '';
+
+    if (state.notes.length === 0) {
+        listEl.innerHTML = `<div style="padding: 40px 20px; text-align: center; color: #999;">
+            ${t('no_notes') || 'No notes yet'}
+        </div>`;
+        return;
+    }
+
+    state.notes.forEach(note => {
+        const el = document.createElement('div');
+        el.className = `note-item ${state.currentNote && state.currentNote.id === note.id ? 'active' : ''}`;
+        el.onclick = () => selectNote(note);
+        if (note.color) {
+            el.setAttribute('data-color', note.color);
+        }
+
+        const date = new Date(note.updated_at).toLocaleString();
+        const starIcon = note.is_starred ? '<i data-feather="star" class="star-filled"></i>' : '';
+
+        el.innerHTML = `
+            <div class="note-title">${escapeHtml(note.title || t('untitled'))}</div>
+            <div class="note-preview">${escapeHtml(note.content || t('no_content')).substring(0, 100)}</div>
+            <div class="note-meta">
+                <span>${date}</span>
+                ${starIcon}
+            </div>
+        `;
+        listEl.appendChild(el);
+    });
+
+    // Refresh Feather Icons
+    feather.replace();
+
+    // Update Sidebar Active State
+    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+    const activeMenu = document.getElementById(`menu-${state.currentFilter}`);
+    if (activeMenu) {
+        activeMenu.classList.add('active');
+    }
+}
+
+// Select Note
+function selectNote(note) {
+    // Check if note is locked and not unlocked in this session
+    if (note.is_locked && !isNoteUnlocked(note.id)) {
+        state.currentNote = note;
+        renderEditor(); // Will show lock screen
+        showPasswordModal(); // Automatically show unlock dialog
+        return;
+    }
+
+    state.currentNote = note;
+    renderList(); // to update active class
+    renderEditor();
+}
+
+// Render Editor
+function renderEditor() {
+    const panel = document.getElementById('editor-panel');
+    if (!state.currentNote) {
+        panel.innerHTML = `<div class="empty-state">${t('select_note')}</div>`;
+        panel.removeAttribute('data-color');
+        return;
+    }
+
+    const note = state.currentNote;
+    const isTrash = state.currentFilter === 'trash';
+    const isLocked = note.is_locked && !isNoteUnlocked(note.id);
+
+    // Set editor background color
+    if (note.color) {
+        panel.setAttribute('data-color', note.color);
+    } else {
+        panel.removeAttribute('data-color');
+    }
+
+    const starIcon = note.is_starred ? 'star' : 'star';
+    const starClass = note.is_starred ? 'star-filled' : '';
+    const format = note.format || 'markdown';
+    const lockIcon = note.is_locked ? 'lock' : 'unlock';
+
+    // If locked and not unlocked, show lock screen
+    if (isLocked) {
+        panel.innerHTML = `
+            <div class="editor-header">
+                <span>${t('last_updated')}: ${new Date(note.updated_at).toLocaleString()}</span>
+                <div class="toolbar">
+                    <button class="btn" onclick="showPasswordModal()" title="${t('unlock_note')}">
+                        <i data-feather="lock"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="locked-note">
+                <i data-feather="lock" style="width: 64px; height: 64px; margin-bottom: 20px;"></i>
+                <h2>${t('note_locked')}</h2>
+                <p>${t('note_locked_desc')}</p>
+                <button class="btn-primary" onclick="showPasswordModal()">
+                    <i data-feather="unlock"></i> ${t('unlock_note')}
+                </button>
+            </div>
+        `;
+        feather.replace();
+        return;
+    }
+
+    panel.innerHTML = `
+        <div class="editor-header">
+            <div class="save-status" id="save-status"></div>
+            <span>${t('last_updated')}: ${new Date(note.updated_at).toLocaleString()}</span>
+            <div class="toolbar">
+                ${!isTrash ? `
+                <button class="btn ${note.is_starred ? 'active' : ''}" onclick="toggleStar('${note.id}', ${!note.is_starred})" title="${t('toggle_star') || 'Toggle Star'}">
+                    <i data-feather="${starIcon}" class="${starClass}"></i>
+                </button>
+                <button class="btn" onclick="toggleEditorMode('${note.id}')" title="${format === 'markdown' ? 'Switch to Rich Text' : 'Switch to Markdown'}">
+                    <i data-feather="${format === 'markdown' ? 'type' : 'code'}"></i>
+                </button>
+                <button class="btn ${note.is_locked ? 'active' : ''}" onclick="showPasswordModal()" title="${t('password_protect')}">
+                    <i data-feather="${lockIcon}"></i>
+                </button>
+                <button class="btn" onclick="showColorPicker()" title="${t('change_color') || 'Change Color'}">
+                    <i data-feather="droplet"></i>
+                </button>
+                <button class="btn" onclick="exportNote()" title="${t('export') || 'Export'}">
+                    <i data-feather="download"></i>
+                </button>
+                <button class="btn" onclick="shareAsImage()" title="${t('share_as_image') || 'Share as Image'}">
+                    <i data-feather="image"></i>
+                </button>
+                <button class="btn" onclick="uploadAttachment('${note.id}')" title="${t('attachments') || 'Attachments'}">
+                    <i data-feather="paperclip"></i>
+                </button>
+                <button class="btn" onclick="deleteNote('${note.id}')" title="${t('move_to_trash')}">
+                    <i data-feather="trash-2"></i>
+                </button>
+                ` : `
+                <button class="btn" onclick="restoreNote('${note.id}')">
+                    <i data-feather="rotate-ccw"></i> ${t('restore')}
+                </button>
+                <button class="btn" onclick="deleteNotePermanent('${note.id}')">
+                    <i data-feather="x-circle"></i> ${t('delete_forever')}
+                </button>
+                `}
+            </div>
+        </div>
+        <div class="editor-title">
+            <input type="text" value="${escapeHtml(note.title)}" oninput="updateNoteDebounced('${note.id}', 'title', this.value)" ${isTrash ? 'disabled' : ''} placeholder="${t('untitled')}">
+        </div>
+        ${format === 'richtext' ? renderRichTextEditor(note, isTrash) : renderMarkdownEditor(note, isTrash)}
+        ${!isTrash ? `
+        <div class="attachments-section" style="padding: 20px 40px; border-top: 1px solid #f0f0f0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; color: #666;">${t('attachments') || 'Attachments'}</h3>
+                <button class="btn-secondary" onclick="uploadAttachment('${note.id}')" style="padding: 6px 12px; font-size: 13px;">
+                    <i data-feather="upload" style="width: 14px; height: 14px;"></i> ${t('upload_file') || 'Upload'}
+                </button>
+            </div>
+            <div class="attachment-list" id="attachment-list" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Attachments will be loaded here -->
+            </div>
+        </div>
+        ` : ''}
+    `;
+
+    // Refresh Feather Icons
+    feather.replace();
+
+    // Initialize rich text editor if needed
+    if (format === 'richtext' && !isTrash) {
+        initRichTextEditor();
+    }
+
+    // Load attachments if not in trash
+    if (!isTrash && note.id) {
+        renderAttachments(note.id);
+    }
+}
+
+function renderMarkdownEditor(note, isTrash) {
+    const viewMode = state.markdownViewMode;
+    const sourceDisplay = viewMode === 'source' ? 'block' : 'none';
+    const previewDisplay = viewMode === 'preview' ? 'block' : 'none';
+
+    return `
+        <div class="editor-content markdown-editor-wrapper">
+            <textarea id="markdown-editor"
+                      style="display: ${sourceDisplay};"
+                      oninput="handleMarkdownInput('${note.id}', this)"
+                      onkeydown="handleMarkdownKeydown(event)"
+                      ${isTrash ? 'disabled' : ''}
+                      placeholder="${t('start_writing') || 'Start writing...'}">${escapeHtml(note.content)}</textarea>
+            <div id="markdown-autocomplete" class="markdown-autocomplete" style="display: none;"></div>
+            <div id="markdown-preview"
+                 class="markdown-preview"
+                 style="display: ${previewDisplay};"></div>
+        </div>
+        <div class="markdown-status-bar">
+            <button class="mode-toggle-btn" onclick="toggleMarkdownMode()" title="${t('toggle_preview') || 'Toggle Preview'}">
+                <i data-feather="${viewMode === 'source' ? 'eye' : 'edit-3'}"></i>
+                <span>${viewMode === 'source' ? (t('preview') || 'Preview') : (t('source') || 'Source')}</span>
+            </button>
+        </div>
+    `;
+}
+
+function renderRichTextEditor(note, isTrash) {
+    return `
+        <div class="richtext-toolbar" ${isTrash ? 'style="display:none;"' : ''}>
+            <button class="toolbar-btn" data-command="bold" title="Bold">
+                <i data-feather="bold"></i>
+            </button>
+            <button class="toolbar-btn" data-command="italic" title="Italic">
+                <i data-feather="italic"></i>
+            </button>
+            <button class="toolbar-btn" data-command="underline" title="Underline">
+                <i data-feather="underline"></i>
+            </button>
+            <span class="toolbar-divider"></span>
+            <button class="toolbar-btn" data-command="insertUnorderedList" title="Bullet List">
+                <i data-feather="list"></i>
+            </button>
+            <button class="toolbar-btn" data-command="insertOrderedList" title="Numbered List">
+                <i data-feather="hash"></i>
+            </button>
+            <span class="toolbar-divider"></span>
+            <button class="toolbar-btn" data-command="formatBlock" data-value="h1" title="Heading 1">H1</button>
+            <button class="toolbar-btn" data-command="formatBlock" data-value="h2" title="Heading 2">H2</button>
+            <button class="toolbar-btn" data-command="formatBlock" data-value="p" title="Paragraph">P</button>
+            <span class="toolbar-divider"></span>
+            <button class="toolbar-btn" data-command="removeFormat" title="Clear Format">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+        <div class="editor-content richtext-content">
+            <div id="richtext-editor" contenteditable="${!isTrash}" ${isTrash ? 'class="disabled"' : ''} placeholder="${t('start_writing') || 'Start writing...'}">${note.content || ''}</div>
+        </div>
+    `;
+}
+
+// Create Note
+async function createNote() {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: state.i18n[state.lang]?.untitled || 'Untitled',
+                content: '',
+                format: 'markdown',
+                color: ''
+            })
+        });
+
+        if (!res || !res.ok) {
+            const error = res ? await res.json() : { error: 'Network error' };
+            console.error('Create note failed:', error);
+            alert(t('create_note_failed') + ': ' + (error.error || 'Unknown error'));
+            return;
+        }
+
+        const note = await res.json();
+        state.currentFilter = 'all'; // Switch to all to see new note
+        state.searchQuery = '';
+        await fetchNotes();
+        selectNote(note);
+    } catch (e) {
+        console.error('Create note error:', e);
+        alert(t('create_note_failed') + ': ' + e.message);
+    }
+}
+
+// Update Note (Debounced)
+let debounceTimer;
+let saveStatusTimer;
+
+function updateNoteDebounced(id, field, value) {
+    // Update local state immediately for UI responsiveness
+    if (state.currentNote && state.currentNote.id === id) {
+        state.currentNote[field] = value;
+    }
+
+    // Show saving status
+    showSaveStatus('saving');
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        updateNote(id, { [field]: value });
+    }, 500);
+}
+
+function showSaveStatus(status) {
+    const statusEl = document.getElementById('save-status');
+    if (!statusEl) return;
+
+    clearTimeout(saveStatusTimer);
+
+    if (status === 'saving') {
+        statusEl.innerHTML = '<i data-feather="loader" class="rotating"></i> ' + (t('saving') || 'Saving...');
+        statusEl.className = 'save-status saving';
+        feather.replace();
+    } else if (status === 'saved') {
+        statusEl.innerHTML = '<i data-feather="check"></i> ' + (t('saved') || 'Saved');
+        statusEl.className = 'save-status saved';
+        feather.replace();
+
+        // Hide after 2 seconds
+        saveStatusTimer = setTimeout(() => {
+            statusEl.innerHTML = '';
+            statusEl.className = 'save-status';
+        }, 2000);
+    } else if (status === 'error') {
+        statusEl.innerHTML = '<i data-feather="alert-circle"></i> ' + (t('save_error') || 'Save failed');
+        statusEl.className = 'save-status error';
+        feather.replace();
+    }
+}
+
+function showSaveNotification() {
+    // Manual save notification (Ctrl+S)
+    showSaveStatus('saved');
+}
+
+async function updateNote(id, data) {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/notes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!res) return; // Auth failed
+
+        showSaveStatus('saved');
+
+        // Refresh note in list
+        if (data.color !== undefined || data.format !== undefined) {
+            await fetchNotes();
+            if (state.currentNote && state.currentNote.id === id) {
+                selectNote(state.currentNote);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to update note', e);
+        showSaveStatus('error');
+    }
+}
+
+// Toggle Star
+async function toggleStar(id, isStarred) {
+    await updateNote(id, { is_starred: isStarred });
+    if (state.currentNote && state.currentNote.id === id) {
+        state.currentNote.is_starred = isStarred;
+    }
+    renderEditor(); // Update star icon
+    fetchNotes(); // Update list
+}
+
+// Delete (Move to Trash)
+async function deleteNote(id) {
+    if (!confirm(t('move_to_trash'))) return;
+    await updateNote(id, { is_deleted: true });
+    state.currentNote = null;
+    fetchNotes();
+    renderEditor();
+}
+
+// Restore
+async function restoreNote(id) {
+    await updateNote(id, { is_deleted: false });
+    state.currentNote = null;
+    fetchNotes();
+    renderEditor();
+}
+
+// Permanent Delete
+async function deleteNotePermanent(id) {
+    if (!confirm(t('delete_confirm'))) return;
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/notes/${id}`, { method: 'DELETE' });
+        if (!res) return;
+
+        state.currentNote = null;
+        fetchNotes();
+        renderEditor();
+    } catch (e) {
+        alert(t('delete_failed'));
+    }
+}
+
+// Filter
+function filterNotes(filter) {
+    state.currentFilter = filter;
+    state.currentNote = null;
+    fetchNotes();
+    renderEditor();
+}
+
+// Search
+function searchNotes(query) {
+    state.searchQuery = query;
+    fetchNotes();
+}
+
+// Sort
+function sortNotes(sortBy) {
+    state.sortBy = sortBy;
+    localStorage.setItem('sortBy', sortBy);
+    applySorting();
+    renderList();
+    closeModal('sort-modal');
+}
+
+// Theme
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+}
+
+// Language Toggle
+function toggleLanguage() {
+    state.lang = state.lang === 'zh' ? 'en' : 'zh';
+    localStorage.setItem('language', state.lang);
+
+    // Update all UI text
+    updateUIText();
+
+    // Re-render list and editor to update dynamic content
+    renderList();
+    renderEditor();
+
+    // Refresh Feather icons
+    feather.replace();
+}
+
+// Modal Controls
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function showSortMenu() {
+    showModal('sort-modal');
+    // Refresh icons in modal
+    setTimeout(() => feather.replace(), 10);
+}
+
+function showColorPicker() {
+    if (!state.currentNote) return;
+
+    // Update selected color
+    setTimeout(() => {
+        document.querySelectorAll('.color-option').forEach(el => {
+            el.classList.remove('selected');
+            if (el.dataset.color === (state.currentNote.color || '')) {
+                el.classList.add('selected');
+            }
+        });
+        // Refresh icons in modal
+        feather.replace();
+    }, 10);
+
+    showModal('color-modal');
+}
+
+function setNoteColor(color) {
+    if (!state.currentNote) return;
+    updateNote(state.currentNote.id, { color: color });
+    state.currentNote.color = color;
+    renderEditor();
+    closeModal('color-modal');
+}
+
+// Export Note
+function exportNote() {
+    if (!state.currentNote) return;
+
+    const note = state.currentNote;
+    const content = `# ${note.title || 'Untitled'}\n\n${note.content || ''}`;
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${note.title || 'Untitled'}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Backup Configuration
+async function showBackupConfig() {
+    await loadBackupConfig();
+    showModal('backup-modal');
+    // Refresh icons in modal
+    setTimeout(() => feather.replace(), 10);
+}
+
+async function loadBackupConfig() {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/backup/config`);
+        if (!res || !res.ok) return;
+
+        const config = await res.json();
+        state.backupConfig = config;
+
+        // Fill WebDAV fields
+        if (config.webdav_url) {
+            document.getElementById('webdav-url').value = config.webdav_url;
+        }
+        if (config.webdav_username) {
+            document.getElementById('webdav-username').value = config.webdav_username;
+        }
+        if (config.webdav_password) {
+            document.getElementById('webdav-password').value = config.webdav_password;
+        }
+
+        // Fill S3 fields
+        if (config.s3_endpoint) {
+            document.getElementById('s3-endpoint').value = config.s3_endpoint;
+        }
+        if (config.s3_bucket) {
+            document.getElementById('s3-bucket').value = config.s3_bucket;
+        }
+        if (config.s3_access_key) {
+            document.getElementById('s3-access-key').value = config.s3_access_key;
+        }
+        if (config.s3_secret_key) {
+            document.getElementById('s3-secret-key').value = config.s3_secret_key;
+        }
+    } catch (e) {
+        console.error('Failed to load backup config', e);
+    }
+}
+
+function switchBackupTab(tab) {
+    // Update tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Update content
+    document.querySelectorAll('.backup-config').forEach(config => config.classList.remove('active'));
+    document.getElementById(`${tab}-config`).classList.add('active');
+}
+
+async function saveBackupConfig(type) {
+    const config = {};
+
+    if (type === 'webdav') {
+        config.webdav_url = document.getElementById('webdav-url').value;
+        config.webdav_username = document.getElementById('webdav-username').value;
+        config.webdav_password = document.getElementById('webdav-password').value;
+    } else if (type === 's3') {
+        config.s3_endpoint = document.getElementById('s3-endpoint').value;
+        config.s3_bucket = document.getElementById('s3-bucket').value;
+        config.s3_access_key = document.getElementById('s3-access-key').value;
+        config.s3_secret_key = document.getElementById('s3-secret-key').value;
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/backup/config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+
+        if (!res) return;
+
+        if (res.ok) {
+            alert(t('save_success') || 'Configuration saved successfully');
+        } else {
+            const error = await res.json();
+            alert(t('save_failed') || 'Failed to save configuration: ' + error.error);
+        }
+    } catch (e) {
+        alert(t('save_failed') || 'Failed to save configuration');
+    }
+}
+
+// Backup
+async function backup(type) {
+    if (!confirm(`${t('backup_confirm')} ${type}?`)) return;
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/backup/${type}`, { method: 'POST' });
+        if (!res) return;
+
+        const data = await res.json();
+        if (res.ok) {
+            alert(`${t('backup_success')}: ${data.file}`);
+        } else {
+            alert(`${t('backup_failed')}: ${data.error}`);
+        }
+    } catch (e) {
+        alert(t('backup_failed'));
+    }
+}
+
+// Restore
+async function restore(type) {
+    if (!confirm(`${t('restore_confirm') || 'Restore from backup? Current data will be backed up first.'}`)) return;
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/restore/${type}`, { method: 'POST' });
+        if (!res) return;
+
+        const data = await res.json();
+        if (res.ok) {
+            alert(t('restore_success') || 'Database restored successfully');
+            // Reload notes
+            await fetchNotes();
+        } else {
+            alert(`${t('restore_failed') || 'Restore failed'}: ${data.error}`);
+        }
+    } catch (e) {
+        alert(t('restore_failed') || 'Restore failed');
+    }
+}
+
+// Utility
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// ====== Editor Mode Functions ======
+
+function toggleEditorMode(noteId) {
+    if (!state.currentNote) return;
+
+    const newFormat = state.currentNote.format === 'markdown' ? 'richtext' : 'markdown';
+    updateNote(noteId, { format: newFormat });
+    state.currentNote.format = newFormat;
+    renderEditor();
+}
+
+function initRichTextEditor() {
+    const editor = document.getElementById('richtext-editor');
+    if (!editor) return;
+
+    // Add formatting commands
+    document.querySelectorAll('[data-command]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const command = btn.dataset.command;
+            const value = btn.dataset.value || null;
+            document.execCommand(command, false, value);
+            editor.focus();
+        });
+    });
+
+    // Handle content changes
+    editor.addEventListener('input', () => {
+        if (state.currentNote) {
+            const html = editor.innerHTML;
+            updateNoteDebounced(state.currentNote.id, 'content', html);
+        }
+    });
+}
+
+// ====== Password Protection Functions ======
+
+function showPasswordModal() {
+    if (!state.currentNote) return;
+
+    const isLocked = state.currentNote.is_locked;
+
+    if (isLocked) {
+        // Show unlock form
+        document.getElementById('password-modal-title').textContent = t('unlock_note') || 'Unlock Note';
+        document.getElementById('password-set-form').style.display = 'none';
+        document.getElementById('password-unlock-form').style.display = 'block';
+        document.getElementById('note-password-unlock').value = '';
+    } else {
+        // Show set password form
+        document.getElementById('password-modal-title').textContent = t('set_password') || 'Set Password';
+        document.getElementById('password-set-form').style.display = 'block';
+        document.getElementById('password-unlock-form').style.display = 'none';
+        document.getElementById('note-password').value = '';
+        document.getElementById('note-password-confirm').value = '';
+    }
+
+    showModal('password-modal');
+}
+
+async function setNotePassword() {
+    if (!state.currentNote) return;
+
+    const password = document.getElementById('note-password').value;
+    const confirm = document.getElementById('note-password-confirm').value;
+
+    if (!password) {
+        alert(t('password_required') || 'Please enter a password');
+        return;
+    }
+
+    if (password !== confirm) {
+        alert(t('password_not_match') || 'Passwords do not match');
+        return;
+    }
+
+    if (password.length < 4) {
+        alert(t('password_too_short') || 'Password must be at least 4 characters');
+        return;
+    }
+
+    try {
+        // Simple hash (in production, use bcrypt on backend)
+        const hashedPassword = btoa(password); // Base64 encoding for demo
+
+        await updateNote(state.currentNote.id, {
+            password: hashedPassword,
+            is_locked: true
+        });
+
+        state.currentNote.password = hashedPassword;
+        state.currentNote.is_locked = true;
+
+        // Clear unlock status (user needs to re-enter password)
+        clearNoteUnlock(state.currentNote.id);
+
+        alert(t('password_set_success') || 'Password set successfully');
+        closeModal('password-modal');
+        renderEditor();
+    } catch (e) {
+        alert(t('password_set_failed') || 'Failed to set password');
+    }
+}
+
+async function removeNotePassword() {
+    if (!state.currentNote) return;
+
+    if (!confirm(t('remove_password_confirm') || 'Remove password protection?')) return;
+
+    try {
+        await updateNote(state.currentNote.id, {
+            password: '',
+            is_locked: false
+        });
+
+        state.currentNote.password = '';
+        state.currentNote.is_locked = false;
+
+        // Clear unlock status
+        clearNoteUnlock(state.currentNote.id);
+
+        alert(t('password_removed') || 'Password removed');
+        closeModal('password-modal');
+        renderEditor();
+    } catch (e) {
+        alert(t('password_remove_failed') || 'Failed to remove password');
+    }
+}
+
+async function unlockNote() {
+    if (!state.currentNote) return;
+
+    const password = document.getElementById('note-password-unlock').value;
+
+    if (!password) {
+        alert(t('password_required') || 'Please enter password');
+        return;
+    }
+
+    const hashedPassword = btoa(password);
+
+    if (hashedPassword === state.currentNote.password) {
+        // Unlock successful - mark as unlocked in session
+        markNoteUnlocked(state.currentNote.id);
+        closeModal('password-modal');
+        renderEditor();
+    } else {
+        alert(t('password_incorrect') || 'Incorrect password');
+        document.getElementById('note-password-unlock').value = '';
+    }
+}
+
+// ====== Markdown Preview Functions ======
+
+function toggleMarkdownMode() {
+    // Toggle between source and preview modes
+    state.markdownViewMode = state.markdownViewMode === 'source' ? 'preview' : 'source';
+
+    if (state.markdownViewMode === 'preview') {
+        updateMarkdownPreview();
+    }
+
+    renderEditor();
+}
+
+async function updateMarkdownPreview() {
+    if (state.markdownViewMode !== 'preview') return;
+
+    const previewEl = document.getElementById('markdown-preview');
+    if (!previewEl) return;
+
+    const content = state.currentNote?.content || '';
+
+    // Show loading indicator
+    previewEl.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;"><i data-feather="loader" class="rotating"></i> ' + (t('rendering') || 'Rendering...') + '</p>';
+    feather.replace();
+
+    try {
+        // Call backend API to render markdown using Goldmark
+        const res = await fetchWithAuth(`${API_BASE}/markdown/render`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+        });
+
+        if (!res || !res.ok) {
+            throw new Error('Failed to render markdown');
+        }
+
+        const data = await res.json();
+        previewEl.innerHTML = data.html;
+
+        // Refresh Feather icons in the rendered HTML
+        feather.replace();
+    } catch (e) {
+        console.error('Failed to render markdown:', e);
+        previewEl.innerHTML = '<p style="color: #d9534f;">Failed to render preview</p>';
+    }
+}
+
+// ====== Sidebar Expander Functions ======
+
+function toggleSidebar() {
+    state.sidebarExpanded = !state.sidebarExpanded;
+    const sidebar = document.querySelector('.sidebar');
+    const body = document.body;
+
+    if (state.sidebarExpanded) {
+        sidebar.classList.remove('collapsed');
+        body.classList.remove('sidebar-collapsed');
+    } else {
+        sidebar.classList.add('collapsed');
+        body.classList.add('sidebar-collapsed');
+    }
+
+    // Save preference to localStorage
+    localStorage.setItem('sidebarExpanded', state.sidebarExpanded);
+}
+
+// Load sidebar state on init
+window.addEventListener('DOMContentLoaded', () => {
+    const savedState = localStorage.getItem('sidebarExpanded');
+    if (savedState !== null) {
+        state.sidebarExpanded = savedState === 'true';
+        const sidebar = document.querySelector('.sidebar');
+        const body = document.body;
+        if (!state.sidebarExpanded) {
+            sidebar.classList.add('collapsed');
+            body.classList.add('sidebar-collapsed');
+        }
+    }
+});
+
+// ====== User Management Functions ======
+
+async function showUserManagement() {
+    if (!currentUser || currentUser.role !== 'admin') {
+        alert('Access denied. Admin only.');
+        return;
+    }
+
+    // Update modal title with translation
+    document.querySelector('#user-management-modal .modal-header h2').textContent = t('user_management') || 'User Management';
+
+    // Update create user section labels
+    const createUserSection = document.querySelector('#user-management-modal .form-section:nth-child(1) h3');
+    if (createUserSection) createUserSection.textContent = t('create_new_user') || 'Create New User';
+
+    const formLabels = document.querySelectorAll('#user-management-modal .form-section:nth-child(1) label');
+    if (formLabels[0]) formLabels[0].textContent = t('username') + ' *';
+    if (formLabels[1]) formLabels[1].textContent = t('email');
+    if (formLabels[2]) formLabels[2].textContent = t('nickname');
+    if (formLabels[3]) formLabels[3].textContent = t('password') + ' *';
+    if (formLabels[4]) formLabels[4].textContent = t('role') + ' *';
+
+    // Update input placeholders
+    const usernameInput = document.getElementById('new-user-username');
+    if (usernameInput) usernameInput.placeholder = t('enter_username') || 'Enter username';
+
+    const emailInput = document.getElementById('new-user-email');
+    if (emailInput) emailInput.placeholder = t('enter_email') || 'Enter email';
+
+    const nicknameInput = document.getElementById('new-user-nickname');
+    if (nicknameInput) nicknameInput.placeholder = t('enter_nickname') || 'Enter nickname (optional)';
+
+    const passwordInput = document.getElementById('new-user-password');
+    if (passwordInput) passwordInput.placeholder = t('enter_password_min') || 'Enter password (min 6 chars)';
+
+    // Update role dropdown options
+    const roleSelect = document.getElementById('new-user-role');
+    if (roleSelect) {
+        roleSelect.options[0].text = t('user_role') || 'User';
+        roleSelect.options[1].text = t('admin') || 'Admin';
+    }
+
+    // Update create button
+    const createBtn = document.querySelector('#user-management-modal .form-section:nth-child(1) .btn-primary');
+    if (createBtn) createBtn.innerHTML = `<i data-feather="user-plus"></i> ${t('create_user') || 'Create User'}`;
+
+    // Update user list section
+    const userListSection = document.querySelector('#user-management-modal .form-section:nth-child(2) h3');
+    if (userListSection) userListSection.textContent = t('all_users') || 'All Users';
+
+    // Update table headers
+    const tableHeaders = document.querySelectorAll('#user-management-modal .user-table th');
+    if (tableHeaders[0]) tableHeaders[0].textContent = t('username') || 'Username';
+    if (tableHeaders[1]) tableHeaders[1].textContent = t('nickname') || 'Nickname';
+    if (tableHeaders[2]) tableHeaders[2].textContent = t('email') || 'Email';
+    if (tableHeaders[3]) tableHeaders[3].textContent = t('role') || 'Role';
+    if (tableHeaders[4]) tableHeaders[4].textContent = t('created_at') || 'Created';
+    if (tableHeaders[5]) tableHeaders[5].textContent = t('actions') || 'Actions';
+
+    // Clear create user form
+    document.getElementById('new-user-username').value = '';
+    document.getElementById('new-user-email').value = '';
+    document.getElementById('new-user-nickname').value = '';
+    document.getElementById('new-user-password').value = '';
+    document.getElementById('new-user-role').value = 'user';
+
+    // Show modal
+    showModal('user-management-modal');
+
+    // Load users
+    await loadAllUsers();
+
+    // Refresh icons
+    setTimeout(() => feather.replace(), 10);
+}
+
+async function loadAllUsers() {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/users`);
+        if (!res || !res.ok) {
+            alert(t('load_failed') || 'Failed to load users');
+            return;
+        }
+
+        const users = await res.json();
+        renderUserList(users);
+    } catch (e) {
+        console.error('Load users error:', e);
+        alert(t('load_failed') || 'Failed to load users');
+    }
+}
+
+function renderUserList(users) {
+    const tbody = document.getElementById('user-list-body');
+    tbody.innerHTML = '';
+
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #999;">No users found</td></tr>';
+        return;
+    }
+
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #eee';
+
+        const createdDate = new Date(user.created_at).toLocaleDateString();
+        const roleLabel = user.role === 'admin' ? t('admin') : t('user_role');
+        const roleBadgeColor = user.role === 'admin' ? '#d9534f' : '#5bc0de';
+
+        row.innerHTML = `
+            <td style="padding: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: #f0f0f0;">
+                        <img src="${user.avatar || '/static/img/default-avatar.svg'}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <strong>${escapeHtml(user.username)}</strong>
+                </div>
+            </td>
+            <td style="padding: 12px; color: #666;">${escapeHtml(user.nickname || '-')}</td>
+            <td style="padding: 12px; color: #666;">${escapeHtml(user.email || '-')}</td>
+            <td style="padding: 12px;">
+                <span style="display: inline-block; padding: 4px 8px; background: ${roleBadgeColor}; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${roleLabel}</span>
+            </td>
+            <td style="padding: 12px; color: #999; font-size: 13px;">${createdDate}</td>
+            <td style="padding: 12px; text-align: center;">
+                ${user.id !== currentUser.id ? `
+                <button class="btn-icon" onclick="deleteUserConfirm(${user.id}, '${escapeHtml(user.username).replace(/'/g, "\\'")}')" title="${t('delete_user') || 'Delete User'}">
+                    <i data-feather="trash-2"></i>
+                </button>
+                ` : `<span style="color: #ccc; font-size: 12px;">${t('current_user') || 'Current User'}</span>`}
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+
+    // Refresh Feather Icons in the table
+    feather.replace();
+}
+
+async function createNewUser() {
+    const username = document.getElementById('new-user-username').value.trim();
+    const email = document.getElementById('new-user-email').value.trim();
+    const nickname = document.getElementById('new-user-nickname').value.trim();
+    const password = document.getElementById('new-user-password').value;
+    const role = document.getElementById('new-user-role').value;
+
+    if (!username || !password) {
+        alert(t('username_password_required') || 'Username and password are required');
+        return;
+    }
+
+    if (password.length < 6) {
+        alert(t('password_too_short') || 'Password must be at least 6 characters');
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                email: email,
+                nickname: nickname,
+                password: password,
+                role: role
+            })
+        });
+
+        if (!res || !res.ok) {
+            const error = res ? await res.json() : { error: 'Network error' };
+            alert(t('create_user_failed') || 'Failed to create user: ' + (error.error || 'Unknown error'));
+            return;
+        }
+
+        // Clear form
+        document.getElementById('new-user-username').value = '';
+        document.getElementById('new-user-email').value = '';
+        document.getElementById('new-user-nickname').value = '';
+        document.getElementById('new-user-password').value = '';
+        document.getElementById('new-user-role').value = 'user';
+
+        alert(t('user_created') || 'User created successfully');
+
+        // Reload user list
+        await loadAllUsers();
+    } catch (e) {
+        console.error('Create user error:', e);
+        alert(t('create_user_failed') || 'Failed to create user');
+    }
+}
+
+function deleteUserConfirm(userId, username) {
+    if (!confirm(`${t('delete_user_confirm') || 'Delete user'} "${username}"?`)) {
+        return;
+    }
+    deleteUserById(userId);
+}
+
+async function deleteUserById(userId) {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/users/${userId}`, {
+            method: 'DELETE'
+        });
+
+        if (!res || !res.ok) {
+            const error = res ? await res.json() : { error: 'Network error' };
+            alert(t('delete_user_failed') || 'Failed to delete user: ' + (error.error || 'Unknown error'));
+            return;
+        }
+
+        alert(t('user_deleted') || 'User deleted successfully');
+
+        // Reload user list
+        await loadAllUsers();
+    } catch (e) {
+        console.error('Delete user error:', e);
+        alert(t('delete_user_failed') || 'Failed to delete user');
+    }
+}
+
+
+function showProfileSettings() {
+    if (!currentUser) return;
+
+    // Update modal title and labels with translations
+    document.querySelector('#profile-modal .modal-header h2').textContent = t('profile_settings') || 'Profile Settings';
+
+    // Avatar section
+    const avatarSection = document.querySelector('#profile-modal .form-section:nth-child(1) h3');
+    if (avatarSection) avatarSection.textContent = t('avatar') || 'Avatar';
+
+    const uploadBtn = document.querySelector('#profile-modal .btn-primary');
+    if (uploadBtn) uploadBtn.innerHTML = `<i data-feather="upload"></i> ${t('upload_avatar') || 'Upload Avatar'}`;
+
+    const avatarHint = document.querySelector('#profile-modal .form-section:nth-child(1) p');
+    if (avatarHint) avatarHint.textContent = t('avatar_hint') || 'JPG, PNG or GIF (Max 2MB)';
+
+    // Email section
+    const emailSection = document.querySelector('#profile-modal .form-section:nth-child(2) h3');
+    if (emailSection) emailSection.textContent = t('email') || 'Email';
+
+    const emailLabel = document.querySelector('#profile-modal .form-section:nth-child(2) label');
+    if (emailLabel) emailLabel.textContent = t('email_address') || 'Email Address';
+
+    const emailInput = document.getElementById('profile-email');
+    if (emailInput) emailInput.placeholder = t('enter_email') || 'Enter email address';
+
+    const updateEmailBtn = document.querySelector('#profile-modal .form-section:nth-child(2) .btn-primary');
+    if (updateEmailBtn) updateEmailBtn.innerHTML = `<i data-feather="save"></i> ${t('update_email') || 'Update Email'}`;
+
+    // Nickname section
+    const nicknameSection = document.querySelector('#profile-modal .form-section:nth-child(3) h3');
+    if (nicknameSection) nicknameSection.textContent = t('nickname') || 'Nickname';
+
+    const nicknameLabel = document.querySelector('#profile-modal .form-section:nth-child(3) label');
+    if (nicknameLabel) nicknameLabel.textContent = t('nickname') || 'Nickname';
+
+    const nicknameInput = document.getElementById('profile-nickname');
+    if (nicknameInput) nicknameInput.placeholder = t('enter_nickname') || 'Enter nickname (optional)';
+
+    const updateNicknameBtn = document.querySelector('#profile-modal .form-section:nth-child(3) .btn-primary');
+    if (updateNicknameBtn) updateNicknameBtn.innerHTML = `<i data-feather="save"></i> ${t('update_nickname') || 'Update Nickname'}`;
+
+    // Password section
+    const passwordSection = document.querySelector('#profile-modal .form-section:nth-child(4) h3');
+    if (passwordSection) passwordSection.textContent = t('change_password') || 'Change Password';
+
+    const labels = document.querySelectorAll('#profile-modal .form-section:nth-child(4) label');
+    if (labels[0]) labels[0].textContent = t('old_password') || 'Old Password';
+    if (labels[1]) labels[1].textContent = t('new_password') || 'New Password';
+    if (labels[2]) labels[2].textContent = t('confirm_password') || 'Confirm New Password';
+
+    const oldPasswordInput = document.getElementById('profile-old-password');
+    if (oldPasswordInput) oldPasswordInput.placeholder = t('enter_old_password') || 'Enter old password';
+
+    const newPasswordInput = document.getElementById('profile-new-password');
+    if (newPasswordInput) newPasswordInput.placeholder = t('enter_new_password') || 'Enter new password (min 6 characters)';
+
+    const confirmPasswordInput = document.getElementById('profile-confirm-password');
+    if (confirmPasswordInput) confirmPasswordInput.placeholder = t('confirm_new_password') || 'Confirm new password';
+
+    const changePasswordBtn = document.querySelector('#profile-modal .form-section:nth-child(4) .btn-primary');
+    if (changePasswordBtn) changePasswordBtn.innerHTML = `<i data-feather="lock"></i> ${t('change_password') || 'Change Password'}`;
+
+    // Load current user data into form
+    document.getElementById('profile-email').value = currentUser.email || '';
+    document.getElementById('profile-nickname').value = currentUser.nickname || '';
+    document.getElementById('profile-avatar-preview').src = currentUser.avatar || '/static/img/default-avatar.svg';
+
+    // Clear password fields
+    document.getElementById('profile-old-password').value = '';
+    document.getElementById('profile-new-password').value = '';
+    document.getElementById('profile-confirm-password').value = '';
+
+    showModal('profile-modal');
+
+    // Refresh icons
+    setTimeout(() => feather.replace(), 10);
+}
+
+async function handleAvatarSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('File size must be less than 2MB');
+        return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+
+    // Preview image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('profile-avatar-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // Upload avatar
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetchWithAuth(`${API_BASE}/users/${currentUser.id}/avatar`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res || !res.ok) {
+            alert(t('upload_failed') || 'Failed to upload avatar');
+            return;
+        }
+
+        const data = await res.json();
+
+        // Update current user avatar
+        currentUser.avatar = data.avatar;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+
+        // Update sidebar avatar
+        document.getElementById('user-avatar-img').src = data.avatar;
+
+        alert(t('upload_success') || 'Avatar uploaded successfully');
+    } catch (e) {
+        console.error('Avatar upload error:', e);
+        alert(t('upload_failed') || 'Failed to upload avatar');
+    }
+}
+
+async function updateProfileEmail() {
+    const email = document.getElementById('profile-email').value.trim();
+
+    if (!email) {
+        alert(t('email_required') || 'Please enter email address');
+        return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert(t('email_invalid') || 'Please enter a valid email address');
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/users/${currentUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+
+        if (!res || !res.ok) {
+            const error = res ? await res.json() : { error: 'Network error' };
+            alert(t('update_failed') || 'Failed to update email: ' + (error.error || 'Unknown error'));
+            return;
+        }
+
+        // Update current user email
+        currentUser.email = email;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+
+        alert(t('update_success') || 'Email updated successfully');
+    } catch (e) {
+        console.error('Email update error:', e);
+        alert(t('update_failed') || 'Failed to update email');
+    }
+}
+
+async function updateProfileNickname() {
+    const nickname = document.getElementById('profile-nickname').value.trim();
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/users/${currentUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: nickname })
+        });
+
+        if (!res || !res.ok) {
+            const error = res ? await res.json() : { error: 'Network error' };
+            alert(t('update_failed') || 'Failed to update nickname: ' + (error.error || 'Unknown error'));
+            return;
+        }
+
+        // Update current user nickname
+        currentUser.nickname = nickname;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+
+        alert(t('update_success') || 'Nickname updated successfully');
+    } catch (e) {
+        console.error('Nickname update error:', e);
+        alert(t('update_failed') || 'Failed to update nickname');
+    }
+}
+
+async function updateProfilePassword() {
+    const oldPassword = document.getElementById('profile-old-password').value;
+    const newPassword = document.getElementById('profile-new-password').value;
+    const confirmPassword = document.getElementById('profile-confirm-password').value;
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+        alert(t('password_required') || 'Please fill in all password fields');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        alert(t('password_too_short') || 'New password must be at least 6 characters');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        alert(t('password_not_match') || 'New passwords do not match');
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/users/${currentUser.id}/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                old_password: oldPassword,
+                new_password: newPassword
+            })
+        });
+
+        if (!res || !res.ok) {
+            const error = res ? await res.json() : { error: 'Network error' };
+            alert(t('password_change_failed') || 'Failed to change password: ' + (error.error || 'Unknown error'));
+            return;
+        }
+
+        // Clear password fields
+        document.getElementById('profile-old-password').value = '';
+        document.getElementById('profile-new-password').value = '';
+        document.getElementById('profile-confirm-password').value = '';
+
+        alert(t('password_changed') || 'Password changed successfully');
+    } catch (e) {
+        console.error('Password change error:', e);
+        alert(t('password_change_failed') || 'Failed to change password');
+    }
+}
+
+// ====== Attachment Functions ======
+
+async function loadAttachments(noteId) {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/notes/${noteId}/attachments`);
+        if (!res) return [];
+
+        const attachments = await res.json();
+        return attachments || [];
+    } catch (e) {
+        console.error('Failed to load attachments:', e);
+        return [];
+    }
+}
+
+async function uploadAttachment(noteId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+
+    input.onchange = async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        for (const file of files) {
+            await uploadSingleFile(noteId, file);
+        }
+
+        // Refresh attachment list
+        await renderAttachments(noteId);
+    };
+
+    input.click();
+}
+
+async function uploadSingleFile(noteId, file) {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const token = getAuthToken();
+        if (!token) {
+            logout();
+            return;
+        }
+
+        const res = await fetch(`${API_BASE}/notes/${noteId}/attachments`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (res.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!res.ok) {
+            const error = await res.json();
+            alert(`Upload failed: ${error.error || 'Unknown error'}`);
+            return;
+        }
+
+        const attachment = await res.json();
+        console.log('Uploaded:', attachment);
+        return attachment;
+    } catch (e) {
+        console.error('Upload error:', e);
+        alert(`Upload failed: ${e.message}`);
+    }
+}
+
+async function downloadAttachment(attachmentId, filename) {
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            logout();
+            return;
+        }
+
+        const url = `${API_BASE}/attachments/${attachmentId}/download`;
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) {
+            alert('Download failed');
+            return;
+        }
+
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(a);
+    } catch (e) {
+        console.error('Download error:', e);
+        alert('Download failed');
+    }
+}
+
+async function deleteAttachment(attachmentId, noteId) {
+    if (!confirm(t('delete_confirm') || 'Delete this attachment?')) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/attachments/${attachmentId}`, {
+            method: 'DELETE'
+        });
+
+        if (!res) return;
+
+        // Refresh attachment list
+        await renderAttachments(noteId);
+    } catch (e) {
+        console.error('Delete attachment error:', e);
+        alert('Failed to delete attachment');
+    }
+}
+
+async function renderAttachments(noteId) {
+    const container = document.getElementById('attachment-list');
+    if (!container) return;
+
+    const attachments = await loadAttachments(noteId);
+
+    if (attachments.length === 0) {
+        container.innerHTML = '<div class="no-attachments">' + (t('no_attachments') || 'No attachments') + '</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    attachments.forEach(att => {
+        const item = document.createElement('div');
+        item.className = 'attachment-item';
+
+        const fileSize = formatFileSize(att.file_size);
+        const fileIcon = getFileIcon(att.mime_type);
+
+        item.innerHTML = `
+            <div class="attachment-icon">${fileIcon}</div>
+            <div class="attachment-info">
+                <div class="attachment-name">${escapeHtml(att.filename)}</div>
+                <div class="attachment-size">${fileSize}</div>
+            </div>
+            <div class="attachment-actions">
+                <button class="btn-icon" onclick="downloadAttachment(${att.id}, '${escapeHtml(att.filename).replace(/'/g, "\\'")}');" title="${t('download') || 'Download'}">
+                    <i data-feather="download"></i>
+                </button>
+                <button class="btn-icon" onclick="deleteAttachment(${att.id}, '${noteId}');" title="${t('delete') || 'Delete'}">
+                    <i data-feather="trash-2"></i>
+                </button>
+            </div>
+        `;
+
+        container.appendChild(item);
+    });
+
+    // Refresh Feather Icons
+    feather.replace();
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+function getFileIcon(mimeType) {
+    if (!mimeType) return '📄';
+    if (mimeType.startsWith('image/')) return '🖼️';
+    if (mimeType.startsWith('video/')) return '🎬';
+    if (mimeType.startsWith('audio/')) return '🎵';
+    if (mimeType.includes('pdf')) return '📕';
+    if (mimeType.includes('word')) return '📘';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📗';
+    if (mimeType.includes('zip') || mimeType.includes('rar')) return '📦';
+    return '📄';
+}
+
+// ====== Markdown Auto-Completion Functions ======
+
+// Auto-completion state
+let autocompleteState = {
+    visible: false,
+    selectedIndex: 0,
+    suggestions: [],
+    triggerPosition: 0
+};
+
+// Markdown auto-completion patterns
+const markdownCompletions = [
+    { trigger: '#', suggestions: [
+        { text: '# ', label: 'H1 Heading', description: 'Level 1 heading' },
+        { text: '## ', label: 'H2 Heading', description: 'Level 2 heading' },
+        { text: '### ', label: 'H3 Heading', description: 'Level 3 heading' },
+        { text: '#### ', label: 'H4 Heading', description: 'Level 4 heading' },
+    ]},
+    { trigger: '-', suggestions: [
+        { text: '- ', label: 'Bullet List', description: 'Unordered list item' },
+        { text: '- [ ] ', label: 'Task List', description: 'Checkbox item' },
+        { text: '---', label: 'Horizontal Rule', description: 'Horizontal divider' },
+    ]},
+    { trigger: '*', suggestions: [
+        { text: '**', label: 'Bold', description: 'Bold text **text**' },
+        { text: '*', label: 'Italic', description: 'Italic text *text*' },
+        { text: '***', label: 'Bold Italic', description: 'Bold italic ***text***' },
+    ]},
+    { trigger: '1', suggestions: [
+        { text: '1. ', label: 'Numbered List', description: 'Ordered list item' },
+    ]},
+    { trigger: '[', suggestions: [
+        { text: '[]()', label: 'Link', description: 'Insert hyperlink' },
+        { text: '![]()', label: 'Image', description: 'Insert image' },
+    ]},
+    { trigger: '`', suggestions: [
+        { text: '`', label: 'Inline Code', description: 'Inline code `code`' },
+        { text: '```\n\n```', label: 'Code Block', description: 'Multi-line code block' },
+    ]},
+    { trigger: '>', suggestions: [
+        { text: '> ', label: 'Blockquote', description: 'Quote text' },
+    ]},
+    { trigger: '|', suggestions: [
+        { text: '| Header 1 | Header 2 |\n| -------- | -------- |\n| Cell 1   | Cell 2   |', label: 'Table', description: 'Insert table' },
+    ]},
+];
+
+function handleMarkdownInput(noteId, textarea) {
+    // Update note content
+    updateNoteDebounced(noteId, 'content', textarea.value);
+    updateMarkdownPreview();
+
+    // Check for auto-completion triggers
+    const cursorPos = textarea.selectionStart;
+    const textBeforeCursor = textarea.value.substring(0, cursorPos);
+    const lineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+    const currentLine = textBeforeCursor.substring(lineStart);
+
+    // Only trigger at start of line or after space
+    const isAtLineStart = currentLine.trim() === currentLine;
+    if (!isAtLineStart) {
+        hideAutocomplete();
+        return;
+    }
+
+    // Check if current line matches any trigger
+    let matchedCompletion = null;
+    for (const completion of markdownCompletions) {
+        if (currentLine.startsWith(completion.trigger)) {
+            matchedCompletion = completion;
+            break;
+        }
+    }
+
+    if (matchedCompletion && currentLine.length <= 4) {
+        showAutocomplete(textarea, matchedCompletion.suggestions);
+    } else {
+        hideAutocomplete();
+    }
+}
+
+function showAutocomplete(textarea, suggestions) {
+    const autocompleteEl = document.getElementById('markdown-autocomplete');
+    if (!autocompleteEl || suggestions.length === 0) return;
+
+    autocompleteState.visible = true;
+    autocompleteState.selectedIndex = 0;
+    autocompleteState.suggestions = suggestions;
+    autocompleteState.textarea = textarea;
+
+    // Position the autocomplete dropdown
+    const rect = textarea.getBoundingClientRect();
+    const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight);
+    const cursorPos = getCursorPosition(textarea);
+
+    autocompleteEl.style.display = 'block';
+    autocompleteEl.style.left = '40px'; // Match editor padding
+    autocompleteEl.style.top = (cursorPos.top + lineHeight) + 'px';
+
+    // Render suggestions
+    autocompleteEl.innerHTML = suggestions.map((item, index) => `
+        <div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
+            <div class="autocomplete-label">${escapeHtml(item.label)}</div>
+            <div class="autocomplete-description">${escapeHtml(item.description)}</div>
+        </div>
+    `).join('');
+
+    // Add click handlers
+    autocompleteEl.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const index = parseInt(item.dataset.index);
+            applyCompletion(suggestions[index]);
+        });
+    });
+}
+
+function hideAutocomplete() {
+    const autocompleteEl = document.getElementById('markdown-autocomplete');
+    if (autocompleteEl) {
+        autocompleteEl.style.display = 'none';
+    }
+    autocompleteState.visible = false;
+    autocompleteState.suggestions = [];
+}
+
+function handleMarkdownKeydown(event) {
+    if (!autocompleteState.visible) return;
+
+    const autocompleteEl = document.getElementById('markdown-autocomplete');
+    if (!autocompleteEl) return;
+
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length;
+            updateAutocompleteSelection();
+            break;
+
+        case 'ArrowUp':
+            event.preventDefault();
+            autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length;
+            updateAutocompleteSelection();
+            break;
+
+        case 'Enter':
+        case 'Tab':
+            if (autocompleteState.suggestions.length > 0) {
+                event.preventDefault();
+                applyCompletion(autocompleteState.suggestions[autocompleteState.selectedIndex]);
+            }
+            break;
+
+        case 'Escape':
+            event.preventDefault();
+            hideAutocomplete();
+            break;
+    }
+}
+
+function updateAutocompleteSelection() {
+    const autocompleteEl = document.getElementById('markdown-autocomplete');
+    if (!autocompleteEl) return;
+
+    const items = autocompleteEl.querySelectorAll('.autocomplete-item');
+    items.forEach((item, index) => {
+        if (index === autocompleteState.selectedIndex) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function applyCompletion(suggestion) {
+    const textarea = autocompleteState.textarea;
+    if (!textarea) return;
+
+    const cursorPos = textarea.selectionStart;
+    const textBeforeCursor = textarea.value.substring(0, cursorPos);
+    const textAfterCursor = textarea.value.substring(cursorPos);
+
+    // Find start of current line
+    const lineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+
+    // Replace current line with suggestion
+    const newText = textarea.value.substring(0, lineStart) + suggestion.text + textAfterCursor;
+    textarea.value = newText;
+
+    // Update cursor position
+    let newCursorPos = lineStart + suggestion.text.length;
+
+    // Special handling for certain completions
+    if (suggestion.text.includes(']()')) {
+        // Position cursor inside the brackets for links/images
+        newCursorPos = lineStart + suggestion.text.indexOf('[') + 1;
+    } else if (suggestion.text.includes('```\n\n```')) {
+        // Position cursor inside code block
+        newCursorPos = lineStart + suggestion.text.indexOf('\n') + 1;
+    }
+
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+
+    // Update note and hide autocomplete
+    if (state.currentNote) {
+        updateNoteDebounced(state.currentNote.id, 'content', textarea.value);
+    }
+    hideAutocomplete();
+}
+
+function getCursorPosition(textarea) {
+    const div = document.createElement('div');
+    const style = window.getComputedStyle(textarea);
+
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordWrap = 'break-word';
+    div.style.font = style.font;
+    div.style.padding = style.padding;
+    div.style.width = style.width;
+    div.style.lineHeight = style.lineHeight;
+
+    const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart);
+    div.textContent = textBeforeCursor;
+
+    const span = document.createElement('span');
+    span.textContent = '.';
+    div.appendChild(span);
+
+    document.body.appendChild(div);
+
+    const position = {
+        top: span.offsetTop,
+        left: span.offsetLeft
+    };
+
+    document.body.removeChild(div);
+
+    return position;
+}
+
+// ====== Long Image Share Feature ======
+
+async function shareAsImage() {
+    if (!state.currentNote) return;
+
+    const note = state.currentNote;
+
+    // Show loading indicator
+    const loadingModal = showLoadingModal(t('generating_image') || 'Generating image...');
+
+    try {
+        // Create a temporary container for rendering
+        const container = document.createElement('div');
+        container.style.cssText = `
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            width: 800px;
+            background: white;
+            padding: 60px 80px;
+            font-family: "Georgia", "Songti SC", "宋体", serif;
+            box-sizing: border-box;
+        `;
+
+        // Add note color background if set
+        if (note.color) {
+            const colorMap = {
+                'yellow': '#fff9e6',
+                'green': '#e8f8e8',
+                'blue': '#e6f3ff',
+                'pink': '#ffe6f0',
+                'purple': '#f3e6ff'
+            };
+            container.style.background = colorMap[note.color] || 'white';
+        }
+
+        // Render note content
+        const contentHTML = await renderNoteForImage(note);
+        container.innerHTML = contentHTML;
+
+        document.body.appendChild(container);
+
+        // Use html2canvas to capture
+        const canvas = await html2canvas(container, {
+            backgroundColor: container.style.background,
+            scale: 2, // Higher quality
+            useCORS: true,
+            logging: false,
+            width: 800,
+            windowWidth: 800
+        });
+
+        // Remove temporary container
+        document.body.removeChild(container);
+
+        // Convert to blob and download
+        canvas.toBlob(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${note.title || 'Untitled'}_${new Date().getTime()}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            closeLoadingModal(loadingModal);
+        }, 'image/png');
+
+    } catch (error) {
+        console.error('Failed to generate image:', error);
+        closeLoadingModal(loadingModal);
+        alert(t('generate_image_failed') || 'Failed to generate image');
+    }
+}
+
+async function renderNoteForImage(note) {
+    let contentHTML = '';
+
+    // Title
+    contentHTML += `
+        <div style="margin-bottom: 40px;">
+            <h1 style="
+                font-size: 42px;
+                font-weight: 600;
+                color: #2c2c2c;
+                letter-spacing: 0.5px;
+                line-height: 1.3;
+                margin: 0;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #e8e8e8;
+            ">${escapeHtml(note.title || 'Untitled')}</h1>
+        </div>
+    `;
+
+    // Content
+    if (note.format === 'markdown') {
+        // Render markdown via API
+        try {
+            const res = await fetchWithAuth(`${API_BASE}/markdown/render`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: note.content || '' })
+            });
+
+            if (res && res.ok) {
+                const data = await res.json();
+                contentHTML += `
+                    <div style="
+                        font-size: 18px;
+                        line-height: 1.9;
+                        color: #3a3a3a;
+                        letter-spacing: 0.3px;
+                        word-spacing: 2px;
+                    ">
+                        ${data.html}
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Failed to render markdown for image:', e);
+            contentHTML += `<p style="color: #3a3a3a; font-size: 18px; line-height: 1.9;">${escapeHtml(note.content || '')}</p>`;
+        }
+    } else {
+        // Rich text
+        contentHTML += `
+            <div style="
+                font-size: 18px;
+                line-height: 1.9;
+                color: #3a3a3a;
+                letter-spacing: 0.3px;
+                word-spacing: 2px;
+            ">
+                ${note.content || ''}
+            </div>
+        `;
+    }
+
+    // Footer with branding
+    contentHTML += `
+        <div style="
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #e8e8e8;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        ">
+            Created with Smarticky Notes
+        </div>
+    `;
+
+    return contentHTML;
+}
+
+function showLoadingModal(message) {
+    const modal = document.createElement('div');
+    modal.className = 'modal show';
+    modal.style.zIndex = '10000';
+    modal.innerHTML = `
+        <div class="modal-content modal-sm" style="text-align: center; padding: 40px;">
+            <i data-feather="loader" class="rotating" style="width: 48px; height: 48px; color: #5bc0de; margin-bottom: 20px;"></i>
+            <p style="font-size: 16px; color: #666; margin: 0;">${message}</p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    feather.replace();
+    return modal;
+}
+
+function closeLoadingModal(modal) {
+    if (modal && modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+    }
+}

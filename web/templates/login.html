@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Smarticky Notes</title>
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <style>
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .login-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-header h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin: 0 0 12px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .language-toggle {
+            text-align: center;
+            margin-top: 24px;
+        }
+
+        .language-toggle button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-icon">🔐</div>
+            <div class="login-header">
+                <h1 id="login-title">Welcome Back</h1>
+                <p id="login-subtitle">Sign in to continue</p>
+            </div>
+
+            <div class="error-message" id="error-message"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username" id="label-username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" id="label-password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn-login" id="btn-submit">Sign In</button>
+            </form>
+
+            <div class="language-toggle">
+                <button onclick="toggleLanguage()" id="lang-toggle">中文 / English</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        // Translations
+        const i18n = {
+            zh: {
+                title: '欢迎回来',
+                subtitle: '登录以继续',
+                username: '用户名',
+                password: '密码',
+                btn_login: '登录',
+                error_invalid_credentials: '用户名或密码错误',
+                error_login_failed: '登录失败：'
+            },
+            en: {
+                title: 'Welcome Back',
+                subtitle: 'Sign in to continue',
+                username: 'Username',
+                password: 'Password',
+                btn_login: 'Sign In',
+                error_invalid_credentials: 'Invalid username or password',
+                error_login_failed: 'Login failed: '
+            }
+        };
+
+        // Get saved language or detect
+        let lang = localStorage.getItem('language');
+        if (!lang) {
+            const browserLang = navigator.language || navigator.userLanguage;
+            lang = browserLang.startsWith('zh') ? 'zh' : 'en';
+        }
+
+        const t = (key) => i18n[lang][key] || key;
+
+        // Apply translations
+        function applyTranslations() {
+            document.getElementById('login-title').textContent = t('title');
+            document.getElementById('login-subtitle').textContent = t('subtitle');
+            document.getElementById('label-username').textContent = t('username');
+            document.getElementById('label-password').textContent = t('password');
+            document.getElementById('btn-submit').textContent = t('btn_login');
+        }
+
+        applyTranslations();
+
+        // Toggle language
+        function toggleLanguage() {
+            lang = lang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('language', lang);
+            applyTranslations();
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        // Handle form submission
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Save JWT token and user info
+                    localStorage.setItem('jwt_token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    // Redirect to main app
+                    window.location.href = '/';
+                } else {
+                    if (response.status === 401) {
+                        showError(t('error_invalid_credentials'));
+                    } else {
+                        showError(t('error_login_failed') + (data.error || response.statusText));
+                    }
+                }
+            } catch (error) {
+                showError(t('error_login_failed') + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

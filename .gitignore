@@ -1,0 +1,8 @@
+*.exe
+*.db
+*.log
+data/
+.env
+.vscode/
+.idea/
+.claude/

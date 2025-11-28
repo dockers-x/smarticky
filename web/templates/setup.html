@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - Smarticky Notes</title>
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <style>
+        .setup-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .setup-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .setup-header h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin: 0 0 12px;
+        }
+
+        .setup-header p {
+            color: #666;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .setup-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-setup {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-setup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-setup:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3a3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="setup-container">
+        <div class="setup-card">
+            <div class="setup-icon">📝</div>
+            <div class="setup-header">
+                <h1 id="setup-title">Welcome to Smarticky</h1>
+                <p id="setup-subtitle">Create your admin account to get started</p>
+            </div>
+
+            <div class="error-message" id="error-message"></div>
+            <div class="success-message" id="success-message"></div>
+
+            <form id="setup-form">
+                <div class="form-group">
+                    <label for="username" id="label-username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="email" id="label-email">Email (Optional)</label>
+                    <input type="email" id="email" name="email" autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password" id="label-password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                    <label for="password-confirm" id="label-password-confirm">Confirm Password</label>
+                    <input type="password" id="password-confirm" name="password-confirm" required autocomplete="new-password">
+                </div>
+
+                <button type="submit" class="btn-setup" id="btn-submit">Create Admin Account</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        // Translations
+        const i18n = {
+            zh: {
+                title: '欢迎使用 Smarticky',
+                subtitle: '创建管理员账号开始使用',
+                username: '用户名',
+                email: '邮箱（可选）',
+                password: '密码',
+                password_confirm: '确认密码',
+                btn_create: '创建管理员账号',
+                error_password_mismatch: '两次密码不一致',
+                error_password_short: '密码至少需要6个字符',
+                success_created: '管理员账号创建成功！正在跳转...',
+                error_create_failed: '创建失败：'
+            },
+            en: {
+                title: 'Welcome to Smarticky',
+                subtitle: 'Create your admin account to get started',
+                username: 'Username',
+                email: 'Email (Optional)',
+                password: 'Password',
+                password_confirm: 'Confirm Password',
+                btn_create: 'Create Admin Account',
+                error_password_mismatch: 'Passwords do not match',
+                error_password_short: 'Password must be at least 6 characters',
+                success_created: 'Admin account created successfully! Redirecting...',
+                error_create_failed: 'Failed to create: '
+            }
+        };
+
+        // Detect language
+        const browserLang = navigator.language || navigator.userLanguage;
+        const lang = browserLang.startsWith('zh') ? 'zh' : 'en';
+        const t = (key) => i18n[lang][key] || key;
+
+        // Apply translations
+        document.getElementById('setup-title').textContent = t('title');
+        document.getElementById('setup-subtitle').textContent = t('subtitle');
+        document.getElementById('label-username').textContent = t('username');
+        document.getElementById('label-email').textContent = t('email');
+        document.getElementById('label-password').textContent = t('password');
+        document.getElementById('label-password-confirm').textContent = t('password_confirm');
+        document.getElementById('btn-submit').textContent = t('btn_create');
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            document.getElementById('success-message').style.display = 'none';
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successEl = document.getElementById('success-message');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+        }
+
+        // Handle form submission
+        document.getElementById('setup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password-confirm').value;
+
+            // Validate passwords
+            if (password !== passwordConfirm) {
+                showError(t('error_password_mismatch'));
+                return;
+            }
+
+            if (password.length < 6) {
+                showError(t('error_password_short'));
+                return;
+            }
+
+            // Submit to API
+            try {
+                const response = await fetch(`${API_BASE}/setup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(t('success_created'));
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1500);
+                } else {
+                    showError(t('error_create_failed') + (data.error || response.statusText));
+                }
+            } catch (error) {
+                showError(t('error_create_failed') + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>
