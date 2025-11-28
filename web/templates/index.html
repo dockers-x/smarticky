@@ -260,29 +260,29 @@
             <div class="modal-body">
                 <div id="password-set-form">
                     <div class="form-group">
-                        <label>Password</label>
+                        <label id="password-label">Password</label>
                         <input type="password" id="note-password" placeholder="Enter password" />
                     </div>
                     <div class="form-group">
-                        <label>Confirm Password</label>
+                        <label id="password-confirm-label">Confirm Password</label>
                         <input type="password" id="note-password-confirm" placeholder="Confirm password" />
                     </div>
                     <div class="form-actions">
-                        <button class="btn-primary" onclick="setNotePassword()">
+                        <button class="btn-primary" onclick="setNotePassword()" id="set-password-btn">
                             Set Password
                         </button>
-                        <button class="btn-secondary" onclick="removeNotePassword()">
+                        <button class="btn-secondary" onclick="removeNotePassword()" id="remove-password-btn">
                             Remove Password
                         </button>
                     </div>
                 </div>
                 <div id="password-unlock-form" style="display: none">
                     <div class="form-group">
-                        <label>Enter Password to Unlock</label>
+                        <label id="unlock-password-label">Enter Password to Unlock</label>
                         <input type="password" id="note-password-unlock" placeholder="Enter password" />
                     </div>
                     <div class="form-actions">
-                        <button class="btn-primary" onclick="unlockNote()">
+                        <button class="btn-primary" onclick="unlockNote()" id="unlock-btn">
                             Unlock
                         </button>
                     </div>

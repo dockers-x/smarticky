@@ -4,7 +4,6 @@ body {
   font-size: 24px;
   font-family: "PingFang SC", "Helvetica Neue", Helvetica, Arial, "Hiragino Sans GB", "Microsoft Yahei", 微软雅黑, STHeiti, 华文细黑, sans-serif, "Apple Color Emoji";
   line-height: 45px;
-  background: #f0dab3 url(./bg.jpg);
   border-radius: 4px;
 }
 
@@ -312,7 +311,7 @@ body {
   appearance: none;
 }
 
-.markdown-body :checked + .radio-label {
+.markdown-body :checked+.radio-label {
   position: relative;
   z-index: 1;
   border-color: #0366d6;
@@ -586,11 +585,11 @@ body {
   clear: both;
 }
 
-.markdown-body > :first-child {
+.markdown-body> :first-child {
   margin-top: 0 !important;
 }
 
-.markdown-body > :last-child {
+.markdown-body> :last-child {
   margin-bottom: 0 !important;
 }
 
@@ -599,11 +598,11 @@ body {
   text-decoration: none;
 }
 
-.markdown-body blockquote > :first-child {
+.markdown-body blockquote> :first-child {
   margin-top: 0;
 }
 
-.markdown-body blockquote > :last-child {
+.markdown-body blockquote> :last-child {
   margin-bottom: 0;
 }
 
@@ -642,7 +641,7 @@ body {
   border-radius: 3px;
 }
 
-.markdown-body pre > code {
+.markdown-body pre>code {
   margin: 0;
   padding: 0;
   font-size: 100%;
@@ -804,7 +803,7 @@ body {
   list-style-type: none;
 }
 
-.markdown-body > ul.task-list {
+.markdown-body>ul.task-list {
   padding-left: 1.6em;
 }
 
@@ -812,7 +811,7 @@ body {
   display: none;
 }
 
-.markdown-body .task-list-item + .task-list-item {
+.markdown-body .task-list-item+.task-list-item {
   margin-top: 3px;
 }
 
@@ -910,7 +909,7 @@ body {
   content: '.';
 }
 
-.markdown-body li + li {
+.markdown-body li+li {
   margin-top: 0.25em;
 }
 
@@ -931,7 +930,7 @@ body {
   padding: 0 16px;
 }
 
-.markdown-body > ol {
+.markdown-body>ol {
   padding-left: 1.6em;
 }
 
@@ -956,7 +955,7 @@ body {
   list-style-type: lower-alpha;
 }
 
-.markdown-body li > p {
+.markdown-body li>p {
   margin-top: 16px;
 }
 

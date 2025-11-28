@@ -495,8 +495,8 @@ html {
     border: none;
     resize: none;
     outline: none;
-    font-size: 17px;
-    line-height: 1.9;
+    font-size: 15px;
+    line-height: 1.8;
     background: transparent;
     color: var(--text-primary);
     font-family: "Georgia", "Songti SC", "宋体", serif;
@@ -522,6 +522,33 @@ html {
     font-size: 64px;
     margin-bottom: 20px;
     opacity: 0.5;
+}
+
+/* Locked Note State - Center aligned */
+.locked-note {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    padding: 40px;
+    text-align: center;
+}
+
+.locked-note h2 {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.locked-note p {
+    margin: 0 0 30px 0;
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 400px;
+    line-height: 1.6;
 }
 
 /* Sidebar Expander Button - Fixed position, moves when sidebar collapsed */
@@ -770,7 +797,7 @@ body.sidebar-collapsed .expander-line::after {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 10000;
     left: 0;
     top: 0;
     width: 100%;
@@ -780,9 +807,9 @@ body.sidebar-collapsed .expander-line::after {
 }
 
 .modal.show {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .modal-content {

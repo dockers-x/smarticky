@@ -116,6 +116,7 @@ func main() {
 	protected.GET("/notes/:id", h.GetNote)
 	protected.PUT("/notes/:id", h.UpdateNote)
 	protected.DELETE("/notes/:id", h.DeleteNote)
+	protected.POST("/notes/:id/verify-password", h.VerifyNotePassword)
 
 	// Attachments API
 	protected.POST("/notes/:id/attachments", h.UploadAttachment)

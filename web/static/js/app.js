@@ -102,26 +102,26 @@ async function fetchWithAuth(url, options = {}) {
   return response;
 }
 
-// Session management for unlocked notes
+// Session management for unlocked notes (memory only - cleared on refresh)
 function isNoteUnlocked(noteId) {
-  // Check sessionStorage (survives page refresh within same tab)
-  const sessionKey = `unlocked_${noteId}`;
-  return (
-    sessionStorage.getItem(sessionKey) === "true" ||
-    state.unlockedNotes.has(noteId)
-  );
+  // Only check in-memory state - no persistence
+  return state.unlockedNotes.has(noteId);
 }
 
 function markNoteUnlocked(noteId) {
+  // Only store in memory - will be cleared on page refresh
   state.unlockedNotes.add(noteId);
-  const sessionKey = `unlocked_${noteId}`;
-  sessionStorage.setItem(sessionKey, "true");
 }
 
 function clearNoteUnlock(noteId) {
   state.unlockedNotes.delete(noteId);
-  const sessionKey = `unlocked_${noteId}`;
-  sessionStorage.removeItem(sessionKey);
+}
+
+// Manually lock a note (clear unlock status and show lock screen)
+function lockNote(noteId) {
+  clearNoteUnlock(noteId);
+  renderEditor(); // Refresh to show lock screen
+  showNotification(t("note_locked") || "Note locked", "info");
 }
 
 // Load i18n
@@ -362,9 +362,20 @@ function renderList() {
       ? '<i data-feather="star" class="star-filled"></i>'
       : "";
 
+    // Check if note is locked and not unlocked in this session
+    const isLocked = note.is_locked && !isNoteUnlocked(note.id);
+    const lockIcon = note.is_locked
+      ? '<i data-feather="lock" style="width: 14px; height: 14px; margin-left: 6px;"></i>'
+      : "";
+
+    // Hide content preview for locked notes
+    const contentPreview = isLocked
+      ? '<span style="color: #999; font-style: italic;">' + (t("note_locked") || "Note Locked") + '</span>'
+      : escapeHtml(note.content || t("no_content")).substring(0, 100);
+
     el.innerHTML = `
-            <div class="note-title">${escapeHtml(note.title || t("untitled"))}</div>
-            <div class="note-preview">${escapeHtml(note.content || t("no_content")).substring(0, 100)}</div>
+            <div class="note-title">${escapeHtml(note.title || t("untitled"))}${lockIcon}</div>
+            <div class="note-preview">${contentPreview}</div>
             <div class="note-meta">
                 <span>${date}</span>
                 ${starIcon}
@@ -388,11 +399,18 @@ function renderList() {
 
 // Select Note
 function selectNote(note) {
+  // Auto-lock previous note when switching to a different note
+  if (state.currentNote && state.currentNote.id !== note.id) {
+    if (state.currentNote.is_locked) {
+      clearNoteUnlock(state.currentNote.id);
+    }
+  }
+
   // Check if note is locked and not unlocked in this session
   if (note.is_locked && !isNoteUnlocked(note.id)) {
     state.currentNote = note;
-    renderEditor(); // Will show lock screen
-    showPasswordModal(); // Automatically show unlock dialog
+    renderList(); // to update active class
+    renderEditor(); // Will show lock screen with unlock button
     return;
   }
 
@@ -424,6 +442,7 @@ function renderEditor() {
   const starIcon = note.is_starred ? "star" : "star";
   const starClass = note.is_starred ? "star-filled" : "";
   const lockIcon = note.is_locked ? "lock" : "unlock";
+  const isNoteCurrentlyUnlocked = note.is_locked && isNoteUnlocked(note.id);
 
   // If locked and not unlocked, show lock screen
   if (isLocked) {
@@ -460,7 +479,7 @@ function renderEditor() {
                 <button class="btn ${note.is_starred ? "active" : ""}" onclick="toggleStar('${note.id}', ${!note.is_starred})" title="${t("toggle_star") || "Toggle Star"}">
                     <i data-feather="${starIcon}" class="${starClass}"></i>
                 </button>
-                <button class="btn ${note.is_locked ? "active" : ""}" onclick="showPasswordModal()" title="${t("password_protect")}">
+                <button class="btn ${note.is_locked ? "active" : ""}" onclick="${isNoteCurrentlyUnlocked ? `lockNote('${note.id}')` : `showPasswordModal()`}" title="${isNoteCurrentlyUnlocked ? (t("note_locked") || "Lock Note") : t("password_protect")}">
                     <i data-feather="${lockIcon}"></i>
                 </button>
                 <button class="btn" onclick="showColorPicker()" title="${t("change_color") || "Change Color"}">
@@ -723,6 +742,11 @@ async function deleteNotePermanent(id) {
 
 // Filter
 function filterNotes(filter) {
+  // Auto-lock current note when changing filter
+  if (state.currentNote && state.currentNote.is_locked) {
+    clearNoteUnlock(state.currentNote.id);
+  }
+
   state.currentFilter = filter;
   state.currentNote = null;
   fetchNotes();
@@ -1021,6 +1045,117 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
+// Custom notification system to replace browser alert
+function showNotification(message, type = "info", duration = 3000) {
+  // Create notification container if it doesn't exist
+  let container = document.getElementById("notification-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "notification-container";
+    container.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `;
+    document.body.appendChild(container);
+  }
+
+  // Create notification element
+  const notification = document.createElement("div");
+  notification.className = "custom-notification";
+
+  // Set background color based on type
+  let backgroundColor = "#5bc0de"; // info
+  let icon = "info";
+  if (type === "success") {
+    backgroundColor = "#5cb85c";
+    icon = "check-circle";
+  } else if (type === "error") {
+    backgroundColor = "#d9534f";
+    icon = "alert-circle";
+  } else if (type === "warning") {
+    backgroundColor = "#f0ad4e";
+    icon = "alert-triangle";
+  }
+
+  notification.style.cssText = `
+    background: ${backgroundColor};
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    max-width: 500px;
+    animation: slideInRight 0.3s ease;
+    cursor: pointer;
+  `;
+
+  notification.innerHTML = `
+    <i data-feather="${icon}" style="flex-shrink: 0;"></i>
+    <span style="flex: 1;">${escapeHtml(message)}</span>
+    <i data-feather="x" style="flex-shrink: 0; opacity: 0.7;"></i>
+  `;
+
+  container.appendChild(notification);
+  feather.replace();
+
+  // Auto remove after duration
+  const timeoutId = setTimeout(() => {
+    removeNotification(notification);
+  }, duration);
+
+  // Click to dismiss
+  notification.onclick = () => {
+    clearTimeout(timeoutId);
+    removeNotification(notification);
+  };
+}
+
+function removeNotification(notification) {
+  notification.style.animation = "slideOutRight 0.3s ease";
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 300);
+}
+
+// Add CSS animations for notifications
+if (!document.getElementById("notification-styles")) {
+  const style = document.createElement("style");
+  style.id = "notification-styles";
+  style.textContent = `
+    @keyframes slideInRight {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // ====== Password Protection Functions ======
 
 function showPasswordModal() {
@@ -1035,6 +1170,16 @@ function showPasswordModal() {
     document.getElementById("password-set-form").style.display = "none";
     document.getElementById("password-unlock-form").style.display = "block";
     document.getElementById("note-password-unlock").value = "";
+
+    // Update labels for unlock form
+    const unlockPasswordLabel = document.getElementById("unlock-password-label");
+    if (unlockPasswordLabel) unlockPasswordLabel.textContent = t("password_required") || "Enter Password to Unlock";
+
+    const unlockBtn = document.getElementById("unlock-btn");
+    if (unlockBtn) unlockBtn.textContent = t("unlock_note") || "Unlock";
+
+    const unlockInput = document.getElementById("note-password-unlock");
+    if (unlockInput) unlockInput.placeholder = t("password_required") || "Enter password";
   } else {
     // Show set password form
     document.getElementById("password-modal-title").textContent =
@@ -1043,6 +1188,25 @@ function showPasswordModal() {
     document.getElementById("password-unlock-form").style.display = "none";
     document.getElementById("note-password").value = "";
     document.getElementById("note-password-confirm").value = "";
+
+    // Update labels for set password form
+    const passwordLabel = document.getElementById("password-label");
+    if (passwordLabel) passwordLabel.textContent = t("password") || "Password";
+
+    const passwordConfirmLabel = document.getElementById("password-confirm-label");
+    if (passwordConfirmLabel) passwordConfirmLabel.textContent = t("confirm_password") || "Confirm Password";
+
+    const setPasswordBtn = document.getElementById("set-password-btn");
+    if (setPasswordBtn) setPasswordBtn.textContent = t("set_password") || "Set Password";
+
+    const removePasswordBtn = document.getElementById("remove-password-btn");
+    if (removePasswordBtn) removePasswordBtn.textContent = t("remove_password_confirm") || "Remove Password";
+
+    const passwordInput = document.getElementById("note-password");
+    if (passwordInput) passwordInput.placeholder = t("password_required") || "Enter password";
+
+    const passwordConfirmInput = document.getElementById("note-password-confirm");
+    if (passwordConfirmInput) passwordConfirmInput.placeholder = t("confirm_password") || "Confirm password";
   }
 
   showModal("password-modal");
@@ -1055,66 +1219,62 @@ async function setNotePassword() {
   const confirm = document.getElementById("note-password-confirm").value;
 
   if (!password) {
-    alert(t("password_required") || "Please enter a password");
+    showNotification(t("password_required") || "Please enter a password", "warning");
     return;
   }
 
   if (password !== confirm) {
-    alert(t("password_not_match") || "Passwords do not match");
+    showNotification(t("password_not_match") || "Passwords do not match", "warning");
     return;
   }
 
   if (password.length < 4) {
-    alert(t("password_too_short") || "Password must be at least 4 characters");
+    showNotification(t("password_too_short") || "Password must be at least 4 characters", "warning");
     return;
   }
 
   try {
-    // Simple hash (in production, use bcrypt on backend)
-    const hashedPassword = btoa(password); // Base64 encoding for demo
-
+    // Send plain password to backend - backend will hash it with argon2
     await updateNote(state.currentNote.id, {
-      password: hashedPassword,
+      password: password,
       is_locked: true,
     });
 
-    state.currentNote.password = hashedPassword;
     state.currentNote.is_locked = true;
 
     // Clear unlock status (user needs to re-enter password)
     clearNoteUnlock(state.currentNote.id);
 
-    alert(t("password_set_success") || "Password set successfully");
+    showNotification(t("password_set_success") || "Password set successfully", "success");
     closeModal("password-modal");
     renderEditor();
   } catch (e) {
-    alert(t("password_set_failed") || "Failed to set password");
+    showNotification(t("password_set_failed") || "Failed to set password", "error");
   }
 }
 
 async function removeNotePassword() {
   if (!state.currentNote) return;
 
-  if (!confirm(t("remove_password_confirm") || "Remove password protection?"))
+  if (!confirm(t("remove_password_confirm") || "Remove password protection?")) {
     return;
+  }
 
   try {
+    // Send empty password to remove protection
     await updateNote(state.currentNote.id, {
       password: "",
       is_locked: false,
     });
 
-    state.currentNote.password = "";
     state.currentNote.is_locked = false;
-
-    // Clear unlock status
     clearNoteUnlock(state.currentNote.id);
 
-    alert(t("password_removed") || "Password removed");
+    showNotification(t("password_removed") || "Password removed", "success");
     closeModal("password-modal");
     renderEditor();
   } catch (e) {
-    alert(t("password_remove_failed") || "Failed to remove password");
+    showNotification(t("password_remove_failed") || "Failed to remove password", "error");
   }
 }
 
@@ -1124,19 +1284,39 @@ async function unlockNote() {
   const password = document.getElementById("note-password-unlock").value;
 
   if (!password) {
-    alert(t("password_required") || "Please enter password");
+    showNotification(t("password_required") || "Please enter password", "warning");
     return;
   }
 
-  const hashedPassword = btoa(password);
+  try {
+    // Call backend API to verify password
+    const res = await fetchWithAuth(`${API_BASE}/notes/${state.currentNote.id}/verify-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: password }),
+    });
 
-  if (hashedPassword === state.currentNote.password) {
-    // Unlock successful - mark as unlocked in session
-    markNoteUnlocked(state.currentNote.id);
-    closeModal("password-modal");
-    renderEditor();
-  } else {
-    alert(t("password_incorrect") || "Incorrect password");
+    if (!res) return;
+
+    if (res.ok) {
+      const data = await res.json();
+      // Update note with decrypted content from backend
+      if (data.note) {
+        state.currentNote = data.note;
+      }
+
+      // Unlock successful - mark as unlocked in session
+      markNoteUnlocked(state.currentNote.id);
+      closeModal("password-modal");
+      renderEditor();
+      showNotification(t("unlock_note") + " " + (t("saved") || "Success"), "success");
+    } else {
+      showNotification(t("password_incorrect") || "Incorrect password", "error");
+      document.getElementById("note-password-unlock").value = "";
+    }
+  } catch (e) {
+    console.error("Unlock error:", e);
+    showNotification(t("password_incorrect") || "Failed to unlock", "error");
     document.getElementById("note-password-unlock").value = "";
   }
 }
