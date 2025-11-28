@@ -210,7 +210,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load and display user info
   if (currentUser) {
-    document.getElementById("user-name").textContent = currentUser.username;
+    // Display nickname if available, otherwise username
+    document.getElementById("user-name").textContent =
+      currentUser.nickname || currentUser.username;
     document.getElementById("user-role").textContent = currentUser.role;
     document.getElementById("user-avatar-img").src =
       currentUser.avatar || "/static/img/default-avatar.svg";
@@ -225,8 +227,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadBackupConfig();
 
   // Theme check
-  if (localStorage.getItem("theme") === "dark") {
+  const isDark = localStorage.getItem("theme") === "dark";
+  if (isDark) {
     document.body.classList.add("dark-mode");
+  }
+
+  // Update theme icon based on current theme
+  const themeIcon = document.getElementById("theme-icon");
+  if (themeIcon) {
+    themeIcon.setAttribute("data-feather", isDark ? "sun" : "moon");
+    feather.replace();
   }
 
   // Sort preference
@@ -540,8 +550,11 @@ function renderMarkdownEditor(note, isTrash) {
                       placeholder="${t("start_writing") || "Start writing..."}">${escapeHtml(note.content)}</textarea>
             <div id="markdown-autocomplete" class="markdown-autocomplete" style="display: none;"></div>
             <div id="markdown-preview"
-                 class="markdown-preview"
-                 style="display: ${previewDisplay};"></div>
+                 class="markdown-preview markdown-body"
+                 style="display: ${previewDisplay};">
+                 <h1>${escapeHtml(note.title || t("untitled") || "Untitled")}</h1>
+                 <div id="markdown-preview-content"></div>
+            </div>
             <div class="markdown-status-bar">
                 <button class="mode-toggle-btn" onclick="toggleMarkdownMode()" title="${t("toggle_preview") || "Toggle Preview"}">
                     <i data-feather="${viewMode === "source" ? "eye" : "edit-3"}"></i>
@@ -734,10 +747,16 @@ function sortNotes(sortBy) {
 // Theme
 function toggleTheme() {
   document.body.classList.toggle("dark-mode");
-  localStorage.setItem(
-    "theme",
-    document.body.classList.contains("dark-mode") ? "dark" : "light",
-  );
+  const isDark = document.body.classList.contains("dark-mode");
+
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+
+  // Update theme icon
+  const themeIcon = document.getElementById("theme-icon");
+  if (themeIcon) {
+    themeIcon.setAttribute("data-feather", isDark ? "sun" : "moon");
+    feather.replace();
+  }
 }
 
 // Language Toggle
@@ -1131,15 +1150,26 @@ function toggleMarkdownMode() {
 
   renderEditor();
 
-  if (state.markdownViewMode === "preview") {
-    updateMarkdownPreview();
+  // Toggle background image for preview mode
+  const editorContent = document.querySelector(".editor-content");
+  const editorPanel = document.querySelector(".editor-panel");
+
+  if (editorContent && editorPanel) {
+    if (state.markdownViewMode === "preview") {
+      editorContent.classList.add("preview-mode");
+      editorPanel.classList.add("preview-mode");
+      updateMarkdownPreview();
+    } else {
+      editorContent.classList.remove("preview-mode");
+      editorPanel.classList.remove("preview-mode");
+    }
   }
 }
 
 async function updateMarkdownPreview() {
   if (state.markdownViewMode !== "preview") return;
 
-  const previewEl = document.getElementById("markdown-preview");
+  const previewEl = document.getElementById("markdown-preview-content");
   if (!previewEl) return;
 
   const content = state.currentNote?.content || "";
@@ -2275,20 +2305,48 @@ async function shareAsImage() {
   );
 
   try {
-    // Create a temporary container for rendering
+    // Load smartisan.css content
+    let cssContent = "";
+    try {
+      const cssResponse = await fetch("/static/css/smartisan.css");
+      cssContent = await cssResponse.text();
+    } catch (e) {
+      console.error("Failed to load smartisan.css:", e);
+    }
+
+    // Create a temporary container for rendering with smartisan theme
     const container = document.createElement("div");
     container.style.cssText = `
             position: absolute;
             left: -9999px;
             top: 0;
-            width: 800px;
-            background: white;
-            padding: 60px 80px;
-            font-family: "Georgia", "Songti SC", "宋体", serif;
+            width: 900px;
+            background: url('/static/img/cloud_note_bg.jpg');
+            background-size: cover;
+            background-position: center;
+            padding: 20px;
             box-sizing: border-box;
+            overflow: visible;
         `;
 
-    // Add note color background if set
+    // Create style element with github-markdown.css
+    const styleEl = document.createElement("style");
+    styleEl.textContent = cssContent;
+    container.appendChild(styleEl);
+
+    // Create content wrapper with markdown-body class
+    const contentWrapper = document.createElement("div");
+    contentWrapper.className = "markdown-body";
+    contentWrapper.style.cssText = `
+            padding: 100px 62px 150px 62px;
+            background: #fffcf6;
+            box-shadow: 0 3px 8px rgb(69 18 10 / 40%);
+            border-top: 1px solid #fffcf6;
+            border-radius: 4px;
+            overflow: visible;
+        `;
+
+    // Override background if note has custom color
     if (note.color) {
       const colorMap = {
         yellow: "#fff9e6",
@@ -2297,13 +2355,14 @@ async function shareAsImage() {
         pink: "#ffe6f0",
         purple: "#f3e6ff",
       };
-      container.style.background = colorMap[note.color] || "white";
+      contentWrapper.style.background = colorMap[note.color] || "#fffcf6";
     }
 
     // Render note content
     const contentHTML = await renderNoteForImage(note);
-    container.innerHTML = contentHTML;
+    contentWrapper.innerHTML = contentHTML;
 
+    container.appendChild(contentWrapper);
     document.body.appendChild(container);
 
     // Use snapdom to capture - it returns an object with export methods
@@ -2330,56 +2389,17 @@ async function shareAsImage() {
 }
 
 async function renderNoteForImage(note) {
-  let contentHTML = "";
+  // Title (h1 will be styled by smartisan.css)
+  let contentHTML = `<h1>${escapeHtml(note.title || "Untitled")}</h1>`;
 
-  // Title
-  contentHTML += `
-        <div style="margin-bottom: 40px;">
-            <h1 style="
-                font-size: 42px;
-                font-weight: 600;
-                color: #2c2c2c;
-                letter-spacing: 0.5px;
-                line-height: 1.3;
-                margin: 0;
-                padding-bottom: 20px;
-                border-bottom: 2px solid #e8e8e8;
-            ">${escapeHtml(note.title || "Untitled")}</h1>
-        </div>
-    `;
-
-  // Content - render markdown using marked.js
+  // Content - render markdown using marked.js with smartisan theme
   try {
     const html = marked.parse(note.content || "");
-    contentHTML += `
-                <div style="
-                    font-size: 18px;
-                    line-height: 1.9;
-                    color: #3a3a3a;
-                    letter-spacing: 0.3px;
-                    word-spacing: 2px;
-                ">
-                    ${html}
-                </div>
-            `;
+    contentHTML += html;
   } catch (e) {
     console.error("Failed to render markdown for image:", e);
-    contentHTML += `<p style="color: #3a3a3a; font-size: 18px; line-height: 1.9;">${escapeHtml(note.content || "")}</p>`;
+    contentHTML += `<p>${escapeHtml(note.content || "")}</p>`;
   }
-
-  // Footer with branding
-  contentHTML += `
-        <div style="
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #e8e8e8;
-            text-align: center;
-            color: #999;
-            font-size: 14px;
-        ">
-            Created with Smarticky Notes
-        </div>
-    `;
 
   return contentHTML;
 }

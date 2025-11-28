@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Smarticky Notes</title>
+        <link rel="stylesheet" href="/static/css/smartisan.css" />
         <link rel="stylesheet" href="/static/css/custom.css" />
     </head>
 
@@ -92,9 +93,10 @@
                     <button
                         onclick="toggleTheme()"
                         class="btn"
+                        id="theme-toggle-btn"
                         title="Toggle Theme"
                     >
-                        <i data-feather="moon"></i>
+                        <i data-feather="moon" id="theme-icon"></i>
                     </button>
                     <button
                         onclick="showBackupConfig()"
