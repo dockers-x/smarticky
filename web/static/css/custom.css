@@ -41,40 +41,53 @@
 }
 
 /* Dark Mode Variables */
+/* Dark Mode Variables - Smartisan Style */
 body.dark-mode {
-    /* Background Colors */
-    --bg-primary: #2d2d2d;
-    --bg-secondary: #323232;
-    --bg-tertiary: #353535;
-    --bg-sidebar: #272727;
-    --bg-sidebar-header: #222;
+    /* Background Colors - Warm Dark Grays */
+    --bg-primary: #252525;
+    /* Deep charcoal for main editor */
+    --bg-secondary: #2d2d2d;
+    /* Slightly lighter for lists */
+    --bg-tertiary: #333333;
+    /* Headers/Modals */
+    --bg-sidebar: #202020;
+    /* Darkest for sidebar */
+    --bg-sidebar-header: #1a1a1a;
     --bg-modal: #2d2d2d;
-    --bg-hover: #3a3a3a;
-    --bg-active: #404040;
-    --bg-input: #3a3a3a;
+    --bg-hover: #383838;
+    --bg-active: #3a3a3a;
+    /* Selection state */
+    --bg-input: #1a1a1a;
 
-    /* Text Colors */
-    --text-primary: #eee;
-    --text-secondary: #ccc;
-    --text-tertiary: #aaa;
-    --text-muted: #999;
-    --text-light: #aaa;
-    --text-inverse: #fff;
+    /* Text Colors - Soft Off-Whites */
+    --text-primary: #e0e0e0;
+    /* Soft white */
+    --text-secondary: #a0a0a0;
+    /* Muted gray */
+    --text-tertiary: #707070;
+    /* Darker gray */
+    --text-muted: #666666;
+    --text-light: #888888;
+    --text-inverse: #1a1a1a;
 
-    /* Border Colors */
-    --border-light: #3a3a3a;
+    /* Border Colors - Subtle */
+    --border-light: #333333;
     --border-medium: #3a3a3a;
-    --border-dark: #444;
-    --border-darker: #555;
+    --border-dark: #444444;
+    --border-darker: #555555;
 
     /* Shadow Colors */
-    --shadow-light: rgba(0, 0, 0, 0.3);
-    --shadow-medium: rgba(0, 0, 0, 0.4);
-    --shadow-dark: rgba(0, 0, 0, 0.6);
+    --shadow-light: rgba(0, 0, 0, 0.4);
+    --shadow-medium: rgba(0, 0, 0, 0.6);
+    --shadow-dark: rgba(0, 0, 0, 0.8);
 
     /* Scrollbar Colors */
-    --scrollbar-thumb: rgba(217, 83, 79, 0.4);
-    --scrollbar-thumb-hover: rgba(217, 83, 79, 0.6);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+
+    /* Accent Override for Dark Mode */
+    --accent-color: #d9a35a;
+    /* Smartisan Gold/Champagne */
 }
 
 /* Basic Reset & Layout */
@@ -101,7 +114,8 @@ html {
 /* WebKit browsers (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
     width: 6px;
-    height: 0px; /* Hide horizontal scrollbar */
+    height: 0px;
+    /* Hide horizontal scrollbar */
 }
 
 ::-webkit-scrollbar-track {
@@ -122,7 +136,8 @@ html {
 * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) transparent;
-    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
 }
 
 #app {
@@ -529,7 +544,7 @@ html {
     outline: none;
 }
 
-.sidebar.collapsed + * .sidebar-expander,
+.sidebar.collapsed+* .sidebar-expander,
 body.sidebar-collapsed .sidebar-expander {
     left: 0;
 }
@@ -561,7 +576,7 @@ body.sidebar-collapsed .sidebar-expander {
     transition: all 0.2s;
 }
 
-.sidebar.collapsed + * .expander-line::after,
+.sidebar.collapsed+* .expander-line::after,
 body.sidebar-collapsed .expander-line::after {
     border-width: 6px 0 6px 4px;
     border-color: transparent transparent transparent white;
@@ -1071,71 +1086,57 @@ body.sidebar-collapsed .expander-line::after {
     background: linear-gradient(135deg, #fffef5 0%, #fffaeb 100%) !important;
     background-image:
         linear-gradient(135deg, #fffef5 0%, #fffaeb 100%),
-        repeating-linear-gradient(
-            45deg,
+        repeating-linear-gradient(45deg,
             transparent,
             transparent 35px,
             rgba(255, 255, 255, 0.3) 35px,
-            rgba(255, 255, 255, 0.3) 70px
-        ) !important;
+            rgba(255, 255, 255, 0.3) 70px) !important;
 }
 
 .editor-panel[data-color="green"] {
     background: linear-gradient(135deg, #f5fcf5 0%, #ebf8eb 100%) !important;
     background-image:
         linear-gradient(135deg, #f5fcf5 0%, #ebf8eb 100%),
-        radial-gradient(
-            circle at 20% 50%,
+        radial-gradient(circle at 20% 50%,
             rgba(255, 255, 255, 0.3) 0%,
-            transparent 50%
-        ),
-        radial-gradient(
-            circle at 80% 80%,
+            transparent 50%),
+        radial-gradient(circle at 80% 80%,
             rgba(255, 255, 255, 0.3) 0%,
-            transparent 50%
-        ) !important;
+            transparent 50%) !important;
 }
 
 .editor-panel[data-color="blue"] {
     background: linear-gradient(135deg, #f5faff 0%, #ebf4ff 100%) !important;
     background-image:
         linear-gradient(135deg, #f5faff 0%, #ebf4ff 100%),
-        repeating-linear-gradient(
-            90deg,
+        repeating-linear-gradient(90deg,
             transparent,
             transparent 50px,
             rgba(255, 255, 255, 0.2) 50px,
-            rgba(255, 255, 255, 0.2) 100px
-        ) !important;
+            rgba(255, 255, 255, 0.2) 100px) !important;
 }
 
 .editor-panel[data-color="pink"] {
     background: linear-gradient(135deg, #fff5fa 0%, #ffebf3 100%) !important;
     background-image:
         linear-gradient(135deg, #fff5fa 0%, #ffebf3 100%),
-        radial-gradient(
-            circle at 10% 20%,
+        radial-gradient(circle at 10% 20%,
             rgba(255, 255, 255, 0.4) 0%,
-            transparent 40%
-        ),
-        radial-gradient(
-            circle at 90% 70%,
+            transparent 40%),
+        radial-gradient(circle at 90% 70%,
             rgba(255, 255, 255, 0.4) 0%,
-            transparent 40%
-        ) !important;
+            transparent 40%) !important;
 }
 
 .editor-panel[data-color="purple"] {
     background: linear-gradient(135deg, #f9f5ff 0%, #f3ebff 100%) !important;
     background-image:
         linear-gradient(135deg, #f9f5ff 0%, #f3ebff 100%),
-        repeating-linear-gradient(
-            135deg,
+        repeating-linear-gradient(135deg,
             transparent,
             transparent 40px,
             rgba(255, 255, 255, 0.25) 40px,
-            rgba(255, 255, 255, 0.25) 80px
-        ) !important;
+            rgba(255, 255, 255, 0.25) 80px) !important;
 }
 
 /* Save Status Indicator */
@@ -1173,6 +1174,7 @@ body.sidebar-collapsed .expander-line::after {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1187,6 +1189,7 @@ body.sidebar-collapsed .expander-line::after {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1197,6 +1200,7 @@ body.sidebar-collapsed .expander-line::after {
         transform: translateY(50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -1254,7 +1258,7 @@ body.sidebar-collapsed .expander-line::after {
     list-style: disc;
 }
 
-.markdown-body li > input[type="checkbox"] {
+.markdown-body li>input[type="checkbox"] {
     margin-right: 8px;
     cursor: pointer;
     width: 16px;
@@ -1335,7 +1339,7 @@ body.sidebar-collapsed .expander-line::after {
     margin-top: 0.25em;
 }
 
-.markdown-body-export li > input[type="checkbox"] {
+.markdown-body-export li>input[type="checkbox"] {
     margin-right: 8px;
     cursor: pointer;
     width: 18px;
@@ -1726,7 +1730,7 @@ body.sidebar-collapsed .expander-line::after {
     outline: none;
 }
 
-.sidebar.collapsed + .sidebar-expander,
+.sidebar.collapsed+.sidebar-expander,
 body.sidebar-collapsed .sidebar-expander {
     left: 0;
 }
@@ -1745,4 +1749,252 @@ body.sidebar-collapsed .sidebar-expander {
     width: 14px;
     background: #ff6b6b;
     box-shadow: 0 0 15px rgba(217, 83, 79, 0.8);
+}
+
+/* Dark Mode Markdown Overrides - Smartisan Style */
+body.dark-mode .markdown-preview.markdown-body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-top: 1px solid var(--border-light);
+    box-shadow: 0 4px 12px var(--shadow-light);
+}
+
+body.dark-mode .markdown-preview.markdown-body h1,
+body.dark-mode .markdown-preview.markdown-body h2,
+body.dark-mode .markdown-preview.markdown-body h3,
+body.dark-mode .markdown-preview.markdown-body h4,
+body.dark-mode .markdown-preview.markdown-body h5,
+body.dark-mode .markdown-preview.markdown-body h6 {
+    color: #f0f0f0;
+    border-bottom-color: var(--border-dark);
+}
+
+body.dark-mode .markdown-preview.markdown-body a {
+    color: var(--accent-color);
+    /* Smartisan gold/orange accent */
+}
+
+body.dark-mode .markdown-preview.markdown-body blockquote {
+    color: var(--text-secondary);
+    border-left-color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 1em;
+}
+
+body.dark-mode .markdown-preview.markdown-body code {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+body.dark-mode .markdown-preview.markdown-body pre {
+    background-color: #1e1e1e;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+}
+
+body.dark-mode .markdown-preview.markdown-body table tr {
+    background-color: var(--bg-primary);
+    border-top-color: var(--border-light);
+}
+
+body.dark-mode .markdown-preview.markdown-body table tr:nth-child(2n) {
+    background-color: var(--bg-secondary);
+}
+
+body.dark-mode .markdown-preview.markdown-body table td,
+body.dark-mode .markdown-preview.markdown-body table th {
+    border-color: var(--border-light);
+}
+
+body.dark-mode .markdown-preview.markdown-body hr {
+    background-color: var(--border-dark);
+}
+
+body.dark-mode .markdown-preview.markdown-body img {
+    background-color: transparent;
+    border-color: var(--border-light);
+}
+
+/* Adjust editor content background in preview mode for dark theme */
+body.dark-mode .editor-content.preview-mode {
+    background: url("/static/img/cloud_note_bg_dark.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Make markdown body transparent to show the background image */
+body.dark-mode .editor-content.preview-mode .markdown-preview.markdown-body {
+    background: rgba(0, 0, 0, 0.3);
+    /* Slight overlay to ensure text readability */
+    border: none;
+    box-shadow: none;
+}
+
+/* Dark Mode Scrollbar refinement */
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Fix Dark Mode Visibility for Editor Header & Toolbar */
+body.dark-mode .editor-header {
+    color: var(--text-secondary);
+    /* Lighter than tertiary */
+}
+
+body.dark-mode .toolbar .btn {
+    color: var(--text-secondary);
+    /* Make icons visible */
+}
+
+body.dark-mode .toolbar .btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+    /* Add background on hover for better feedback */
+    border-radius: 4px;
+}
+
+/* Fix Scrollbar Flickering & Layout Shift */
+.editor-header {
+    overflow: hidden;
+    /* Prevent scrollbars from appearing */
+    flex-shrink: 0;
+    /* Prevent header from shrinking */
+}
+
+/* Disable scale transform on buttons to prevent layout shift/scrollbar flicker */
+.btn:hover,
+.toolbar .btn:hover {
+    transform: none !important;
+}
+
+/* Add a subtle background hover effect instead of scaling */
+.toolbar .btn {
+    transition: color 0.2s, background-color 0.2s;
+    padding: 6px;
+    /* Ensure hit area is good */
+    border-radius: 4px;
+}
+
+.toolbar .btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .toolbar .btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dark Mode Note Colors - Smartisan Style */
+body.dark-mode .note-item[data-color="yellow"] {
+    background: #3d3625 !important;
+    /* Dark Amber */
+    border-left-color: #d9a35a !important;
+}
+
+body.dark-mode .note-item[data-color="green"] {
+    background: #253d25 !important;
+    /* Dark Forest Green */
+    border-left-color: #5cb85c !important;
+}
+
+body.dark-mode .note-item[data-color="blue"] {
+    background: #25303d !important;
+    /* Dark Navy */
+    border-left-color: #5bc0de !important;
+}
+
+body.dark-mode .note-item[data-color="pink"] {
+    background: #3d252b !important;
+    /* Dark Rose */
+    border-left-color: #d9534f !important;
+}
+
+body.dark-mode .note-item[data-color="purple"] {
+    background: #32253d !important;
+    /* Dark Violet */
+    border-left-color: #9b59b6 !important;
+}
+
+/* Dark Mode Editor Panel Colors */
+body.dark-mode .editor-panel[data-color="yellow"] {
+    background: #2d281e !important;
+    background-image: none !important;
+}
+
+body.dark-mode .editor-panel[data-color="green"] {
+    background: #1e2d1e !important;
+    background-image: none !important;
+}
+
+body.dark-mode .editor-panel[data-color="blue"] {
+    background: #1e242d !important;
+    background-image: none !important;
+}
+
+body.dark-mode .editor-panel[data-color="pink"] {
+    background: #2d1e22 !important;
+    background-image: none !important;
+}
+
+body.dark-mode .editor-panel[data-color="purple"] {
+    background: #261e2d !important;
+    background-image: none !important;
+}
+
+/* Ensure text is readable on colored backgrounds in dark mode */
+body.dark-mode .editor-panel[data-color] .editor-title input,
+body.dark-mode .editor-panel[data-color] .editor-content textarea,
+body.dark-mode .editor-panel[data-color] .markdown-preview {
+    color: #e0e0e0 !important;
+}
+
+/* Adjust Markdown preview background for colored notes in dark mode */
+body.dark-mode .editor-panel[data-color] .markdown-preview.markdown-body {
+    background: rgba(0, 0, 0, 0.2) !important;
+    /* Transparent dark overlay */
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark Mode Color Picker Overrides */
+body.dark-mode .color-option {
+    color: var(--text-primary);
+    border-color: var(--border-dark) !important;
+}
+
+body.dark-mode .color-option[data-color=""] {
+    background: var(--bg-secondary) !important;
+}
+
+body.dark-mode .color-option[data-color="yellow"] {
+    background: #3d3625 !important;
+}
+
+body.dark-mode .color-option[data-color="green"] {
+    background: #253d25 !important;
+}
+
+body.dark-mode .color-option[data-color="blue"] {
+    background: #25303d !important;
+}
+
+body.dark-mode .color-option[data-color="pink"] {
+    background: #3d252b !important;
+}
+
+body.dark-mode .color-option[data-color="purple"] {
+    background: #32253d !important;
+}
+
+body.dark-mode .color-option:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .color-option.selected {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 2px var(--accent-color);
 }
