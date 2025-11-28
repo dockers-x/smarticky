@@ -19,8 +19,6 @@ const (
 	FieldTitle = "title"
 	// FieldContent holds the string denoting the content field in the database.
 	FieldContent = "content"
-	// FieldFormat holds the string denoting the format field in the database.
-	FieldFormat = "format"
 	// FieldColor holds the string denoting the color field in the database.
 	FieldColor = "color"
 	// FieldPassword holds the string denoting the password field in the database.
@@ -62,7 +60,6 @@ var Columns = []string{
 	FieldID,
 	FieldTitle,
 	FieldContent,
-	FieldFormat,
 	FieldColor,
 	FieldPassword,
 	FieldIsLocked,
@@ -96,8 +93,6 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultTitle holds the default value on creation for the "title" field.
 	DefaultTitle string
-	// DefaultFormat holds the default value on creation for the "format" field.
-	DefaultFormat string
 	// DefaultColor holds the default value on creation for the "color" field.
 	DefaultColor string
 	// DefaultIsLocked holds the default value on creation for the "is_locked" field.
@@ -132,11 +127,6 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 // ByContent orders the results by the content field.
 func ByContent(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldContent, opts...).ToFunc()
-}
-
-// ByFormat orders the results by the format field.
-func ByFormat(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldFormat, opts...).ToFunc()
 }
 
 // ByColor orders the results by the color field.

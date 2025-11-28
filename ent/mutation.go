@@ -1916,7 +1916,6 @@ type NoteMutation struct {
 	id                 *uuid.UUID
 	title              *string
 	content            *string
-	format             *string
 	color              *string
 	password           *string
 	is_locked          *bool
@@ -2122,42 +2121,6 @@ func (m *NoteMutation) ContentCleared() bool {
 func (m *NoteMutation) ResetContent() {
 	m.content = nil
 	delete(m.clearedFields, note.FieldContent)
-}
-
-// SetFormat sets the "format" field.
-func (m *NoteMutation) SetFormat(s string) {
-	m.format = &s
-}
-
-// Format returns the value of the "format" field in the mutation.
-func (m *NoteMutation) Format() (r string, exists bool) {
-	v := m.format
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldFormat returns the old "format" field's value of the Note entity.
-// If the Note object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NoteMutation) OldFormat(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldFormat is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldFormat requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldFormat: %w", err)
-	}
-	return oldValue.Format, nil
-}
-
-// ResetFormat resets all changes to the "format" field.
-func (m *NoteMutation) ResetFormat() {
-	m.format = nil
 }
 
 // SetColor sets the "color" field.
@@ -2565,15 +2528,12 @@ func (m *NoteMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NoteMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 9)
 	if m.title != nil {
 		fields = append(fields, note.FieldTitle)
 	}
 	if m.content != nil {
 		fields = append(fields, note.FieldContent)
-	}
-	if m.format != nil {
-		fields = append(fields, note.FieldFormat)
 	}
 	if m.color != nil {
 		fields = append(fields, note.FieldColor)
@@ -2608,8 +2568,6 @@ func (m *NoteMutation) Field(name string) (ent.Value, bool) {
 		return m.Title()
 	case note.FieldContent:
 		return m.Content()
-	case note.FieldFormat:
-		return m.Format()
 	case note.FieldColor:
 		return m.Color()
 	case note.FieldPassword:
@@ -2637,8 +2595,6 @@ func (m *NoteMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTitle(ctx)
 	case note.FieldContent:
 		return m.OldContent(ctx)
-	case note.FieldFormat:
-		return m.OldFormat(ctx)
 	case note.FieldColor:
 		return m.OldColor(ctx)
 	case note.FieldPassword:
@@ -2675,13 +2631,6 @@ func (m *NoteMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetContent(v)
-		return nil
-	case note.FieldFormat:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetFormat(v)
 		return nil
 	case note.FieldColor:
 		v, ok := value.(string)
@@ -2807,9 +2756,6 @@ func (m *NoteMutation) ResetField(name string) error {
 		return nil
 	case note.FieldContent:
 		m.ResetContent()
-		return nil
-	case note.FieldFormat:
-		m.ResetFormat()
 		return nil
 	case note.FieldColor:
 		m.ResetColor()

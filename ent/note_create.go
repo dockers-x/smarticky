@@ -51,20 +51,6 @@ func (_c *NoteCreate) SetNillableContent(v *string) *NoteCreate {
 	return _c
 }
 
-// SetFormat sets the "format" field.
-func (_c *NoteCreate) SetFormat(v string) *NoteCreate {
-	_c.mutation.SetFormat(v)
-	return _c
-}
-
-// SetNillableFormat sets the "format" field if the given value is not nil.
-func (_c *NoteCreate) SetNillableFormat(v *string) *NoteCreate {
-	if v != nil {
-		_c.SetFormat(*v)
-	}
-	return _c
-}
-
 // SetColor sets the "color" field.
 func (_c *NoteCreate) SetColor(v string) *NoteCreate {
 	_c.mutation.SetColor(v)
@@ -250,10 +236,6 @@ func (_c *NoteCreate) defaults() {
 		v := note.DefaultTitle
 		_c.mutation.SetTitle(v)
 	}
-	if _, ok := _c.mutation.Format(); !ok {
-		v := note.DefaultFormat
-		_c.mutation.SetFormat(v)
-	}
 	if _, ok := _c.mutation.Color(); !ok {
 		v := note.DefaultColor
 		_c.mutation.SetColor(v)
@@ -288,9 +270,6 @@ func (_c *NoteCreate) defaults() {
 func (_c *NoteCreate) check() error {
 	if _, ok := _c.mutation.Title(); !ok {
 		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "Note.title"`)}
-	}
-	if _, ok := _c.mutation.Format(); !ok {
-		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "Note.format"`)}
 	}
 	if _, ok := _c.mutation.IsLocked(); !ok {
 		return &ValidationError{Name: "is_locked", err: errors.New(`ent: missing required field "Note.is_locked"`)}
@@ -349,10 +328,6 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Content(); ok {
 		_spec.SetField(note.FieldContent, field.TypeString, value)
 		_node.Content = value
-	}
-	if value, ok := _c.mutation.Format(); ok {
-		_spec.SetField(note.FieldFormat, field.TypeString, value)
-		_node.Format = value
 	}
 	if value, ok := _c.mutation.Color(); ok {
 		_spec.SetField(note.FieldColor, field.TypeString, value)

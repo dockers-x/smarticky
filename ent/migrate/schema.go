@@ -67,7 +67,6 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "title", Type: field.TypeString, Default: "Untitled"},
 		{Name: "content", Type: field.TypeString, Nullable: true, Size: 2147483647},
-		{Name: "format", Type: field.TypeString, Default: "markdown"},
 		{Name: "color", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "password", Type: field.TypeString, Nullable: true},
 		{Name: "is_locked", Type: field.TypeBool, Default: false},
@@ -85,7 +84,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "notes_users_notes",
-				Columns:    []*schema.Column{NotesColumns[11]},
+				Columns:    []*schema.Column{NotesColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},

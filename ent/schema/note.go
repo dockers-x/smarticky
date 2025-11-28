@@ -23,8 +23,6 @@ func (Note) Fields() []ent.Field {
 			Default("Untitled"),
 		field.Text("content").
 			Optional(),
-		field.String("format").
-			Default("markdown"), // markdown, richtext
 		field.String("color").
 			Optional().
 			Default(""), // yellow, green, blue, pink, purple, etc.

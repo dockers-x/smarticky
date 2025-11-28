@@ -135,9 +135,6 @@ func main() {
 	protected.PUT("/users/:id/password", h.UpdatePassword)
 	protected.POST("/users/:id/avatar", h.UploadAvatar)
 
-	// Markdown Rendering API
-	protected.POST("/markdown/render", h.RenderMarkdown)
-
 	// Backup Config API
 	protected.GET("/backup/config", h.GetBackupConfig)
 	protected.PUT("/backup/config", h.UpdateBackupConfig)

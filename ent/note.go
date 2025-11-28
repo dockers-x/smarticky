@@ -23,8 +23,6 @@ type Note struct {
 	Title string `json:"title,omitempty"`
 	// Content holds the value of the "content" field.
 	Content string `json:"content,omitempty"`
-	// Format holds the value of the "format" field.
-	Format string `json:"format,omitempty"`
 	// Color holds the value of the "color" field.
 	Color string `json:"color,omitempty"`
 	// Password holds the value of the "password" field.
@@ -84,7 +82,7 @@ func (*Note) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case note.FieldIsLocked, note.FieldIsStarred, note.FieldIsDeleted:
 			values[i] = new(sql.NullBool)
-		case note.FieldTitle, note.FieldContent, note.FieldFormat, note.FieldColor, note.FieldPassword:
+		case note.FieldTitle, note.FieldContent, note.FieldColor, note.FieldPassword:
 			values[i] = new(sql.NullString)
 		case note.FieldCreatedAt, note.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -124,12 +122,6 @@ func (_m *Note) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field content", values[i])
 			} else if value.Valid {
 				_m.Content = value.String
-			}
-		case note.FieldFormat:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field format", values[i])
-			} else if value.Valid {
-				_m.Format = value.String
 			}
 		case note.FieldColor:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -231,9 +223,6 @@ func (_m *Note) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("content=")
 	builder.WriteString(_m.Content)
-	builder.WriteString(", ")
-	builder.WriteString("format=")
-	builder.WriteString(_m.Format)
 	builder.WriteString(", ")
 	builder.WriteString("color=")
 	builder.WriteString(_m.Color)

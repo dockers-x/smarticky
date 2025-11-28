@@ -64,20 +64,6 @@ func (_u *NoteUpdate) ClearContent() *NoteUpdate {
 	return _u
 }
 
-// SetFormat sets the "format" field.
-func (_u *NoteUpdate) SetFormat(v string) *NoteUpdate {
-	_u.mutation.SetFormat(v)
-	return _u
-}
-
-// SetNillableFormat sets the "format" field if the given value is not nil.
-func (_u *NoteUpdate) SetNillableFormat(v *string) *NoteUpdate {
-	if v != nil {
-		_u.SetFormat(*v)
-	}
-	return _u
-}
-
 // SetColor sets the "color" field.
 func (_u *NoteUpdate) SetColor(v string) *NoteUpdate {
 	_u.mutation.SetColor(v)
@@ -300,9 +286,6 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ContentCleared() {
 		_spec.ClearField(note.FieldContent, field.TypeString)
 	}
-	if value, ok := _u.mutation.Format(); ok {
-		_spec.SetField(note.FieldFormat, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.Color(); ok {
 		_spec.SetField(note.FieldColor, field.TypeString, value)
 	}
@@ -455,20 +438,6 @@ func (_u *NoteUpdateOne) SetNillableContent(v *string) *NoteUpdateOne {
 // ClearContent clears the value of the "content" field.
 func (_u *NoteUpdateOne) ClearContent() *NoteUpdateOne {
 	_u.mutation.ClearContent()
-	return _u
-}
-
-// SetFormat sets the "format" field.
-func (_u *NoteUpdateOne) SetFormat(v string) *NoteUpdateOne {
-	_u.mutation.SetFormat(v)
-	return _u
-}
-
-// SetNillableFormat sets the "format" field if the given value is not nil.
-func (_u *NoteUpdateOne) SetNillableFormat(v *string) *NoteUpdateOne {
-	if v != nil {
-		_u.SetFormat(*v)
-	}
 	return _u
 }
 
@@ -723,9 +692,6 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 	}
 	if _u.mutation.ContentCleared() {
 		_spec.ClearField(note.FieldContent, field.TypeString)
-	}
-	if value, ok := _u.mutation.Format(); ok {
-		_spec.SetField(note.FieldFormat, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Color(); ok {
 		_spec.SetField(note.FieldColor, field.TypeString, value)

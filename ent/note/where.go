@@ -66,11 +66,6 @@ func Content(v string) predicate.Note {
 	return predicate.Note(sql.FieldEQ(FieldContent, v))
 }
 
-// Format applies equality check predicate on the "format" field. It's identical to FormatEQ.
-func Format(v string) predicate.Note {
-	return predicate.Note(sql.FieldEQ(FieldFormat, v))
-}
-
 // Color applies equality check predicate on the "color" field. It's identical to ColorEQ.
 func Color(v string) predicate.Note {
 	return predicate.Note(sql.FieldEQ(FieldColor, v))
@@ -244,71 +239,6 @@ func ContentEqualFold(v string) predicate.Note {
 // ContentContainsFold applies the ContainsFold predicate on the "content" field.
 func ContentContainsFold(v string) predicate.Note {
 	return predicate.Note(sql.FieldContainsFold(FieldContent, v))
-}
-
-// FormatEQ applies the EQ predicate on the "format" field.
-func FormatEQ(v string) predicate.Note {
-	return predicate.Note(sql.FieldEQ(FieldFormat, v))
-}
-
-// FormatNEQ applies the NEQ predicate on the "format" field.
-func FormatNEQ(v string) predicate.Note {
-	return predicate.Note(sql.FieldNEQ(FieldFormat, v))
-}
-
-// FormatIn applies the In predicate on the "format" field.
-func FormatIn(vs ...string) predicate.Note {
-	return predicate.Note(sql.FieldIn(FieldFormat, vs...))
-}
-
-// FormatNotIn applies the NotIn predicate on the "format" field.
-func FormatNotIn(vs ...string) predicate.Note {
-	return predicate.Note(sql.FieldNotIn(FieldFormat, vs...))
-}
-
-// FormatGT applies the GT predicate on the "format" field.
-func FormatGT(v string) predicate.Note {
-	return predicate.Note(sql.FieldGT(FieldFormat, v))
-}
-
-// FormatGTE applies the GTE predicate on the "format" field.
-func FormatGTE(v string) predicate.Note {
-	return predicate.Note(sql.FieldGTE(FieldFormat, v))
-}
-
-// FormatLT applies the LT predicate on the "format" field.
-func FormatLT(v string) predicate.Note {
-	return predicate.Note(sql.FieldLT(FieldFormat, v))
-}
-
-// FormatLTE applies the LTE predicate on the "format" field.
-func FormatLTE(v string) predicate.Note {
-	return predicate.Note(sql.FieldLTE(FieldFormat, v))
-}
-
-// FormatContains applies the Contains predicate on the "format" field.
-func FormatContains(v string) predicate.Note {
-	return predicate.Note(sql.FieldContains(FieldFormat, v))
-}
-
-// FormatHasPrefix applies the HasPrefix predicate on the "format" field.
-func FormatHasPrefix(v string) predicate.Note {
-	return predicate.Note(sql.FieldHasPrefix(FieldFormat, v))
-}
-
-// FormatHasSuffix applies the HasSuffix predicate on the "format" field.
-func FormatHasSuffix(v string) predicate.Note {
-	return predicate.Note(sql.FieldHasSuffix(FieldFormat, v))
-}
-
-// FormatEqualFold applies the EqualFold predicate on the "format" field.
-func FormatEqualFold(v string) predicate.Note {
-	return predicate.Note(sql.FieldEqualFold(FieldFormat, v))
-}
-
-// FormatContainsFold applies the ContainsFold predicate on the "format" field.
-func FormatContainsFold(v string) predicate.Note {
-	return predicate.Note(sql.FieldContainsFold(FieldFormat, v))
 }
 
 // ColorEQ applies the EQ predicate on the "color" field.

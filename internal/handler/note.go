@@ -15,13 +15,11 @@ import (
 type CreateNoteRequest struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
-	Format  string `json:"format"`
 }
 
 type UpdateNoteRequest struct {
 	Title     *string `json:"title"`
 	Content   *string `json:"content"`
-	Format    *string `json:"format"`
 	IsStarred *bool   `json:"is_starred"`
 	IsDeleted *bool   `json:"is_deleted"`
 }
@@ -72,7 +70,6 @@ func (h *Handler) CreateNote(c echo.Context) error {
 	n, err := h.client.Note.Create().
 		SetTitle(req.Title).
 		SetContent(req.Content).
-		SetFormat(req.Format).
 		Save(ctx)
 
 	if err != nil {
@@ -121,9 +118,6 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 	}
 	if req.Content != nil {
 		update.SetContent(*req.Content)
-	}
-	if req.Format != nil {
-		update.SetFormat(*req.Format)
 	}
 	if req.IsStarred != nil {
 		update.SetIsStarred(*req.IsStarred)
