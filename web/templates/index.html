@@ -1,832 +1,532 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Smarticky Notes</title>
-        <link rel="stylesheet" href="/static/css/smartisan.css" />
-        <link rel="stylesheet" href="/static/css/custom.css" />
-    </head>
 
-    <body>
-        <div id="app">
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <span>Smarticky</span>
-                    <button
-                        onclick="createNote()"
-                        class="btn btn-new-note"
-                        title="New Note"
-                    >
-                        <i data-feather="plus"></i>
-                    </button>
-                </div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smarticky Notes</title>
+    <link rel="stylesheet" href="/static/css/smartisan.css" />
+    <link rel="stylesheet" href="/static/css/custom.css" />
+</head>
 
-                <!-- User Info -->
-                <div class="user-info" id="user-info">
-                    <div class="user-avatar">
-                        <img
-                            id="user-avatar-img"
-                            src="/static/img/default-avatar.svg"
-                            alt="Avatar"
-                        />
-                    </div>
-                    <div class="user-details">
-                        <div class="user-name" id="user-name">User</div>
-                        <div class="user-role" id="user-role">user</div>
-                    </div>
-                </div>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>Smarticky</span>
+                <button onclick="createNote()" class="btn btn-new-note" title="New Note">
+                    <i data-feather="plus"></i>
+                </button>
+            </div>
 
-                <div class="sidebar-menu">
-                    <div
-                        class="menu-item"
-                        onclick="filterNotes('all')"
-                        id="menu-all"
-                    >
-                        <i data-feather="file-text"></i>
-                        <span class="menu-text">All Notes</span>
-                    </div>
-                    <div
-                        class="menu-item"
-                        onclick="filterNotes('starred')"
-                        id="menu-starred"
-                    >
-                        <i data-feather="star"></i>
-                        <span class="menu-text">Starred</span>
-                    </div>
-                    <div
-                        class="menu-item"
-                        onclick="filterNotes('trash')"
-                        id="menu-trash"
-                    >
-                        <i data-feather="trash-2"></i>
-                        <span class="menu-text">Trash</span>
-                    </div>
-                    <div class="menu-divider"></div>
-                    <div
-                        class="menu-item admin-only"
-                        onclick="showUserManagement()"
-                        id="menu-users"
-                        style="display: none"
-                    >
-                        <i data-feather="users"></i>
-                        <span class="menu-text">User Management</span>
-                    </div>
-                    <div
-                        class="menu-item"
-                        onclick="showProfileSettings()"
-                        id="menu-profile"
-                    >
-                        <i data-feather="user"></i>
-                        <span class="menu-text">Profile Settings</span>
-                    </div>
+            <!-- User Info -->
+            <div class="user-info" id="user-info">
+                <div class="user-avatar">
+                    <img id="user-avatar-img" src="/static/img/default-avatar.svg" alt="Avatar" />
                 </div>
-                <div class="sidebar-footer">
-                    <button
-                        onclick="toggleLanguage()"
-                        class="btn"
-                        title="Language"
-                    >
-                        <i data-feather="globe"></i>
-                    </button>
-                    <button
-                        onclick="toggleTheme()"
-                        class="btn"
-                        id="theme-toggle-btn"
-                        title="Toggle Theme"
-                    >
-                        <i data-feather="moon" id="theme-icon"></i>
-                    </button>
-                    <button
-                        onclick="showBackupConfig()"
-                        class="btn"
-                        title="Backup Settings"
-                    >
-                        <i data-feather="cloud"></i>
-                    </button>
-                    <button onclick="logout()" class="btn" title="Logout">
-                        <i data-feather="log-out"></i>
-                    </button>
+                <div class="user-details">
+                    <div class="user-name" id="user-name">User</div>
+                    <div class="user-role" id="user-role">user</div>
                 </div>
             </div>
 
-            <!-- Sidebar Expander Button -->
-            <button
-                class="sidebar-expander"
-                onclick="toggleSidebar()"
-                title="Toggle Sidebar"
-            >
-                <div class="expander-line"></div>
-            </button>
-
-            <!-- Note List -->
-            <div class="note-list-panel" id="note-list-panel">
-                <div class="search-bar">
-                    <i data-feather="search"></i>
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        oninput="searchNotes(this.value)"
-                        id="search-input"
-                    />
+            <div class="sidebar-menu">
+                <div class="menu-item" onclick="filterNotes('all')" id="menu-all">
+                    <i data-feather="file-text"></i>
+                    <span class="menu-text">All Notes</span>
                 </div>
-                <div class="note-list" id="note-list">
-                    <!-- Notes will be injected here -->
+                <div class="menu-item" onclick="filterNotes('starred')" id="menu-starred">
+                    <i data-feather="star"></i>
+                    <span class="menu-text">Starred</span>
+                </div>
+                <div class="menu-item" onclick="filterNotes('trash')" id="menu-trash">
+                    <i data-feather="trash-2"></i>
+                    <span class="menu-text">Trash</span>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="menu-item admin-only" onclick="showUserManagement()" id="menu-users" style="display: none">
+                    <i data-feather="users"></i>
+                    <span class="menu-text">User Management</span>
+                </div>
+                <div class="menu-item" onclick="showProfileSettings()" id="menu-profile">
+                    <i data-feather="user"></i>
+                    <span class="menu-text">Profile Settings</span>
                 </div>
             </div>
-
-            <!-- Editor -->
-            <div class="editor-panel" id="editor-panel">
-                <div class="empty-state">Select a note or create a new one</div>
+            <div class="sidebar-footer">
+                <button onclick="toggleLanguage()" class="btn" title="Language">
+                    <i data-feather="globe"></i>
+                </button>
+                <button onclick="toggleTheme()" class="btn" id="theme-toggle-btn" title="Toggle Theme">
+                    <i data-feather="moon" id="theme-icon"></i>
+                </button>
+                <button onclick="showBackupConfig()" class="btn" title="Backup Settings">
+                    <i data-feather="cloud"></i>
+                </button>
+                <button onclick="logout()" class="btn" title="Logout">
+                    <i data-feather="log-out"></i>
+                </button>
             </div>
         </div>
 
-        <!-- Modal: Backup Configuration -->
-        <div id="backup-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Backup & Restore</h2>
-                    <button
-                        class="modal-close"
-                        onclick="closeModal('backup-modal')"
-                    >
-                        &times;
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="backup-tabs">
-                        <button
-                            class="tab-btn active"
-                            onclick="switchBackupTab('webdav')"
-                        >
-                            WebDAV
-                        </button>
-                        <button class="tab-btn" onclick="switchBackupTab('s3')">
-                            S3
-                        </button>
-                    </div>
+        <!-- Sidebar Expander Button -->
+        <button class="sidebar-expander" onclick="toggleSidebar()" title="Toggle Sidebar">
+            <div class="expander-line"></div>
+        </button>
 
-                    <!-- WebDAV Config -->
-                    <div id="webdav-config" class="backup-config active">
-                        <div class="form-group">
-                            <label>WebDAV URL</label>
-                            <input
-                                type="text"
-                                id="webdav-url"
-                                placeholder="https://dav.example.com/path"
-                            />
-                        </div>
-                        <div class="form-group">
-                            <label>Username</label>
-                            <input type="text" id="webdav-username" />
-                        </div>
-                        <div class="form-group">
-                            <label>Password</label>
-                            <input type="password" id="webdav-password" />
-                        </div>
-                        <div class="form-actions">
-                            <button
-                                class="btn-primary"
-                                onclick="saveBackupConfig('webdav')"
-                            >
-                                Save Config
-                            </button>
-                            <button
-                                class="btn-secondary"
-                                onclick="backup('webdav')"
-                            >
-                                Backup Now
-                            </button>
-                            <button
-                                class="btn-secondary"
-                                onclick="restore('webdav')"
-                            >
-                                Restore
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- S3 Config -->
-                    <div id="s3-config" class="backup-config">
-                        <div class="form-group">
-                            <label>Endpoint</label>
-                            <input
-                                type="text"
-                                id="s3-endpoint"
-                                placeholder="s3.amazonaws.com"
-                            />
-                        </div>
-                        <div class="form-group">
-                            <label>Bucket</label>
-                            <input type="text" id="s3-bucket" />
-                        </div>
-                        <div class="form-group">
-                            <label>Access Key</label>
-                            <input type="text" id="s3-access-key" />
-                        </div>
-                        <div class="form-group">
-                            <label>Secret Key</label>
-                            <input type="password" id="s3-secret-key" />
-                        </div>
-                        <div class="form-actions">
-                            <button
-                                class="btn-primary"
-                                onclick="saveBackupConfig('s3')"
-                            >
-                                Save Config
-                            </button>
-                            <button
-                                class="btn-secondary"
-                                onclick="backup('s3')"
-                            >
-                                Backup Now
-                            </button>
-                            <button
-                                class="btn-secondary"
-                                onclick="restore('s3')"
-                            >
-                                Restore
-                            </button>
-                        </div>
-                    </div>
-                </div>
+        <!-- Note List -->
+        <div class="note-list-panel" id="note-list-panel">
+            <div class="search-bar">
+                <i data-feather="search"></i>
+                <input type="text" placeholder="Search..." oninput="searchNotes(this.value)" id="search-input" />
+            </div>
+            <div class="note-list" id="note-list">
+                <!-- Notes will be injected here -->
             </div>
         </div>
 
-        <!-- Modal: Sort Menu -->
-        <div id="sort-modal" class="modal">
-            <div class="modal-content modal-sm">
-                <div class="modal-header">
-                    <h2>Sort By</h2>
-                    <button
-                        class="modal-close"
-                        onclick="closeModal('sort-modal')"
-                    >
-                        &times;
+        <!-- Editor -->
+        <div class="editor-panel" id="editor-panel">
+            <div class="empty-state">Select a note or create a new one</div>
+        </div>
+    </div>
+
+    <!-- Modal: Backup Configuration -->
+    <div id="backup-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Backup & Restore</h2>
+                <button class="modal-close" onclick="closeModal('backup-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-tabs">
+                    <button class="tab-btn active" onclick="switchBackupTab('webdav')">
+                        WebDAV
+                    </button>
+                    <button class="tab-btn" onclick="switchBackupTab('s3')">
+                        S3
                     </button>
                 </div>
-                <div class="modal-body">
-                    <div class="sort-options">
-                        <button
-                            class="sort-option"
-                            onclick="sortNotes('updated_desc')"
-                        >
-                            <i data-feather="clock"></i>
-                            Last Modified (Newest)
+
+                <!-- WebDAV Config -->
+                <div id="webdav-config" class="backup-config active">
+                    <div class="form-group">
+                        <label>WebDAV URL</label>
+                        <input type="text" id="webdav-url" placeholder="https://dav.example.com/path" />
+                    </div>
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="webdav-username" />
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="webdav-password" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" onclick="saveBackupConfig('webdav')">
+                            Save Config
                         </button>
-                        <button
-                            class="sort-option"
-                            onclick="sortNotes('updated_asc')"
-                        >
-                            <i data-feather="clock"></i>
-                            Last Modified (Oldest)
+                        <button class="btn-secondary" onclick="backup('webdav')">
+                            Backup Now
                         </button>
-                        <button
-                            class="sort-option"
-                            onclick="sortNotes('title_asc')"
-                        >
-                            <i data-feather="type"></i>
-                            Title (A-Z)
+                        <button class="btn-secondary" onclick="restore('webdav')">
+                            Restore
                         </button>
-                        <button
-                            class="sort-option"
-                            onclick="sortNotes('title_desc')"
-                        >
-                            <i data-feather="type"></i>
-                            Title (Z-A)
+                    </div>
+                </div>
+
+                <!-- S3 Config -->
+                <div id="s3-config" class="backup-config">
+                    <div class="form-group">
+                        <label>Endpoint</label>
+                        <input type="text" id="s3-endpoint" placeholder="s3.amazonaws.com" />
+                    </div>
+                    <div class="form-group">
+                        <label>Bucket</label>
+                        <input type="text" id="s3-bucket" />
+                    </div>
+                    <div class="form-group">
+                        <label>Access Key</label>
+                        <input type="text" id="s3-access-key" />
+                    </div>
+                    <div class="form-group">
+                        <label>Secret Key</label>
+                        <input type="password" id="s3-secret-key" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" onclick="saveBackupConfig('s3')">
+                            Save Config
                         </button>
-                        <button
-                            class="sort-option"
-                            onclick="sortNotes('color')"
-                        >
-                            <i data-feather="droplet"></i>
-                            Color
+                        <button class="btn-secondary" onclick="backup('s3')">
+                            Backup Now
+                        </button>
+                        <button class="btn-secondary" onclick="restore('s3')">
+                            Restore
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Modal: Color Picker -->
-        <div id="color-modal" class="modal">
-            <div class="modal-content modal-sm">
-                <div class="modal-header">
-                    <h2>Note Color</h2>
-                    <button
-                        class="modal-close"
-                        onclick="closeModal('color-modal')"
-                    >
-                        &times;
+    <!-- Modal: Sort Menu -->
+    <div id="sort-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Sort By</h2>
+                <button class="modal-close" onclick="closeModal('sort-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="sort-options">
+                    <button class="sort-option" onclick="sortNotes('updated_desc')">
+                        <i data-feather="clock"></i>
+                        Last Modified (Newest)
+                    </button>
+                    <button class="sort-option" onclick="sortNotes('updated_asc')">
+                        <i data-feather="clock"></i>
+                        Last Modified (Oldest)
+                    </button>
+                    <button class="sort-option" onclick="sortNotes('title_asc')">
+                        <i data-feather="type"></i>
+                        Title (A-Z)
+                    </button>
+                    <button class="sort-option" onclick="sortNotes('title_desc')">
+                        <i data-feather="type"></i>
+                        Title (Z-A)
+                    </button>
+                    <button class="sort-option" onclick="sortNotes('color')">
+                        <i data-feather="droplet"></i>
+                        Color
                     </button>
                 </div>
-                <div class="modal-body">
-                    <div class="color-picker">
-                        <div
-                            class="color-option"
-                            data-color=""
-                            style="background: #fff; border: 2px solid #ddd"
-                            onclick="setNoteColor('')"
-                        >
-                            <span class="color-label">Default</span>
-                        </div>
-                        <div
-                            class="color-option"
-                            data-color="yellow"
-                            style="background: #fff9e6"
-                            onclick="setNoteColor('yellow')"
-                        >
-                            <span class="color-label">Yellow</span>
-                        </div>
-                        <div
-                            class="color-option"
-                            data-color="green"
-                            style="background: #e8f8e8"
-                            onclick="setNoteColor('green')"
-                        >
-                            <span class="color-label">Green</span>
-                        </div>
-                        <div
-                            class="color-option"
-                            data-color="blue"
-                            style="background: #e6f3ff"
-                            onclick="setNoteColor('blue')"
-                        >
-                            <span class="color-label">Blue</span>
-                        </div>
-                        <div
-                            class="color-option"
-                            data-color="pink"
-                            style="background: #ffe6f0"
-                            onclick="setNoteColor('pink')"
-                        >
-                            <span class="color-label">Pink</span>
-                        </div>
-                        <div
-                            class="color-option"
-                            data-color="purple"
-                            style="background: #f3e6ff"
-                            onclick="setNoteColor('purple')"
-                        >
-                            <span class="color-label">Purple</span>
-                        </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Color Picker -->
+    <div id="color-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Note Color</h2>
+                <button class="modal-close" onclick="closeModal('color-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="color-picker">
+                    <div class="color-option" data-color="" style="background: #fff; border: 2px solid #ddd"
+                        onclick="setNoteColor('')">
+                        <span class="color-label">Default</span>
+                    </div>
+                    <div class="color-option" data-color="yellow" style="background: #fff9e6"
+                        onclick="setNoteColor('yellow')">
+                        <span class="color-label">Yellow</span>
+                    </div>
+                    <div class="color-option" data-color="green" style="background: #e8f8e8"
+                        onclick="setNoteColor('green')">
+                        <span class="color-label">Green</span>
+                    </div>
+                    <div class="color-option" data-color="blue" style="background: #e6f3ff"
+                        onclick="setNoteColor('blue')">
+                        <span class="color-label">Blue</span>
+                    </div>
+                    <div class="color-option" data-color="pink" style="background: #ffe6f0"
+                        onclick="setNoteColor('pink')">
+                        <span class="color-label">Pink</span>
+                    </div>
+                    <div class="color-option" data-color="purple" style="background: #f3e6ff"
+                        onclick="setNoteColor('purple')">
+                        <span class="color-label">Purple</span>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Modal: Password Protection -->
-        <div id="password-modal" class="modal">
-            <div class="modal-content modal-sm">
-                <div class="modal-header">
-                    <h2 id="password-modal-title">Set Password</h2>
-                    <button
-                        class="modal-close"
-                        onclick="closeModal('password-modal')"
-                    >
-                        &times;
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div id="password-set-form">
-                        <div class="form-group">
-                            <label>Password</label>
-                            <input
-                                type="password"
-                                id="note-password"
-                                placeholder="Enter password"
-                            />
-                        </div>
-                        <div class="form-group">
-                            <label>Confirm Password</label>
-                            <input
-                                type="password"
-                                id="note-password-confirm"
-                                placeholder="Confirm password"
-                            />
-                        </div>
-                        <div class="form-actions">
-                            <button
-                                class="btn-primary"
-                                onclick="setNotePassword()"
-                            >
-                                Set Password
-                            </button>
-                            <button
-                                class="btn-secondary"
-                                onclick="removeNotePassword()"
-                            >
-                                Remove Password
-                            </button>
-                        </div>
+    <!-- Modal: Password Protection -->
+    <div id="password-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2 id="password-modal-title">Set Password</h2>
+                <button class="modal-close" onclick="closeModal('password-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="password-set-form">
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="note-password" placeholder="Enter password" />
                     </div>
-                    <div id="password-unlock-form" style="display: none">
-                        <div class="form-group">
-                            <label>Enter Password to Unlock</label>
-                            <input
-                                type="password"
-                                id="note-password-unlock"
-                                placeholder="Enter password"
-                            />
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn-primary" onclick="unlockNote()">
-                                Unlock
-                            </button>
-                        </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="note-password-confirm" placeholder="Confirm password" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" onclick="setNotePassword()">
+                            Set Password
+                        </button>
+                        <button class="btn-secondary" onclick="removeNotePassword()">
+                            Remove Password
+                        </button>
+                    </div>
+                </div>
+                <div id="password-unlock-form" style="display: none">
+                    <div class="form-group">
+                        <label>Enter Password to Unlock</label>
+                        <input type="password" id="note-password-unlock" placeholder="Enter password" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" onclick="unlockNote()">
+                            Unlock
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Profile Settings Modal -->
-        <div id="profile-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Profile Settings</h2>
-                    <button
-                        class="modal-close"
-                        onclick="closeModal('profile-modal')"
-                    >
-                        &times;
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!-- Avatar Upload Section -->
-                    <div class="form-section" style="margin-bottom: 30px">
-                        <h3
-                            style="
+    <!-- Profile Settings Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Profile Settings</h2>
+                <button class="modal-close" onclick="closeModal('profile-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Avatar Upload Section -->
+                <div class="form-section" style="margin-bottom: 30px">
+                    <h3 style="
                                 font-size: 16px;
                                 margin-bottom: 15px;
                                 color: #666;
-                            "
-                        >
-                            Avatar
-                        </h3>
-                        <div
-                            style="
+                            ">
+                        Avatar
+                    </h3>
+                    <div style="
                                 display: flex;
                                 align-items: center;
                                 gap: 20px;
-                            "
-                        >
-                            <div
-                                class="profile-avatar-preview"
-                                style="
+                            ">
+                        <div class="profile-avatar-preview" style="
                                     width: 80px;
                                     height: 80px;
                                     border-radius: 50%;
                                     overflow: hidden;
                                     background: #f0f0f0;
                                     border: 2px solid #ddd;
-                                "
-                            >
-                                <img
-                                    id="profile-avatar-preview"
-                                    src="/static/img/default-avatar.svg"
-                                    alt="Avatar"
-                                    style="
+                                ">
+                            <img id="profile-avatar-preview" src="/static/img/default-avatar.svg" alt="Avatar" style="
                                         width: 100%;
                                         height: 100%;
                                         object-fit: cover;
-                                    "
-                                />
-                            </div>
-                            <div style="flex: 1">
-                                <input
-                                    type="file"
-                                    id="profile-avatar-input"
-                                    accept="image/*"
-                                    style="display: none"
-                                    onchange="handleAvatarSelect(event)"
-                                />
-                                <button
-                                    class="btn-primary"
-                                    onclick="
+                                    " />
+                        </div>
+                        <div style="flex: 1">
+                            <input type="file" id="profile-avatar-input" accept="image/*" style="display: none"
+                                onchange="handleAvatarSelect(event)" />
+                            <button class="btn-primary" onclick="
                                         document
                                             .getElementById(
                                                 'profile-avatar-input',
                                             )
                                             .click()
-                                    "
-                                >
-                                    <i data-feather="upload"></i> Upload Avatar
-                                </button>
-                                <p
-                                    style="
+                                    ">
+                                <i data-feather="upload"></i> Upload Avatar
+                            </button>
+                            <p style="
                                         font-size: 12px;
                                         color: #999;
                                         margin-top: 8px;
-                                    "
-                                >
-                                    JPG, PNG or GIF (Max 2MB)
-                                </p>
-                            </div>
+                                    ">
+                                JPG, PNG or GIF (Max 2MB)
+                            </p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Email Update Section -->
-                    <div class="form-section" style="margin-bottom: 30px">
-                        <h3
-                            style="
+                <!-- Email Update Section -->
+                <div class="form-section" style="margin-bottom: 30px">
+                    <h3 style="
                                 font-size: 16px;
                                 margin-bottom: 15px;
                                 color: #666;
-                            "
-                        >
-                            Email
-                        </h3>
-                        <div class="form-group">
-                            <label>Email Address</label>
-                            <input
-                                type="email"
-                                id="profile-email"
-                                placeholder="Enter email address"
-                            />
-                        </div>
-                        <button
-                            class="btn-primary"
-                            onclick="updateProfileEmail()"
-                        >
-                            <i data-feather="save"></i> Update Email
-                        </button>
+                            ">
+                        Email
+                    </h3>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="profile-email" placeholder="Enter email address" />
                     </div>
+                    <button class="btn-primary" onclick="updateProfileEmail()">
+                        <i data-feather="save"></i> Update Email
+                    </button>
+                </div>
 
-                    <!-- Nickname Update Section -->
-                    <div class="form-section" style="margin-bottom: 30px">
-                        <h3
-                            style="
+                <!-- Nickname Update Section -->
+                <div class="form-section" style="margin-bottom: 30px">
+                    <h3 style="
                                 font-size: 16px;
                                 margin-bottom: 15px;
                                 color: #666;
-                            "
-                        >
-                            Nickname
-                        </h3>
-                        <div class="form-group">
-                            <label>Nickname</label>
-                            <input
-                                type="text"
-                                id="profile-nickname"
-                                placeholder="Enter nickname (optional)"
-                            />
-                        </div>
-                        <button
-                            class="btn-primary"
-                            onclick="updateProfileNickname()"
-                        >
-                            <i data-feather="save"></i> Update Nickname
-                        </button>
+                            ">
+                        Nickname
+                    </h3>
+                    <div class="form-group">
+                        <label>Nickname</label>
+                        <input type="text" id="profile-nickname" placeholder="Enter nickname (optional)" />
                     </div>
+                    <button class="btn-primary" onclick="updateProfileNickname()">
+                        <i data-feather="save"></i> Update Nickname
+                    </button>
+                </div>
 
-                    <!-- Password Change Section -->
-                    <div class="form-section">
-                        <h3
-                            style="
+                <!-- Password Change Section -->
+                <div class="form-section">
+                    <h3 style="
                                 font-size: 16px;
                                 margin-bottom: 15px;
                                 color: #666;
-                            "
-                        >
-                            Change Password
-                        </h3>
-                        <div class="form-group">
-                            <label>Old Password</label>
-                            <input
-                                type="password"
-                                id="profile-old-password"
-                                placeholder="Enter old password"
-                            />
-                        </div>
-                        <div class="form-group">
-                            <label>New Password</label>
-                            <input
-                                type="password"
-                                id="profile-new-password"
-                                placeholder="Enter new password (min 6 characters)"
-                            />
-                        </div>
-                        <div class="form-group">
-                            <label>Confirm New Password</label>
-                            <input
-                                type="password"
-                                id="profile-confirm-password"
-                                placeholder="Confirm new password"
-                            />
-                        </div>
-                        <button
-                            class="btn-primary"
-                            onclick="updateProfilePassword()"
-                        >
-                            <i data-feather="lock"></i> Change Password
-                        </button>
+                            ">
+                        Change Password
+                    </h3>
+                    <div class="form-group">
+                        <label>Old Password</label>
+                        <input type="password" id="profile-old-password" placeholder="Enter old password" />
                     </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="profile-new-password"
+                            placeholder="Enter new password (min 6 characters)" />
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="profile-confirm-password" placeholder="Confirm new password" />
+                    </div>
+                    <button class="btn-primary" onclick="updateProfilePassword()">
+                        <i data-feather="lock"></i> Change Password
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- User Management Modal (Admin Only) -->
-        <div id="user-management-modal" class="modal">
-            <div class="modal-content" style="max-width: 800px">
-                <div class="modal-header">
-                    <h2>User Management</h2>
-                    <button
-                        class="modal-close"
-                        onclick="closeModal('user-management-modal')"
-                    >
-                        &times;
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!-- Create User Section -->
-                    <div
-                        class="form-section"
-                        style="
+    <!-- User Management Modal (Admin Only) -->
+    <div id="user-management-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px">
+            <div class="modal-header">
+                <h2>User Management</h2>
+                <button class="modal-close" onclick="closeModal('user-management-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Create User Section -->
+                <div class="form-section user-form-section" style="
                             margin-bottom: 30px;
                             padding: 20px;
-                            background: #f9f9f9;
                             border-radius: 8px;
-                        "
-                    >
-                        <h3
-                            style="
+                        ">
+                    <h3 style="
                                 font-size: 16px;
                                 margin-bottom: 15px;
-                                color: #666;
-                            "
-                        >
-                            Create New User
-                        </h3>
-                        <div
-                            style="
+                            ">
+                        Create New User
+                    </h3>
+                    <div style="
                                 display: grid;
                                 grid-template-columns: 1fr 1fr;
                                 gap: 15px;
-                            "
-                        >
-                            <div class="form-group">
-                                <label>Username *</label>
-                                <input
-                                    type="text"
-                                    id="new-user-username"
-                                    placeholder="Enter username"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label>Email</label>
-                                <input
-                                    type="email"
-                                    id="new-user-email"
-                                    placeholder="Enter email"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label>Nickname</label>
-                                <input
-                                    type="text"
-                                    id="new-user-nickname"
-                                    placeholder="Enter nickname (optional)"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label>Password *</label>
-                                <input
-                                    type="password"
-                                    id="new-user-password"
-                                    placeholder="Enter password (min 6 chars)"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label>Role *</label>
-                                <select
-                                    id="new-user-role"
-                                    style="
-                                        width: 100%;
-                                        padding: 10px 12px;
-                                        border: 1px solid #ddd;
-                                        border-radius: 6px;
-                                        font-size: 14px;
-                                    "
-                                >
-                                    <option value="user">User</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                            </div>
+                            ">
+                        <div class="form-group">
+                            <label>Username *</label>
+                            <input type="text" id="new-user-username" placeholder="Enter username" />
                         </div>
-                        <button
-                            class="btn-primary"
-                            onclick="createNewUser()"
-                            style="margin-top: 10px"
-                        >
-                            <i data-feather="user-plus"></i> Create User
-                        </button>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="new-user-email" placeholder="Enter email" />
+                        </div>
+                        <div class="form-group">
+                            <label>Nickname</label>
+                            <input type="text" id="new-user-nickname" placeholder="Enter nickname (optional)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Password *</label>
+                            <input type="password" id="new-user-password" placeholder="Enter password (min 6 chars)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Role *</label>
+                            <select id="new-user-role">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
                     </div>
+                    <button class="btn-primary" onclick="createNewUser()" style="margin-top: 10px">
+                        <i data-feather="user-plus"></i> Create User
+                    </button>
+                </div>
 
-                    <!-- User List Section -->
-                    <div class="form-section">
-                        <h3
-                            style="
+                <!-- User List Section -->
+                <div class="form-section">
+                    <h3 style="
                                 font-size: 16px;
                                 margin-bottom: 15px;
-                                color: #666;
-                            "
-                        >
-                            All Users
-                        </h3>
-                        <div id="user-list-container" style="overflow-x: auto">
-                            <table
-                                class="user-table"
-                                style="width: 100%; border-collapse: collapse"
-                            >
-                                <thead>
-                                    <tr
-                                        style="
-                                            background: #f5f5f5;
-                                            border-bottom: 2px solid #ddd;
-                                        "
-                                    >
-                                        <th
-                                            style="
-                                                padding: 12px;
-                                                text-align: left;
-                                                font-size: 13px;
-                                                color: #666;
-                                            "
-                                        >
-                                            Username
-                                        </th>
-                                        <th
-                                            style="
-                                                padding: 12px;
-                                                text-align: left;
-                                                font-size: 13px;
-                                                color: #666;
-                                            "
-                                        >
-                                            Nickname
-                                        </th>
-                                        <th
-                                            style="
-                                                padding: 12px;
-                                                text-align: left;
-                                                font-size: 13px;
-                                                color: #666;
-                                            "
-                                        >
-                                            Email
-                                        </th>
-                                        <th
-                                            style="
-                                                padding: 12px;
-                                                text-align: left;
-                                                font-size: 13px;
-                                                color: #666;
-                                            "
-                                        >
-                                            Role
-                                        </th>
-                                        <th
-                                            style="
-                                                padding: 12px;
-                                                text-align: left;
-                                                font-size: 13px;
-                                                color: #666;
-                                            "
-                                        >
-                                            Created
-                                        </th>
-                                        <th
-                                            style="
-                                                padding: 12px;
-                                                text-align: center;
-                                                font-size: 13px;
-                                                color: #666;
-                                            "
-                                        >
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody id="user-list-body">
-                                    <!-- Users will be loaded here -->
-                                </tbody>
-                            </table>
-                        </div>
+                            ">
+                        All Users
+                    </h3>
+                    <div id="user-list-container">
+                        <table class="user-table" style="width: 100%; border-collapse: collapse">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        Username
+                                    </th>
+                                    <th>
+                                        Nickname
+                                    </th>
+                                    <th>
+                                        Email
+                                    </th>
+                                    <th>
+                                        Role
+                                    </th>
+                                    <th>
+                                        Created
+                                    </th>
+                                    <th style="text-align: center;">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-list-body">
+                                <!-- Users will be loaded here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Feather Icons -->
-        <script src="/static/js/feather.min.js"></script>
-        <!-- Marked.js for Markdown rendering -->
-        <script src="/static/js/marked.min.js"></script>
-        <!-- snapdom for image export -->
-        <script src="/static/js/snapdom.js"></script>
-        <script src="/static/js/app.js"></script>
-        <script>
-            // Initialize Feather Icons
-            feather.replace();
-        </script>
-    </body>
+    <!-- Feather Icons -->
+    <script src="/static/js/feather.min.js"></script>
+    <!-- Marked.js for Markdown rendering -->
+    <script src="/static/js/marked.min.js"></script>
+    <!-- snapdom for image export -->
+    <script src="/static/js/snapdom.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script>
+        // Initialize Feather Icons
+        feather.replace();
+    </script>
+</body>
+
 </html>

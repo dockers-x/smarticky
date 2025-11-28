@@ -27,7 +27,7 @@ let state = {
   unlockedNotes: new Set(), // Track unlocked notes in this session
   markdownViewMode: "source", // 'source' or 'preview'
   sidebarExpanded: true, // Track if sidebar is expanded
-  attachmentsExpanded: true, // Track if attachments section is expanded
+  attachmentsExpanded: false, // Track if attachments section is expanded (default collapsed)
 };
 
 // Auth functions
