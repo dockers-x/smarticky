@@ -2802,3 +2802,33 @@ function closeLoadingModal(modal) {
     modal.parentNode.removeChild(modal);
   }
 }
+
+// About dialog functions
+async function showAbout() {
+  // Fetch version info
+  try {
+    const response = await fetch(`${API_BASE}/version`);
+    if (response.ok) {
+      const versionInfo = await response.json();
+
+      // Update version info in the modal
+      document.getElementById('app-version').textContent = versionInfo.version || 'Unknown';
+      document.getElementById('app-build-time').textContent = versionInfo.build_time || 'Unknown';
+      document.getElementById('app-commit').textContent = versionInfo.git_commit ? versionInfo.git_commit.substring(0, 8) : 'Unknown';
+    } else {
+      // Fallback if API call fails
+      document.getElementById('app-version').textContent = 'Unknown';
+      document.getElementById('app-build-time').textContent = 'Unknown';
+      document.getElementById('app-commit').textContent = 'Unknown';
+    }
+  } catch (error) {
+    console.error('Failed to fetch version info:', error);
+    document.getElementById('app-version').textContent = 'Error';
+    document.getElementById('app-build-time').textContent = 'Error';
+    document.getElementById('app-commit').textContent = 'Error';
+  }
+
+  // Show the about modal
+  showModal('about-modal');
+}
+

@@ -14,7 +14,7 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <span>Smarticky</span>
+                <span onclick="showAbout()" style="cursor: pointer;" title="About Smarticky">Smarticky</span>
                 <button onclick="createNote()" class="btn btn-new-note" title="New Note">
                     <i data-feather="plus"></i>
                 </button>
@@ -357,6 +357,28 @@
                     <div class="color-option" data-color="purple" style="background: #f3e6ff"
                         onclick="setNoteColor('purple')">
                         <span class="color-label">Purple</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: About -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>About Smarticky</h2>
+                <button class="modal-close" onclick="closeModal('about-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px 0;">
+                    <h3 class="neon-text" style="margin-bottom: 20px;">Smarticky Notes</h3>
+                    <div style="color: #666; line-height: 1.8;">
+                        <p><strong>Version:</strong> <span id="app-version">Loading...</span></p>
+                        <p><strong>Build Time:</strong> <span id="app-build-time">Loading...</span></p>
+                        <p><strong>Commit:</strong> <span id="app-commit" style="font-family: monospace; font-size: 12px;">Loading...</span></p>
                     </div>
                 </div>
             </div>

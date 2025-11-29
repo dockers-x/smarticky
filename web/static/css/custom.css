@@ -2336,3 +2336,40 @@ body.dark-mode .tab-btn.active {
 body.dark-mode .tab-btn.active::after {
     background: var(--accent-color);
 }
+
+/* Neon Text Effect - Works in both light and dark mode */
+.neon-text {
+    color: #fff;
+    text-shadow:
+        0 0 5px #d9534f,
+        0 0 10px #d9534f,
+        0 0 20px #d9534f,
+        0 0 40px #d9534f,
+        0 0 80px #d9534f;
+    animation: neon-flicker 1.5s ease-in-out infinite alternate;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+@keyframes neon-flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        text-shadow:
+            0 0 5px #d9534f,
+            0 0 10px #d9534f,
+            0 0 20px #d9534f,
+            0 0 40px #d9534f,
+            0 0 80px #d9534f;
+        opacity: 1;
+    }
+    20%, 24%, 55% {
+        text-shadow:
+            0 0 2px #d9534f,
+            0 0 5px #d9534f;
+        opacity: 0.8;
+    }
+}
+
+/* Dark mode adjustments for neon */
+body.dark-mode .neon-text {
+    color: #fff;
+}

@@ -13,6 +13,7 @@ import (
 	"smarticky/internal/logger"
 	authmw "smarticky/internal/middleware"
 	"smarticky/internal/storage"
+	"smarticky/internal/version"
 	"smarticky/web"
 
 	"github.com/labstack/echo/v4"
@@ -104,6 +105,11 @@ func main() {
 	api.GET("/setup/check", h.CheckSetup)
 	api.POST("/setup", h.Setup)
 	api.POST("/auth/login", h.Login)
+
+	// Version info endpoint (public)
+	api.GET("/version", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, version.GetInfo())
+	})
 
 	// Protected routes (auth required)
 	protected := api.Group("")

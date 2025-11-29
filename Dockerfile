@@ -2,13 +2,23 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
+# Build arguments for version info
+ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
+
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-# Build with CGO enabled for SQLite
-RUN CGO_ENABLED=1 go build -o smarticky ./cmd/server
+# Build with CGO enabled for SQLite and inject version info
+RUN CGO_ENABLED=1 go build -trimpath \
+    -ldflags="-s -w \
+      -X smarticky/internal/version.Version=${VERSION} \
+      -X smarticky/internal/version.BuildTime=${BUILD_TIME} \
+      -X smarticky/internal/version.GitCommit=${GIT_COMMIT}" \
+    -o smarticky ./cmd/server
 
 FROM alpine:latest
 
