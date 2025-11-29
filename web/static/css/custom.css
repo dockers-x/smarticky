@@ -42,52 +42,61 @@
 
 /* Dark Mode Variables */
 /* Dark Mode Variables - Smartisan Style */
+/* Dark Mode Variables - Premium Smartisan Style */
 body.dark-mode {
-    /* Background Colors - Warm Dark Grays */
-    --bg-primary: #252525;
-    /* Deep charcoal for main editor */
-    --bg-secondary: #2d2d2d;
-    /* Slightly lighter for lists */
-    --bg-tertiary: #333333;
-    /* Headers/Modals */
-    --bg-sidebar: #202020;
-    /* Darkest for sidebar */
-    --bg-sidebar-header: #1a1a1a;
-    --bg-modal: #2d2d2d;
-    --bg-hover: #383838;
-    --bg-active: #3a3a3a;
-    /* Selection state */
-    --bg-input: #1a1a1a;
+    /* Background Colors - Deep, Neutral & Rich */
+    --bg-primary: #1c1c1e;
+    /* Main Editor - Deep Matte Gray */
+    --bg-secondary: #252528;
+    /* List Panel - Slightly Lighter */
+    --bg-tertiary: #2c2c2e;
+    /* Form Sections & Headers - Matches Modal */
+    --bg-sidebar: #151517;
+    /* Sidebar - Darkest, almost black */
+    --bg-sidebar-header: #101012;
+    --bg-modal: #2c2c2e;
+    /* Modals - Elevated Surface */
+    --bg-hover: rgba(255, 255, 255, 0.05);
+    /* Subtle hover overlay */
+    --bg-active: rgba(217, 163, 90, 0.12);
+    /* Very subtle Gold Tint for active items */
+    --bg-input: #121214;
+    /* Deep recessed inputs */
 
-    /* Text Colors - Soft Off-Whites */
-    --text-primary: #e0e0e0;
-    /* Soft white */
-    --text-secondary: #a0a0a0;
-    /* Muted gray */
-    --text-tertiary: #707070;
-    /* Darker gray */
-    --text-muted: #666666;
-    --text-light: #888888;
-    --text-inverse: #1a1a1a;
+    /* Text Colors - High Legibility & Comfort */
+    --text-primary: #f2f2f7;
+    /* Primary text - Off-white */
+    --text-secondary: #aeaeb2;
+    /* Secondary text - Light Gray */
+    --text-tertiary: #8e8e93;
+    /* Tertiary text - Muted Gray */
+    --text-muted: #636366;
+    /* Disabled/Very subtle text */
+    --text-light: #98989d;
+    --text-inverse: #1c1c1e;
 
-    /* Border Colors - Subtle */
-    --border-light: #333333;
-    --border-medium: #3a3a3a;
-    --border-dark: #444444;
-    --border-darker: #555555;
+    /* Border Colors - Glassy & Subtle */
+    --border-light: rgba(255, 255, 255, 0.08);
+    --border-medium: rgba(255, 255, 255, 0.12);
+    --border-dark: rgba(255, 255, 255, 0.16);
+    --border-darker: rgba(255, 255, 255, 0.25);
 
-    /* Shadow Colors */
-    --shadow-light: rgba(0, 0, 0, 0.4);
-    --shadow-medium: rgba(0, 0, 0, 0.6);
-    --shadow-dark: rgba(0, 0, 0, 0.8);
+    /* Shadow Colors - Deep Depth */
+    --shadow-light: rgba(0, 0, 0, 0.3);
+    --shadow-medium: rgba(0, 0, 0, 0.5);
+    --shadow-dark: rgba(0, 0, 0, 0.7);
 
     /* Scrollbar Colors */
-    --scrollbar-thumb: rgba(255, 255, 255, 0.15);
-    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.35);
 
-    /* Accent Override for Dark Mode */
+    /* Accent Override - Smartisan Gold/Champagne for Dark Mode */
     --accent-color: #d9a35a;
-    /* Smartisan Gold/Champagne */
+
+    /* Primary Action Color - Adjusted Red for Dark Mode */
+    --primary-color: #e06460;
+    /* Slightly lighter/softer red for dark bg */
+    --primary-hover: #eb7b77;
 }
 
 /* Basic Reset & Layout */
@@ -874,6 +883,7 @@ body.sidebar-collapsed .expander-line::after {
 .modal-body {
     padding: 12px 20px;
     overflow-y: auto;
+    /* Default behavior for other modals */
     overflow-x: hidden;
     flex: 1;
     box-sizing: border-box;
@@ -882,89 +892,85 @@ body.sidebar-collapsed .expander-line::after {
 }
 
 /* Fix backup modal scrollbar issue */
+/* Fix backup modal scrollbar issue */
 #backup-modal .modal-body {
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 12px 20px;
+    padding: 0;
+    /* Remove padding from body to let tabs span full width */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+    /* Prevent body scroll, let config scroll */
 }
 
-/* Ensure backup tabs and configs don't cause overflow */
-#backup-modal .backup-tabs {
+/* Ensure backup tabs span full width */
+#backup-modal .smart-tabs {
+    margin: 0;
+    padding: 0 20px;
+    background: var(--bg-modal);
     flex-shrink: 0;
-    margin-bottom: 12px;
 }
 
 #backup-modal .backup-config {
-    overflow-x: hidden;
-    overflow-y: visible;
-    max-height: none;
+    flex: 1;
+    overflow-y: auto;
+    /* Scroll only the content area */
+    padding: 20px;
+    max-height: calc(100% - 50px);
+    /* Ensure it fits within the flex container */
+    box-sizing: border-box;
 }
 
 /* Backup Configuration */
-.backup-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--border-light);
-    overflow-x: hidden;
-    max-width: 100%;
-    box-sizing: border-box;
-    flex-shrink: 0;
-}
-
 .backup-config {
-    flex-shrink: 0;
     display: none;
-    overflow-x: hidden;
-    max-width: 100%;
-    box-sizing: border-box;
+    animation: fadeIn 0.3s ease;
 }
 
 .backup-config.active {
     display: block;
 }
 
-.tab-btn {
-    padding: 6px 14px;
-    border: none;
-    background: none;
+/* Smart Tabs Implementation */
+.smart-tabs {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    padding: 0 10px;
+}
+
+.smart-tab-item {
+    padding: 10px 5px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--text-tertiary);
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    white-space: nowrap;
-    flex-shrink: 0;
+    transition: all 0.2s;
     position: relative;
-    letter-spacing: 0.3px;
 }
 
-.tab-btn::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--primary-color);
-    transform: scaleX(0);
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.smart-tab-item:hover {
+    color: var(--text-primary);
 }
 
-.tab-btn:hover {
-    color: var(--text-secondary);
-    background: var(--bg-hover);
-}
-
-.tab-btn.active {
+.smart-tab-item.active {
     color: var(--primary-color);
     font-weight: 600;
+    border-bottom-color: var(--primary-color);
 }
 
-.tab-btn.active::after {
-    transform: scaleX(1);
+/* Hide number input spinners globally in modals */
+.modal input[type=number]::-webkit-inner-spin-button,
+.modal input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+.modal input[type=number] {
+    -moz-appearance: textfield;
 }
 
 .form-group {

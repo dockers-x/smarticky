@@ -481,9 +481,8 @@ function renderEditor() {
             <div class="save-status" id="save-status"></div>
             <span>${t("last_updated")}: ${new Date(note.updated_at).toLocaleString()}</span>
             <div class="toolbar">
-                ${
-                  !isTrash
-                    ? `
+                ${!isTrash
+      ? `
                 <button class="btn ${note.is_starred ? "active" : ""}" onclick="toggleStar('${note.id}', ${!note.is_starred})" title="${t("toggle_star") || "Toggle Star"}">
                     <i data-feather="${starIcon}" class="${starClass}"></i>
                 </button>
@@ -506,7 +505,7 @@ function renderEditor() {
                     <i data-feather="trash-2"></i>
                 </button>
                 `
-                    : `
+      : `
                 <button class="btn" onclick="restoreNote('${note.id}')">
                     <i data-feather="rotate-ccw"></i> ${t("restore")}
                 </button>
@@ -514,16 +513,15 @@ function renderEditor() {
                     <i data-feather="x-circle"></i> ${t("delete_forever")}
                 </button>
                 `
-                }
+    }
             </div>
         </div>
         <div class="editor-title">
             <input type="text" value="${escapeHtml(note.title)}" oninput="updateNoteDebounced('${note.id}', 'title', this.value)" ${isTrash ? "disabled" : ""} placeholder="${t("untitled")}">
         </div>
         ${renderMarkdownEditor(note, isTrash)}
-        ${
-          !isTrash
-            ? `
+        ${!isTrash
+      ? `
         <div class="attachments-section ${state.attachmentsExpanded ? "" : "collapsed"}">
             <div class="attachments-header" onclick="toggleAttachments()">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -531,26 +529,24 @@ function renderEditor() {
                         <i data-feather="${state.attachmentsExpanded ? "chevron-down" : "chevron-right"}" class="attachments-toggle-icon" style="width: 16px; height: 16px;"></i>
                         ${t("attachments") || "Attachments"}
                     </h3>
-                    ${
-                      state.attachmentsExpanded
-                        ? `<button class="btn-secondary" onclick="event.stopPropagation(); uploadAttachment('${note.id}')" style="padding: 6px 12px; font-size: 13px;">
+                    ${state.attachmentsExpanded
+        ? `<button class="btn-secondary" onclick="event.stopPropagation(); uploadAttachment('${note.id}')" style="padding: 6px 12px; font-size: 13px;">
                         <i data-feather="upload" style="width: 14px; height: 14px;"></i> ${t("upload_file") || "Upload"}
                     </button>`
-                        : ""
-                    }
+        : ""
+      }
                 </div>
             </div>
-            ${
-              state.attachmentsExpanded
-                ? `<div class="attachment-list" id="attachment-list" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            ${state.attachmentsExpanded
+        ? `<div class="attachment-list" id="attachment-list" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
                 <!-- Attachments will be loaded here -->
             </div>`
-                : ""
-            }
+        : ""
+      }
         </div>
         `
-            : ""
-        }
+      : ""
+    }
     `;
 
   // Refresh Feather Icons
@@ -949,9 +945,18 @@ async function loadBackupConfig() {
 function switchBackupTab(tab) {
   // Update tabs
   document
-    .querySelectorAll(".backup-tabs .tab-btn")
+    .querySelectorAll(".smart-tabs .smart-tab-item")
     .forEach((btn) => btn.classList.remove("active"));
-  event.target.closest(".tab-btn").classList.add("active");
+
+  // Handle both click events and direct calls
+  const target = event && event.target ? event.target.closest(".smart-tab-item") : null;
+  if (target) {
+    target.classList.add("active");
+  } else {
+    // Fallback if called programmatically or event is missing
+    const tabEl = document.querySelector(`.smart-tab-item[data-tab="${tab}"]`);
+    if (tabEl) tabEl.classList.add("active");
+  }
 
   // Update content
   document
@@ -1757,15 +1762,14 @@ function renderUserList(users) {
             </td>
             <td style="padding: 12px; color: #999; font-size: 13px;">${createdDate}</td>
             <td style="padding: 12px; text-align: center;">
-                ${
-                  user.id !== currentUser.id
-                    ? `
+                ${user.id !== currentUser.id
+        ? `
                 <button class="btn-icon" onclick="deleteUserConfirm(${user.id}, '${escapeHtml(user.username).replace(/'/g, "\\'")}')" title="${t("delete_user") || "Delete User"}">
                     <i data-feather="trash-2"></i>
                 </button>
                 `
-                    : `<span style="color: #ccc; font-size: 12px;">${t("current_user") || "Current User"}</span>`
-                }
+        : `<span style="color: #ccc; font-size: 12px;">${t("current_user") || "Current User"}</span>`
+      }
             </td>
         `;
 
@@ -1812,7 +1816,7 @@ async function createNewUser() {
       const error = res ? await res.json() : { error: "Network error" };
       alert(
         t("create_user_failed") ||
-          "Failed to create user: " + (error.error || "Unknown error"),
+        "Failed to create user: " + (error.error || "Unknown error"),
       );
       return;
     }
@@ -1851,7 +1855,7 @@ async function deleteUserById(userId) {
       const error = res ? await res.json() : { error: "Network error" };
       alert(
         t("delete_user_failed") ||
-          "Failed to delete user: " + (error.error || "Unknown error"),
+        "Failed to delete user: " + (error.error || "Unknown error"),
       );
       return;
     }
@@ -2073,7 +2077,7 @@ async function updateProfileEmail() {
       const error = res ? await res.json() : { error: "Network error" };
       alert(
         t("update_failed") ||
-          "Failed to update email: " + (error.error || "Unknown error"),
+        "Failed to update email: " + (error.error || "Unknown error"),
       );
       return;
     }
@@ -2103,7 +2107,7 @@ async function updateProfileNickname() {
       const error = res ? await res.json() : { error: "Network error" };
       alert(
         t("update_failed") ||
-          "Failed to update nickname: " + (error.error || "Unknown error"),
+        "Failed to update nickname: " + (error.error || "Unknown error"),
       );
       return;
     }
@@ -2160,7 +2164,7 @@ async function updateProfilePassword() {
       const error = res ? await res.json() : { error: "Network error" };
       alert(
         t("password_change_failed") ||
-          "Failed to change password: " + (error.error || "Unknown error"),
+        "Failed to change password: " + (error.error || "Unknown error"),
       );
       return;
     }

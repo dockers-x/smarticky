@@ -102,16 +102,16 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="backup-tabs">
-                    <button class="tab-btn active" onclick="switchBackupTab('webdav')">
+                <div class="smart-tabs">
+                    <div class="smart-tab-item active" onclick="switchBackupTab('webdav')" data-tab="webdav">
                         <span data-i18n="tab_webdav">WebDAV</span>
-                    </button>
-                    <button class="tab-btn" onclick="switchBackupTab('s3')">
+                    </div>
+                    <div class="smart-tab-item" onclick="switchBackupTab('s3')" data-tab="s3">
                         <span data-i18n="tab_s3">S3</span>
-                    </button>
-                    <button class="tab-btn" onclick="switchBackupTab('settings')">
+                    </div>
+                    <div class="smart-tab-item" onclick="switchBackupTab('settings')" data-tab="settings">
                         <span data-i18n="tab_settings">Settings</span>
-                    </button>
+                    </div>
                 </div>
 
                 <!-- WebDAV Config -->
