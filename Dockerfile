@@ -12,8 +12,8 @@ RUN go mod download
 
 COPY . .
 
-# Build with CGO enabled for SQLite and inject version info
-RUN CGO_ENABLED=1 go build -trimpath \
+# Build with CGO disabled (using pure Go SQLite implementation) and inject version info
+RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags="-s -w \
     -X smarticky/internal/version.Version=${VERSION} \
     -X smarticky/internal/version.BuildTime=${BUILD_TIME} \

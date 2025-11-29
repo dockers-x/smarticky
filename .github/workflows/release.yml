@@ -114,7 +114,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm }}
-          CGO_ENABLED: 1
+          CGO_ENABLED: 0
         run: |
           BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S_UTC')
           go build -v -trimpath \
