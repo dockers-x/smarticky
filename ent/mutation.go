@@ -763,26 +763,30 @@ func (m *AttachmentMutation) ResetEdge(name string) error {
 // BackupConfigMutation represents an operation that mutates the BackupConfig nodes in the graph.
 type BackupConfigMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	webdav_url          *string
-	webdav_user         *string
-	webdav_password     *string
-	s3_endpoint         *string
-	s3_region           *string
-	s3_bucket           *string
-	s3_access_key       *string
-	s3_secret_key       *string
-	auto_backup_enabled *bool
-	backup_schedule     *string
-	last_backup_at      *time.Time
-	created_at          *time.Time
-	updated_at          *time.Time
-	clearedFields       map[string]struct{}
-	done                bool
-	oldValue            func(context.Context) (*BackupConfig, error)
-	predicates          []predicate.BackupConfig
+	op                       Op
+	typ                      string
+	id                       *int
+	webdav_url               *string
+	webdav_user              *string
+	webdav_password          *string
+	s3_endpoint              *string
+	s3_region                *string
+	s3_bucket                *string
+	s3_access_key            *string
+	s3_secret_key            *string
+	auto_backup_enabled      *bool
+	backup_schedule          *string
+	backup_retention_days    *int
+	addbackup_retention_days *int
+	backup_max_count         *int
+	addbackup_max_count      *int
+	last_backup_at           *time.Time
+	created_at               *time.Time
+	updated_at               *time.Time
+	clearedFields            map[string]struct{}
+	done                     bool
+	oldValue                 func(context.Context) (*BackupConfig, error)
+	predicates               []predicate.BackupConfig
 }
 
 var _ ent.Mutation = (*BackupConfigMutation)(nil)
@@ -1347,6 +1351,118 @@ func (m *BackupConfigMutation) ResetBackupSchedule() {
 	m.backup_schedule = nil
 }
 
+// SetBackupRetentionDays sets the "backup_retention_days" field.
+func (m *BackupConfigMutation) SetBackupRetentionDays(i int) {
+	m.backup_retention_days = &i
+	m.addbackup_retention_days = nil
+}
+
+// BackupRetentionDays returns the value of the "backup_retention_days" field in the mutation.
+func (m *BackupConfigMutation) BackupRetentionDays() (r int, exists bool) {
+	v := m.backup_retention_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBackupRetentionDays returns the old "backup_retention_days" field's value of the BackupConfig entity.
+// If the BackupConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupConfigMutation) OldBackupRetentionDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBackupRetentionDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBackupRetentionDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBackupRetentionDays: %w", err)
+	}
+	return oldValue.BackupRetentionDays, nil
+}
+
+// AddBackupRetentionDays adds i to the "backup_retention_days" field.
+func (m *BackupConfigMutation) AddBackupRetentionDays(i int) {
+	if m.addbackup_retention_days != nil {
+		*m.addbackup_retention_days += i
+	} else {
+		m.addbackup_retention_days = &i
+	}
+}
+
+// AddedBackupRetentionDays returns the value that was added to the "backup_retention_days" field in this mutation.
+func (m *BackupConfigMutation) AddedBackupRetentionDays() (r int, exists bool) {
+	v := m.addbackup_retention_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetBackupRetentionDays resets all changes to the "backup_retention_days" field.
+func (m *BackupConfigMutation) ResetBackupRetentionDays() {
+	m.backup_retention_days = nil
+	m.addbackup_retention_days = nil
+}
+
+// SetBackupMaxCount sets the "backup_max_count" field.
+func (m *BackupConfigMutation) SetBackupMaxCount(i int) {
+	m.backup_max_count = &i
+	m.addbackup_max_count = nil
+}
+
+// BackupMaxCount returns the value of the "backup_max_count" field in the mutation.
+func (m *BackupConfigMutation) BackupMaxCount() (r int, exists bool) {
+	v := m.backup_max_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBackupMaxCount returns the old "backup_max_count" field's value of the BackupConfig entity.
+// If the BackupConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupConfigMutation) OldBackupMaxCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBackupMaxCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBackupMaxCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBackupMaxCount: %w", err)
+	}
+	return oldValue.BackupMaxCount, nil
+}
+
+// AddBackupMaxCount adds i to the "backup_max_count" field.
+func (m *BackupConfigMutation) AddBackupMaxCount(i int) {
+	if m.addbackup_max_count != nil {
+		*m.addbackup_max_count += i
+	} else {
+		m.addbackup_max_count = &i
+	}
+}
+
+// AddedBackupMaxCount returns the value that was added to the "backup_max_count" field in this mutation.
+func (m *BackupConfigMutation) AddedBackupMaxCount() (r int, exists bool) {
+	v := m.addbackup_max_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetBackupMaxCount resets all changes to the "backup_max_count" field.
+func (m *BackupConfigMutation) ResetBackupMaxCount() {
+	m.backup_max_count = nil
+	m.addbackup_max_count = nil
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (m *BackupConfigMutation) SetLastBackupAt(t time.Time) {
 	m.last_backup_at = &t
@@ -1502,7 +1618,7 @@ func (m *BackupConfigMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BackupConfigMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 15)
 	if m.webdav_url != nil {
 		fields = append(fields, backupconfig.FieldWebdavURL)
 	}
@@ -1532,6 +1648,12 @@ func (m *BackupConfigMutation) Fields() []string {
 	}
 	if m.backup_schedule != nil {
 		fields = append(fields, backupconfig.FieldBackupSchedule)
+	}
+	if m.backup_retention_days != nil {
+		fields = append(fields, backupconfig.FieldBackupRetentionDays)
+	}
+	if m.backup_max_count != nil {
+		fields = append(fields, backupconfig.FieldBackupMaxCount)
 	}
 	if m.last_backup_at != nil {
 		fields = append(fields, backupconfig.FieldLastBackupAt)
@@ -1570,6 +1692,10 @@ func (m *BackupConfigMutation) Field(name string) (ent.Value, bool) {
 		return m.AutoBackupEnabled()
 	case backupconfig.FieldBackupSchedule:
 		return m.BackupSchedule()
+	case backupconfig.FieldBackupRetentionDays:
+		return m.BackupRetentionDays()
+	case backupconfig.FieldBackupMaxCount:
+		return m.BackupMaxCount()
 	case backupconfig.FieldLastBackupAt:
 		return m.LastBackupAt()
 	case backupconfig.FieldCreatedAt:
@@ -1605,6 +1731,10 @@ func (m *BackupConfigMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldAutoBackupEnabled(ctx)
 	case backupconfig.FieldBackupSchedule:
 		return m.OldBackupSchedule(ctx)
+	case backupconfig.FieldBackupRetentionDays:
+		return m.OldBackupRetentionDays(ctx)
+	case backupconfig.FieldBackupMaxCount:
+		return m.OldBackupMaxCount(ctx)
 	case backupconfig.FieldLastBackupAt:
 		return m.OldLastBackupAt(ctx)
 	case backupconfig.FieldCreatedAt:
@@ -1690,6 +1820,20 @@ func (m *BackupConfigMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetBackupSchedule(v)
 		return nil
+	case backupconfig.FieldBackupRetentionDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBackupRetentionDays(v)
+		return nil
+	case backupconfig.FieldBackupMaxCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBackupMaxCount(v)
+		return nil
 	case backupconfig.FieldLastBackupAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -1718,13 +1862,26 @@ func (m *BackupConfigMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *BackupConfigMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addbackup_retention_days != nil {
+		fields = append(fields, backupconfig.FieldBackupRetentionDays)
+	}
+	if m.addbackup_max_count != nil {
+		fields = append(fields, backupconfig.FieldBackupMaxCount)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *BackupConfigMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case backupconfig.FieldBackupRetentionDays:
+		return m.AddedBackupRetentionDays()
+	case backupconfig.FieldBackupMaxCount:
+		return m.AddedBackupMaxCount()
+	}
 	return nil, false
 }
 
@@ -1733,6 +1890,20 @@ func (m *BackupConfigMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *BackupConfigMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case backupconfig.FieldBackupRetentionDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBackupRetentionDays(v)
+		return nil
+	case backupconfig.FieldBackupMaxCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBackupMaxCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown BackupConfig numeric field %s", name)
 }
@@ -1846,6 +2017,12 @@ func (m *BackupConfigMutation) ResetField(name string) error {
 		return nil
 	case backupconfig.FieldBackupSchedule:
 		m.ResetBackupSchedule()
+		return nil
+	case backupconfig.FieldBackupRetentionDays:
+		m.ResetBackupRetentionDays()
+		return nil
+	case backupconfig.FieldBackupMaxCount:
+		m.ResetBackupMaxCount()
 		return nil
 	case backupconfig.FieldLastBackupAt:
 		m.ResetLastBackupAt()

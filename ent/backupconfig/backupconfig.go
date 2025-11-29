@@ -33,6 +33,10 @@ const (
 	FieldAutoBackupEnabled = "auto_backup_enabled"
 	// FieldBackupSchedule holds the string denoting the backup_schedule field in the database.
 	FieldBackupSchedule = "backup_schedule"
+	// FieldBackupRetentionDays holds the string denoting the backup_retention_days field in the database.
+	FieldBackupRetentionDays = "backup_retention_days"
+	// FieldBackupMaxCount holds the string denoting the backup_max_count field in the database.
+	FieldBackupMaxCount = "backup_max_count"
 	// FieldLastBackupAt holds the string denoting the last_backup_at field in the database.
 	FieldLastBackupAt = "last_backup_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -56,6 +60,8 @@ var Columns = []string{
 	FieldS3SecretKey,
 	FieldAutoBackupEnabled,
 	FieldBackupSchedule,
+	FieldBackupRetentionDays,
+	FieldBackupMaxCount,
 	FieldLastBackupAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -76,6 +82,10 @@ var (
 	DefaultAutoBackupEnabled bool
 	// DefaultBackupSchedule holds the default value on creation for the "backup_schedule" field.
 	DefaultBackupSchedule string
+	// DefaultBackupRetentionDays holds the default value on creation for the "backup_retention_days" field.
+	DefaultBackupRetentionDays int
+	// DefaultBackupMaxCount holds the default value on creation for the "backup_max_count" field.
+	DefaultBackupMaxCount int
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -140,6 +150,16 @@ func ByAutoBackupEnabled(opts ...sql.OrderTermOption) OrderOption {
 // ByBackupSchedule orders the results by the backup_schedule field.
 func ByBackupSchedule(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBackupSchedule, opts...).ToFunc()
+}
+
+// ByBackupRetentionDays orders the results by the backup_retention_days field.
+func ByBackupRetentionDays(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBackupRetentionDays, opts...).ToFunc()
+}
+
+// ByBackupMaxCount orders the results by the backup_max_count field.
+func ByBackupMaxCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBackupMaxCount, opts...).ToFunc()
 }
 
 // ByLastBackupAt orders the results by the last_backup_at field.

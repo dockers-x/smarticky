@@ -872,55 +872,48 @@ body.sidebar-collapsed .expander-line::after {
 }
 
 .modal-body {
-    padding: 25px;
+    padding: 12px 20px;
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;
     box-sizing: border-box;
     max-width: 100%;
     min-height: 0;
-    /* Only show scrollbar when actually needed */
-    scrollbar-gutter: stable;
+}
+
+/* Fix backup modal scrollbar issue */
+#backup-modal .modal-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 20px;
+}
+
+/* Ensure backup tabs and configs don't cause overflow */
+#backup-modal .backup-tabs {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+}
+
+#backup-modal .backup-config {
+    overflow-x: hidden;
+    overflow-y: visible;
+    max-height: none;
 }
 
 /* Backup Configuration */
 .backup-tabs {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-light);
+    gap: 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
     overflow-x: hidden;
     max-width: 100%;
     box-sizing: border-box;
-}
-
-.tab-btn {
-    padding: 10px 20px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition:
-        color 0.2s,
-        border-color 0.2s;
-    white-space: nowrap;
     flex-shrink: 0;
 }
 
-.tab-btn:hover {
-    color: var(--text-primary);
-}
-
-.tab-btn.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
 .backup-config {
+    flex-shrink: 0;
     display: none;
     overflow-x: hidden;
     max-width: 100%;
@@ -931,28 +924,77 @@ body.sidebar-collapsed .expander-line::after {
     display: block;
 }
 
+.tab-btn {
+    padding: 6px 14px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    flex-shrink: 0;
+    position: relative;
+    letter-spacing: 0.3px;
+}
+
+.tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+    transform: scaleX(0);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-btn:hover {
+    color: var(--text-secondary);
+    background: var(--bg-hover);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.tab-btn.active::after {
+    transform: scaleX(1);
+}
+
 .form-group {
-    margin-bottom: 20px;
-    overflow-x: hidden;
+    margin-bottom: 10px;
+    /* overflow-x: hidden; Removed to prevent clipping */
     max-width: 100%;
     box-sizing: border-box;
 }
 
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
 .form-group label {
     display: block;
-    margin-bottom: 8px;
-    font-size: 13px;
+    margin-bottom: 4px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 6px 10px;
     border: 1px solid var(--border-dark);
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     box-sizing: border-box;
     max-width: 100%;
     background: var(--bg-input);
@@ -960,6 +1002,14 @@ body.sidebar-collapsed .expander-line::after {
     transition:
         border-color 0.2s,
         box-shadow 0.2s;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    line-height: 1.3;
 }
 
 .form-group input:focus,
@@ -976,7 +1026,7 @@ body.sidebar-collapsed .expander-line::after {
 }
 
 .form-section h3 {
-    font-size: 15px;
+    font-size: 14px;
     margin-bottom: 15px;
     color: var(--text-secondary);
     font-weight: 600;
@@ -984,19 +1034,35 @@ body.sidebar-collapsed .expander-line::after {
 
 .form-actions {
     display: flex;
-    gap: 10px;
-    margin-top: 25px;
+    gap: 8px;
+    margin-top: 12px;
     flex-wrap: wrap;
     max-width: 100%;
     box-sizing: border-box;
 }
 
+/* Optimize backup modal form headings */
+.backup-config h3 {
+    font-size: 13px;
+    margin: 0 0 8px 0;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.backup-config hr {
+    margin: 10px 0;
+    border: none;
+    border-top: 1px solid var(--border-light);
+}
+
 .btn-primary,
 .btn-secondary {
-    padding: 10px 20px;
+    padding: 6px 12px;
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
@@ -1021,6 +1087,93 @@ body.sidebar-collapsed .expander-line::after {
 .btn-secondary:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+}
+
+/* Small Button Variant for Backup List Actions */
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 4px;
+}
+
+.btn-small .feather {
+    width: 14px;
+    height: 14px;
+}
+
+/* Checkbox Label Styling */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+/* Backup List Table Styling */
+.backup-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.backup-list-table thead {
+    background: var(--bg-tertiary);
+    border-bottom: 2px solid var(--border-dark);
+}
+
+.backup-list-table th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.backup-list-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.backup-list-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.backup-list-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* No Backups / Empty State */
+.no-attachments,
+#backup-list-empty p {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
+/* Loading State */
+#backup-list-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
 }
 
 /* Sort Options */
@@ -1445,6 +1598,136 @@ body.sidebar-collapsed .expander-line::after {
     padding: 6px 13px;
     border: 1px solid #dfe2e5;
     background-color: #f6f8fa;
+}
+
+/* Settings Layout Styles */
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-info {
+    flex: 1;
+    padding-right: 20px;
+}
+
+.setting-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.setting-desc {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+}
+
+.setting-control {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.form-control-sm {
+    width: 80px !important;
+    padding: 6px 10px;
+    border: 1px solid var(--border-dark);
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: right;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.form-select-sm {
+    padding: 6px 30px 6px 10px;
+    border: 1px solid var(--border-dark);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.setting-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 20px 0;
+}
+
+/* Switch Toggle Style */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 24px;
+    margin-bottom: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked+.slider {
+    background-color: var(--primary-color);
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--primary-color);
+}
+
+input:checked+.slider:before {
+    transform: translateX(16px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Dark mode adjustments for switch */
+body.dark-mode .slider {
+    background-color: #555;
+}
+
+body.dark-mode input:checked+.slider {
+    background-color: var(--primary-color);
 }
 
 .markdown-body-export table td {
@@ -2024,4 +2307,26 @@ body.dark-mode .color-option:hover {
 body.dark-mode .color-option.selected {
     border-color: var(--accent-color) !important;
     box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+/* Dark Mode Tab Enhancements */
+body.dark-mode .backup-tabs {
+    border-bottom-color: var(--border-dark);
+}
+
+body.dark-mode .tab-btn {
+    color: var(--text-tertiary);
+}
+
+body.dark-mode .tab-btn:hover {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .tab-btn.active {
+    color: var(--accent-color);
+}
+
+body.dark-mode .tab-btn.active::after {
+    background: var(--accent-color);
 }

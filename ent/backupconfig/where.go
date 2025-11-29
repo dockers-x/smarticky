@@ -104,6 +104,16 @@ func BackupSchedule(v string) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldEQ(FieldBackupSchedule, v))
 }
 
+// BackupRetentionDays applies equality check predicate on the "backup_retention_days" field. It's identical to BackupRetentionDaysEQ.
+func BackupRetentionDays(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldBackupRetentionDays, v))
+}
+
+// BackupMaxCount applies equality check predicate on the "backup_max_count" field. It's identical to BackupMaxCountEQ.
+func BackupMaxCount(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldBackupMaxCount, v))
+}
+
 // LastBackupAt applies equality check predicate on the "last_backup_at" field. It's identical to LastBackupAtEQ.
 func LastBackupAt(v time.Time) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldEQ(FieldLastBackupAt, v))
@@ -792,6 +802,86 @@ func BackupScheduleEqualFold(v string) predicate.BackupConfig {
 // BackupScheduleContainsFold applies the ContainsFold predicate on the "backup_schedule" field.
 func BackupScheduleContainsFold(v string) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldContainsFold(FieldBackupSchedule, v))
+}
+
+// BackupRetentionDaysEQ applies the EQ predicate on the "backup_retention_days" field.
+func BackupRetentionDaysEQ(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldBackupRetentionDays, v))
+}
+
+// BackupRetentionDaysNEQ applies the NEQ predicate on the "backup_retention_days" field.
+func BackupRetentionDaysNEQ(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNEQ(FieldBackupRetentionDays, v))
+}
+
+// BackupRetentionDaysIn applies the In predicate on the "backup_retention_days" field.
+func BackupRetentionDaysIn(vs ...int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldIn(FieldBackupRetentionDays, vs...))
+}
+
+// BackupRetentionDaysNotIn applies the NotIn predicate on the "backup_retention_days" field.
+func BackupRetentionDaysNotIn(vs ...int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNotIn(FieldBackupRetentionDays, vs...))
+}
+
+// BackupRetentionDaysGT applies the GT predicate on the "backup_retention_days" field.
+func BackupRetentionDaysGT(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldGT(FieldBackupRetentionDays, v))
+}
+
+// BackupRetentionDaysGTE applies the GTE predicate on the "backup_retention_days" field.
+func BackupRetentionDaysGTE(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldGTE(FieldBackupRetentionDays, v))
+}
+
+// BackupRetentionDaysLT applies the LT predicate on the "backup_retention_days" field.
+func BackupRetentionDaysLT(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldLT(FieldBackupRetentionDays, v))
+}
+
+// BackupRetentionDaysLTE applies the LTE predicate on the "backup_retention_days" field.
+func BackupRetentionDaysLTE(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldLTE(FieldBackupRetentionDays, v))
+}
+
+// BackupMaxCountEQ applies the EQ predicate on the "backup_max_count" field.
+func BackupMaxCountEQ(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldBackupMaxCount, v))
+}
+
+// BackupMaxCountNEQ applies the NEQ predicate on the "backup_max_count" field.
+func BackupMaxCountNEQ(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNEQ(FieldBackupMaxCount, v))
+}
+
+// BackupMaxCountIn applies the In predicate on the "backup_max_count" field.
+func BackupMaxCountIn(vs ...int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldIn(FieldBackupMaxCount, vs...))
+}
+
+// BackupMaxCountNotIn applies the NotIn predicate on the "backup_max_count" field.
+func BackupMaxCountNotIn(vs ...int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNotIn(FieldBackupMaxCount, vs...))
+}
+
+// BackupMaxCountGT applies the GT predicate on the "backup_max_count" field.
+func BackupMaxCountGT(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldGT(FieldBackupMaxCount, v))
+}
+
+// BackupMaxCountGTE applies the GTE predicate on the "backup_max_count" field.
+func BackupMaxCountGTE(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldGTE(FieldBackupMaxCount, v))
+}
+
+// BackupMaxCountLT applies the LT predicate on the "backup_max_count" field.
+func BackupMaxCountLT(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldLT(FieldBackupMaxCount, v))
+}
+
+// BackupMaxCountLTE applies the LTE predicate on the "backup_max_count" field.
+func BackupMaxCountLTE(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldLTE(FieldBackupMaxCount, v))
 }
 
 // LastBackupAtEQ applies the EQ predicate on the "last_backup_at" field.

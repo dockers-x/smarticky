@@ -142,6 +142,14 @@ function t(key) {
 
 // Update UI text with translations
 function updateUIText() {
+  // Generic handler for all elements with data-i18n attribute
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    if (key) {
+      el.textContent = t(key);
+    }
+  });
+
   // Sidebar menu
   const menuTexts = {
     "menu-all": "all_notes",
@@ -865,37 +873,8 @@ function exportNote() {
 async function showBackupConfig() {
   await loadBackupConfig();
 
-  // Update modal title and labels with translations
-  const modal = document.getElementById("backup-modal");
-  modal.querySelector(".modal-header h2").textContent =
-    t("backup_restore") || "Backup & Restore";
-
-  // WebDAV section
-  const webdavConfig = modal.querySelector("#webdav-config");
-  webdavConfig.querySelectorAll("label")[1].textContent =
-    t("username") || "Username";
-  webdavConfig.querySelectorAll("label")[2].textContent =
-    t("password") || "Password";
-  const webdavBtns = webdavConfig.querySelectorAll(
-    ".btn-primary, .btn-secondary",
-  );
-  webdavBtns[0].textContent = t("save_config") || "Save Config";
-  webdavBtns[1].textContent = t("backup_now") || "Backup Now";
-  webdavBtns[2].textContent = t("restore") || "Restore";
-
-  // S3 section
-  const s3Config = modal.querySelector("#s3-config");
-  s3Config.querySelectorAll("label")[0].textContent =
-    t("endpoint") || "Endpoint";
-  s3Config.querySelectorAll("label")[1].textContent = t("bucket") || "Bucket";
-  s3Config.querySelectorAll("label")[2].textContent =
-    t("access_key") || "Access Key";
-  s3Config.querySelectorAll("label")[3].textContent =
-    t("secret_key") || "Secret Key";
-  const s3Btns = s3Config.querySelectorAll(".btn-primary, .btn-secondary");
-  s3Btns[0].textContent = t("save_config") || "Save Config";
-  s3Btns[1].textContent = t("backup_now") || "Backup Now";
-  s3Btns[2].textContent = t("restore") || "Restore";
+  // Update all translations in the modal
+  updateUIText();
 
   showModal("backup-modal");
   // Refresh icons in modal
@@ -914,8 +893,8 @@ async function loadBackupConfig() {
     if (config.webdav_url) {
       document.getElementById("webdav-url").value = config.webdav_url;
     }
-    if (config.webdav_username) {
-      document.getElementById("webdav-username").value = config.webdav_username;
+    if (config.webdav_user) {
+      document.getElementById("webdav-username").value = config.webdav_user;
     }
     if (config.webdav_password) {
       document.getElementById("webdav-password").value = config.webdav_password;
@@ -924,6 +903,9 @@ async function loadBackupConfig() {
     // Fill S3 fields
     if (config.s3_endpoint) {
       document.getElementById("s3-endpoint").value = config.s3_endpoint;
+    }
+    if (config.s3_region) {
+      document.getElementById("s3-region").value = config.s3_region;
     }
     if (config.s3_bucket) {
       document.getElementById("s3-bucket").value = config.s3_bucket;
@@ -934,6 +916,31 @@ async function loadBackupConfig() {
     if (config.s3_secret_key) {
       document.getElementById("s3-secret-key").value = config.s3_secret_key;
     }
+
+    // Fill auto backup settings
+    const autoEnabled = config.auto_backup_enabled || false;
+    document.getElementById("auto-backup-enabled").checked = autoEnabled;
+    if (autoEnabled) {
+      document.getElementById("auto-backup-options").style.display = "block";
+    }
+
+    if (config.backup_schedule) {
+      document.getElementById("backup-schedule").value = config.backup_schedule;
+    }
+
+    if (config.last_backup_at) {
+      document.getElementById("last-backup-info").style.display = "block";
+      const date = new Date(config.last_backup_at);
+      document.getElementById("last-backup-time").value = date.toLocaleString();
+    }
+
+    // Fill cleanup policy
+    if (config.backup_retention_days !== undefined) {
+      document.getElementById("backup-retention-days").value = config.backup_retention_days;
+    }
+    if (config.backup_max_count !== undefined) {
+      document.getElementById("backup-max-count").value = config.backup_max_count;
+    }
   } catch (e) {
     console.error("Failed to load backup config", e);
   }
@@ -942,9 +949,9 @@ async function loadBackupConfig() {
 function switchBackupTab(tab) {
   // Update tabs
   document
-    .querySelectorAll(".tab-btn")
+    .querySelectorAll(".backup-tabs .tab-btn")
     .forEach((btn) => btn.classList.remove("active"));
-  event.target.classList.add("active");
+  event.target.closest(".tab-btn").classList.add("active");
 
   // Update content
   document
@@ -953,19 +960,26 @@ function switchBackupTab(tab) {
   document.getElementById(`${tab}-config`).classList.add("active");
 }
 
-async function saveBackupConfig(type) {
-  const config = {};
+function toggleAutoBackup() {
+  const enabled = document.getElementById("auto-backup-enabled").checked;
+  document.getElementById("auto-backup-options").style.display = enabled ? "block" : "none";
+}
 
-  if (type === "webdav") {
-    config.webdav_url = document.getElementById("webdav-url").value;
-    config.webdav_username = document.getElementById("webdav-username").value;
-    config.webdav_password = document.getElementById("webdav-password").value;
-  } else if (type === "s3") {
-    config.s3_endpoint = document.getElementById("s3-endpoint").value;
-    config.s3_bucket = document.getElementById("s3-bucket").value;
-    config.s3_access_key = document.getElementById("s3-access-key").value;
-    config.s3_secret_key = document.getElementById("s3-secret-key").value;
-  }
+async function saveBackupConfig() {
+  const config = {
+    webdav_url: document.getElementById("webdav-url").value,
+    webdav_user: document.getElementById("webdav-username").value,
+    webdav_password: document.getElementById("webdav-password").value,
+    s3_endpoint: document.getElementById("s3-endpoint").value,
+    s3_region: document.getElementById("s3-region").value,
+    s3_bucket: document.getElementById("s3-bucket").value,
+    s3_access_key: document.getElementById("s3-access-key").value,
+    s3_secret_key: document.getElementById("s3-secret-key").value,
+    auto_backup_enabled: document.getElementById("auto-backup-enabled").checked,
+    backup_schedule: document.getElementById("backup-schedule").value,
+    backup_retention_days: parseInt(document.getElementById("backup-retention-days").value) || 0,
+    backup_max_count: parseInt(document.getElementById("backup-max-count").value) || 0,
+  };
 
   try {
     const res = await fetchWithAuth(`${API_BASE}/backup/config`, {
@@ -978,6 +992,7 @@ async function saveBackupConfig(type) {
 
     if (res.ok) {
       alert(t("save_success") || "Configuration saved successfully");
+      await loadBackupConfig(); // Reload config
     } else {
       const error = await res.json();
       alert(t("save_failed") || "Failed to save configuration: " + error.error);
@@ -1023,7 +1038,16 @@ async function restore(type) {
 
     const data = await res.json();
     if (res.ok) {
-      alert(t("restore_success") || "Database restored successfully");
+      let message = t("restore_success") || "Database restored successfully";
+
+      // Check if restart is required
+      if (data.restart_required && data.warning) {
+        message += "\n\n⚠️ " + data.warning;
+        alert(message);
+      } else {
+        alert(message);
+      }
+
       // Reload notes
       await fetchNotes();
     } else {
@@ -1032,6 +1056,176 @@ async function restore(type) {
   } catch (e) {
     alert(t("restore_failed") || "Restore failed");
   }
+}
+
+// Show backup list modal
+async function showBackupList(type) {
+  closeModal("backup-modal");
+
+  // Show loading state
+  document.getElementById("backup-list-loading").style.display = "block";
+  document.getElementById("backup-list-content").style.display = "none";
+  document.getElementById("backup-list-empty").style.display = "none";
+
+  showModal("backup-list-modal");
+
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/backup/list/${type}`);
+    if (!res || !res.ok) {
+      alert(t("load_failed") || "Failed to load backup list");
+      closeModal("backup-list-modal");
+      return;
+    }
+
+    const data = await res.json();
+    const backups = data.backups || [];
+
+    // Hide loading
+    document.getElementById("backup-list-loading").style.display = "none";
+
+    if (backups.length === 0) {
+      document.getElementById("backup-list-empty").style.display = "block";
+      return;
+    }
+
+    // Show content
+    document.getElementById("backup-list-content").style.display = "block";
+
+    // Render table
+    const tbody = document.getElementById("backup-list-tbody");
+    tbody.innerHTML = "";
+
+    backups.forEach((backup) => {
+      const row = document.createElement("tr");
+      const date = new Date(backup.created_at).toLocaleString();
+      const size = formatFileSize(backup.size);
+
+      row.innerHTML = `
+        <td>${escapeHtml(backup.filename)}</td>
+        <td>${size}</td>
+        <td>${date}</td>
+        <td>
+          <button class="btn-secondary btn-small" onclick="verifyBackup('${type}', '${escapeHtml(backup.filename).replace(/'/g, "\\'")}')">
+            <i data-feather="check-circle"></i> ${t("backup_verify") || "Verify"}
+          </button>
+          <button class="btn-primary btn-small" onclick="restoreFromFile('${type}', '${escapeHtml(backup.filename).replace(/'/g, "\\'")}')">
+            <i data-feather="upload"></i> ${t("backup_restore") || "Restore"}
+          </button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    // Refresh icons
+    feather.replace();
+  } catch (e) {
+    console.error("Load backup list error:", e);
+    alert(t("load_failed") || "Failed to load backup list");
+    closeModal("backup-list-modal");
+  }
+}
+
+// Verify backup file
+async function verifyBackup(type, filename) {
+  if (!confirm(t("backup_verify_confirm") || `Verify backup "${filename}"?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/backup/verify/${type}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: filename }),
+    });
+
+    if (!res || !res.ok) {
+      alert(t("backup_verify_failed") || "Backup verification failed");
+      return;
+    }
+
+    const result = await res.json();
+
+    if (result.valid) {
+      let message = t("backup_verify_success") || "Backup is valid!";
+      message += "\n\n";
+      message += `${t("backup_files") || "Files"}: ${result.file_count}\n`;
+      message += `${t("backup_total_size") || "Total Size"}: ${formatFileSize(result.total_size)}\n\n`;
+      message += t("backup_details") || "Details:";
+
+      result.file_checks.forEach((check) => {
+        const status = check.exists ? "✓" : "✗";
+        message += `\n${status} ${check.path}`;
+        if (check.error) {
+          message += ` - ${check.error}`;
+        }
+      });
+
+      alert(message);
+    } else {
+      let message = t("backup_verify_failed") || "Backup verification failed!";
+      if (result.error) {
+        message += "\n\n" + result.error;
+      }
+      alert(message);
+    }
+  } catch (e) {
+    console.error("Verify backup error:", e);
+    alert(t("backup_verify_failed") || "Backup verification failed");
+  }
+}
+
+// Restore from specific backup file
+async function restoreFromFile(type, filename) {
+  if (
+    !confirm(
+      `${t("restore_confirm_file") || "Restore from backup"} "${filename}"?\n\n${t("restore_confirm") || "Current data will be backed up first."}`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/restore/${type}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: filename }),
+    });
+
+    if (!res) return;
+
+    const data = await res.json();
+    if (res.ok) {
+      let message = t("restore_success") || "Database restored successfully";
+
+      // Check if restart is required
+      if (data.restart_required && data.warning) {
+        message += "\n\n⚠️ " + data.warning;
+        alert(message);
+      } else {
+        alert(message);
+      }
+
+      // Close backup list modal
+      closeModal("backup-list-modal");
+
+      // Reload notes
+      await fetchNotes();
+    } else {
+      alert(`${t("restore_failed") || "Restore failed"}: ${data.error}`);
+    }
+  } catch (e) {
+    console.error("Restore error:", e);
+    alert(t("restore_failed") || "Restore failed");
+  }
+}
+
+// Format file size to human readable format
+function formatFileSize(bytes) {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 }
 
 // Utility

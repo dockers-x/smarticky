@@ -37,6 +37,12 @@ func (BackupConfig) Fields() []ent.Field {
 			Default(false),
 		field.String("backup_schedule").
 			Default("daily"), // daily, weekly, manual
+		field.Int("backup_retention_days").
+			Default(30).
+			Comment("Number of days to retain backup files (0 = no limit)"),
+		field.Int("backup_max_count").
+			Default(10).
+			Comment("Maximum number of backup files to keep (0 = no limit)"),
 		field.Time("last_backup_at").
 			Optional(),
 		field.Time("created_at").

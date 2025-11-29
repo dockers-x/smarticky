@@ -216,6 +216,48 @@ func (_u *BackupConfigUpdate) SetNillableBackupSchedule(v *string) *BackupConfig
 	return _u
 }
 
+// SetBackupRetentionDays sets the "backup_retention_days" field.
+func (_u *BackupConfigUpdate) SetBackupRetentionDays(v int) *BackupConfigUpdate {
+	_u.mutation.ResetBackupRetentionDays()
+	_u.mutation.SetBackupRetentionDays(v)
+	return _u
+}
+
+// SetNillableBackupRetentionDays sets the "backup_retention_days" field if the given value is not nil.
+func (_u *BackupConfigUpdate) SetNillableBackupRetentionDays(v *int) *BackupConfigUpdate {
+	if v != nil {
+		_u.SetBackupRetentionDays(*v)
+	}
+	return _u
+}
+
+// AddBackupRetentionDays adds value to the "backup_retention_days" field.
+func (_u *BackupConfigUpdate) AddBackupRetentionDays(v int) *BackupConfigUpdate {
+	_u.mutation.AddBackupRetentionDays(v)
+	return _u
+}
+
+// SetBackupMaxCount sets the "backup_max_count" field.
+func (_u *BackupConfigUpdate) SetBackupMaxCount(v int) *BackupConfigUpdate {
+	_u.mutation.ResetBackupMaxCount()
+	_u.mutation.SetBackupMaxCount(v)
+	return _u
+}
+
+// SetNillableBackupMaxCount sets the "backup_max_count" field if the given value is not nil.
+func (_u *BackupConfigUpdate) SetNillableBackupMaxCount(v *int) *BackupConfigUpdate {
+	if v != nil {
+		_u.SetBackupMaxCount(*v)
+	}
+	return _u
+}
+
+// AddBackupMaxCount adds value to the "backup_max_count" field.
+func (_u *BackupConfigUpdate) AddBackupMaxCount(v int) *BackupConfigUpdate {
+	_u.mutation.AddBackupMaxCount(v)
+	return _u
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_u *BackupConfigUpdate) SetLastBackupAt(v time.Time) *BackupConfigUpdate {
 	_u.mutation.SetLastBackupAt(v)
@@ -359,6 +401,18 @@ func (_u *BackupConfigUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.BackupSchedule(); ok {
 		_spec.SetField(backupconfig.FieldBackupSchedule, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.BackupRetentionDays(); ok {
+		_spec.SetField(backupconfig.FieldBackupRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBackupRetentionDays(); ok {
+		_spec.AddField(backupconfig.FieldBackupRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.BackupMaxCount(); ok {
+		_spec.SetField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBackupMaxCount(); ok {
+		_spec.AddField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)
@@ -580,6 +634,48 @@ func (_u *BackupConfigUpdateOne) SetNillableBackupSchedule(v *string) *BackupCon
 	return _u
 }
 
+// SetBackupRetentionDays sets the "backup_retention_days" field.
+func (_u *BackupConfigUpdateOne) SetBackupRetentionDays(v int) *BackupConfigUpdateOne {
+	_u.mutation.ResetBackupRetentionDays()
+	_u.mutation.SetBackupRetentionDays(v)
+	return _u
+}
+
+// SetNillableBackupRetentionDays sets the "backup_retention_days" field if the given value is not nil.
+func (_u *BackupConfigUpdateOne) SetNillableBackupRetentionDays(v *int) *BackupConfigUpdateOne {
+	if v != nil {
+		_u.SetBackupRetentionDays(*v)
+	}
+	return _u
+}
+
+// AddBackupRetentionDays adds value to the "backup_retention_days" field.
+func (_u *BackupConfigUpdateOne) AddBackupRetentionDays(v int) *BackupConfigUpdateOne {
+	_u.mutation.AddBackupRetentionDays(v)
+	return _u
+}
+
+// SetBackupMaxCount sets the "backup_max_count" field.
+func (_u *BackupConfigUpdateOne) SetBackupMaxCount(v int) *BackupConfigUpdateOne {
+	_u.mutation.ResetBackupMaxCount()
+	_u.mutation.SetBackupMaxCount(v)
+	return _u
+}
+
+// SetNillableBackupMaxCount sets the "backup_max_count" field if the given value is not nil.
+func (_u *BackupConfigUpdateOne) SetNillableBackupMaxCount(v *int) *BackupConfigUpdateOne {
+	if v != nil {
+		_u.SetBackupMaxCount(*v)
+	}
+	return _u
+}
+
+// AddBackupMaxCount adds value to the "backup_max_count" field.
+func (_u *BackupConfigUpdateOne) AddBackupMaxCount(v int) *BackupConfigUpdateOne {
+	_u.mutation.AddBackupMaxCount(v)
+	return _u
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_u *BackupConfigUpdateOne) SetLastBackupAt(v time.Time) *BackupConfigUpdateOne {
 	_u.mutation.SetLastBackupAt(v)
@@ -753,6 +849,18 @@ func (_u *BackupConfigUpdateOne) sqlSave(ctx context.Context) (_node *BackupConf
 	}
 	if value, ok := _u.mutation.BackupSchedule(); ok {
 		_spec.SetField(backupconfig.FieldBackupSchedule, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.BackupRetentionDays(); ok {
+		_spec.SetField(backupconfig.FieldBackupRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBackupRetentionDays(); ok {
+		_spec.AddField(backupconfig.FieldBackupRetentionDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.BackupMaxCount(); ok {
+		_spec.SetField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBackupMaxCount(); ok {
+		_spec.AddField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)

@@ -5,8 +5,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smarticky Notes</title>
-    <link rel="stylesheet" href="/static/css/smartisan.css" />
-    <link rel="stylesheet" href="/static/css/custom.css" />
+    <link rel="stylesheet" href="/static/css/smartisan.css?v=2" />
+    <link rel="stylesheet" href="/static/css/custom.css?v=4" />
 </head>
 
 <body>
@@ -96,7 +96,7 @@
     <div id="backup-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Backup & Restore</h2>
+                <h2 data-i18n="backup_title">Backup & Restore</h2>
                 <button class="modal-close" onclick="closeModal('backup-modal')">
                     &times;
                 </button>
@@ -104,36 +104,39 @@
             <div class="modal-body">
                 <div class="backup-tabs">
                     <button class="tab-btn active" onclick="switchBackupTab('webdav')">
-                        WebDAV
+                        <span data-i18n="tab_webdav">WebDAV</span>
                     </button>
                     <button class="tab-btn" onclick="switchBackupTab('s3')">
-                        S3
+                        <span data-i18n="tab_s3">S3</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchBackupTab('settings')">
+                        <span data-i18n="tab_settings">Settings</span>
                     </button>
                 </div>
 
                 <!-- WebDAV Config -->
                 <div id="webdav-config" class="backup-config active">
                     <div class="form-group">
-                        <label>WebDAV URL</label>
+                        <label data-i18n="webdav_url">WebDAV URL</label>
                         <input type="text" id="webdav-url" placeholder="https://dav.example.com/path" />
                     </div>
                     <div class="form-group">
-                        <label>Username</label>
+                        <label data-i18n="webdav_username">Username</label>
                         <input type="text" id="webdav-username" />
                     </div>
                     <div class="form-group">
-                        <label>Password</label>
+                        <label data-i18n="webdav_password">Password</label>
                         <input type="password" id="webdav-password" />
                     </div>
                     <div class="form-actions">
-                        <button class="btn-primary" onclick="saveBackupConfig('webdav')">
-                            Save Config
+                        <button class="btn-primary" onclick="saveBackupConfig()">
+                            <span data-i18n="backup_save">Save Config</span>
                         </button>
                         <button class="btn-secondary" onclick="backup('webdav')">
-                            Backup Now
+                            <span data-i18n="backup_now">Backup Now</span>
                         </button>
-                        <button class="btn-secondary" onclick="restore('webdav')">
-                            Restore
+                        <button class="btn-secondary" onclick="showBackupList('webdav')">
+                            <span data-i18n="backup_list">View Backups</span>
                         </button>
                     </div>
                 </div>
@@ -141,32 +144,144 @@
                 <!-- S3 Config -->
                 <div id="s3-config" class="backup-config">
                     <div class="form-group">
-                        <label>Endpoint</label>
+                        <label data-i18n="s3_endpoint">Endpoint</label>
                         <input type="text" id="s3-endpoint" placeholder="s3.amazonaws.com" />
                     </div>
                     <div class="form-group">
-                        <label>Bucket</label>
+                        <label data-i18n="s3_region">Region</label>
+                        <input type="text" id="s3-region" placeholder="us-east-1" />
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="s3_bucket">Bucket</label>
                         <input type="text" id="s3-bucket" />
                     </div>
                     <div class="form-group">
-                        <label>Access Key</label>
+                        <label data-i18n="s3_access_key">Access Key</label>
                         <input type="text" id="s3-access-key" />
                     </div>
                     <div class="form-group">
-                        <label>Secret Key</label>
+                        <label data-i18n="s3_secret_key">Secret Key</label>
                         <input type="password" id="s3-secret-key" />
                     </div>
                     <div class="form-actions">
-                        <button class="btn-primary" onclick="saveBackupConfig('s3')">
-                            Save Config
+                        <button class="btn-primary" onclick="saveBackupConfig()">
+                            <span data-i18n="backup_save">Save Config</span>
                         </button>
                         <button class="btn-secondary" onclick="backup('s3')">
-                            Backup Now
+                            <span data-i18n="backup_now">Backup Now</span>
                         </button>
-                        <button class="btn-secondary" onclick="restore('s3')">
-                            Restore
+                        <button class="btn-secondary" onclick="showBackupList('s3')">
+                            <span data-i18n="backup_list">View Backups</span>
                         </button>
                     </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings-config" class="backup-config">
+                    <h3 data-i18n="backup_auto_title">Automatic Backup</h3>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-label" data-i18n="backup_auto_enable">Enable automatic backup</div>
+                        </div>
+                        <div class="setting-control">
+                            <label class="switch">
+                                <input type="checkbox" id="auto-backup-enabled" onchange="toggleAutoBackup()">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="auto-backup-options" style="display: none;">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <div class="setting-label" data-i18n="backup_schedule">Backup Schedule</div>
+                            </div>
+                            <div class="setting-control">
+                                <select id="backup-schedule" class="form-select-sm">
+                                    <option value="daily" data-i18n="backup_daily">Daily</option>
+                                    <option value="weekly" data-i18n="backup_weekly">Weekly (Sunday)</option>
+                                    <option value="manual" data-i18n="backup_manual">Manual Only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="setting-item" id="last-backup-info" style="display: none;">
+                            <div class="setting-info">
+                                <div class="setting-label" data-i18n="backup_last">Last Backup</div>
+                            </div>
+                            <div class="setting-control">
+                                <span id="last-backup-time" class="text-muted" style="font-size: 13px;">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-divider"></div>
+
+                    <h3 data-i18n="backup_cleanup_title">Cleanup Policy</h3>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-label" data-i18n="backup_retention_days">Retention Days</div>
+                            <div class="setting-desc" data-i18n="backup_retention_help">Delete backups older than this
+                                many days (0 = no limit)</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="number" id="backup-retention-days" min="0" value="30"
+                                class="form-control-sm" />
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-label" data-i18n="backup_max_count">Maximum Backups</div>
+                            <div class="setting-desc" data-i18n="backup_max_count_help">Keep only the most recent N
+                                backups (0 = no limit)</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="number" id="backup-max-count" min="0" value="10" class="form-control-sm" />
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 20px; justify-content: flex-end;">
+                        <button class="btn-primary" onclick="saveBackupConfig()">
+                            <span data-i18n="backup_save">Save Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Backup List -->
+    <div id="backup-list-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="backup_list_title">Backup Files</h2>
+                <button class="modal-close" onclick="closeModal('backup-list-modal')">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="backup-list-loading" style="text-align: center; padding: 20px;">
+                    <span data-i18n="loading">Loading...</span>
+                </div>
+                <div id="backup-list-content" style="display: none;">
+                    <table class="backup-list-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="backup_filename">Filename</th>
+                                <th data-i18n="backup_size">Size</th>
+                                <th data-i18n="backup_date">Date</th>
+                                <th data-i18n="backup_actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backup-list-tbody">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="backup-list-empty" style="display: none; text-align: center; padding: 40px;">
+                    <p data-i18n="backup_no_files">No backup files found</p>
                 </div>
             </div>
         </div>
@@ -522,7 +637,7 @@
     <script src="/static/js/marked.min.js"></script>
     <!-- snapdom for image export -->
     <script src="/static/js/snapdom.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=4"></script>
     <script>
         // Initialize Feather Icons
         feather.replace();

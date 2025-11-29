@@ -37,6 +37,10 @@ type BackupConfig struct {
 	AutoBackupEnabled bool `json:"auto_backup_enabled,omitempty"`
 	// BackupSchedule holds the value of the "backup_schedule" field.
 	BackupSchedule string `json:"backup_schedule,omitempty"`
+	// Number of days to retain backup files (0 = no limit)
+	BackupRetentionDays int `json:"backup_retention_days,omitempty"`
+	// Maximum number of backup files to keep (0 = no limit)
+	BackupMaxCount int `json:"backup_max_count,omitempty"`
 	// LastBackupAt holds the value of the "last_backup_at" field.
 	LastBackupAt time.Time `json:"last_backup_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -53,7 +57,7 @@ func (*BackupConfig) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case backupconfig.FieldAutoBackupEnabled:
 			values[i] = new(sql.NullBool)
-		case backupconfig.FieldID:
+		case backupconfig.FieldID, backupconfig.FieldBackupRetentionDays, backupconfig.FieldBackupMaxCount:
 			values[i] = new(sql.NullInt64)
 		case backupconfig.FieldWebdavURL, backupconfig.FieldWebdavUser, backupconfig.FieldWebdavPassword, backupconfig.FieldS3Endpoint, backupconfig.FieldS3Region, backupconfig.FieldS3Bucket, backupconfig.FieldS3AccessKey, backupconfig.FieldS3SecretKey, backupconfig.FieldBackupSchedule:
 			values[i] = new(sql.NullString)
@@ -140,6 +144,18 @@ func (_m *BackupConfig) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.BackupSchedule = value.String
 			}
+		case backupconfig.FieldBackupRetentionDays:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field backup_retention_days", values[i])
+			} else if value.Valid {
+				_m.BackupRetentionDays = int(value.Int64)
+			}
+		case backupconfig.FieldBackupMaxCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field backup_max_count", values[i])
+			} else if value.Valid {
+				_m.BackupMaxCount = int(value.Int64)
+			}
 		case backupconfig.FieldLastBackupAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_backup_at", values[i])
@@ -221,6 +237,12 @@ func (_m *BackupConfig) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("backup_schedule=")
 	builder.WriteString(_m.BackupSchedule)
+	builder.WriteString(", ")
+	builder.WriteString("backup_retention_days=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BackupRetentionDays))
+	builder.WriteString(", ")
+	builder.WriteString("backup_max_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BackupMaxCount))
 	builder.WriteString(", ")
 	builder.WriteString("last_backup_at=")
 	builder.WriteString(_m.LastBackupAt.Format(time.ANSIC))

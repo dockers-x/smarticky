@@ -45,12 +45,20 @@ func init() {
 	backupconfigDescBackupSchedule := backupconfigFields[9].Descriptor()
 	// backupconfig.DefaultBackupSchedule holds the default value on creation for the backup_schedule field.
 	backupconfig.DefaultBackupSchedule = backupconfigDescBackupSchedule.Default.(string)
+	// backupconfigDescBackupRetentionDays is the schema descriptor for backup_retention_days field.
+	backupconfigDescBackupRetentionDays := backupconfigFields[10].Descriptor()
+	// backupconfig.DefaultBackupRetentionDays holds the default value on creation for the backup_retention_days field.
+	backupconfig.DefaultBackupRetentionDays = backupconfigDescBackupRetentionDays.Default.(int)
+	// backupconfigDescBackupMaxCount is the schema descriptor for backup_max_count field.
+	backupconfigDescBackupMaxCount := backupconfigFields[11].Descriptor()
+	// backupconfig.DefaultBackupMaxCount holds the default value on creation for the backup_max_count field.
+	backupconfig.DefaultBackupMaxCount = backupconfigDescBackupMaxCount.Default.(int)
 	// backupconfigDescCreatedAt is the schema descriptor for created_at field.
-	backupconfigDescCreatedAt := backupconfigFields[11].Descriptor()
+	backupconfigDescCreatedAt := backupconfigFields[13].Descriptor()
 	// backupconfig.DefaultCreatedAt holds the default value on creation for the created_at field.
 	backupconfig.DefaultCreatedAt = backupconfigDescCreatedAt.Default.(func() time.Time)
 	// backupconfigDescUpdatedAt is the schema descriptor for updated_at field.
-	backupconfigDescUpdatedAt := backupconfigFields[12].Descriptor()
+	backupconfigDescUpdatedAt := backupconfigFields[14].Descriptor()
 	// backupconfig.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	backupconfig.DefaultUpdatedAt = backupconfigDescUpdatedAt.Default.(func() time.Time)
 	// backupconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

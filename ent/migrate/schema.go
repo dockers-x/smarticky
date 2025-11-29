@@ -52,6 +52,8 @@ var (
 		{Name: "s3_secret_key", Type: field.TypeString, Nullable: true},
 		{Name: "auto_backup_enabled", Type: field.TypeBool, Default: false},
 		{Name: "backup_schedule", Type: field.TypeString, Default: "daily"},
+		{Name: "backup_retention_days", Type: field.TypeInt, Default: 30},
+		{Name: "backup_max_count", Type: field.TypeInt, Default: 10},
 		{Name: "last_backup_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},

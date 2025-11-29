@@ -160,6 +160,34 @@ func (_c *BackupConfigCreate) SetNillableBackupSchedule(v *string) *BackupConfig
 	return _c
 }
 
+// SetBackupRetentionDays sets the "backup_retention_days" field.
+func (_c *BackupConfigCreate) SetBackupRetentionDays(v int) *BackupConfigCreate {
+	_c.mutation.SetBackupRetentionDays(v)
+	return _c
+}
+
+// SetNillableBackupRetentionDays sets the "backup_retention_days" field if the given value is not nil.
+func (_c *BackupConfigCreate) SetNillableBackupRetentionDays(v *int) *BackupConfigCreate {
+	if v != nil {
+		_c.SetBackupRetentionDays(*v)
+	}
+	return _c
+}
+
+// SetBackupMaxCount sets the "backup_max_count" field.
+func (_c *BackupConfigCreate) SetBackupMaxCount(v int) *BackupConfigCreate {
+	_c.mutation.SetBackupMaxCount(v)
+	return _c
+}
+
+// SetNillableBackupMaxCount sets the "backup_max_count" field if the given value is not nil.
+func (_c *BackupConfigCreate) SetNillableBackupMaxCount(v *int) *BackupConfigCreate {
+	if v != nil {
+		_c.SetBackupMaxCount(*v)
+	}
+	return _c
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_c *BackupConfigCreate) SetLastBackupAt(v time.Time) *BackupConfigCreate {
 	_c.mutation.SetLastBackupAt(v)
@@ -245,6 +273,14 @@ func (_c *BackupConfigCreate) defaults() {
 		v := backupconfig.DefaultBackupSchedule
 		_c.mutation.SetBackupSchedule(v)
 	}
+	if _, ok := _c.mutation.BackupRetentionDays(); !ok {
+		v := backupconfig.DefaultBackupRetentionDays
+		_c.mutation.SetBackupRetentionDays(v)
+	}
+	if _, ok := _c.mutation.BackupMaxCount(); !ok {
+		v := backupconfig.DefaultBackupMaxCount
+		_c.mutation.SetBackupMaxCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := backupconfig.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -262,6 +298,12 @@ func (_c *BackupConfigCreate) check() error {
 	}
 	if _, ok := _c.mutation.BackupSchedule(); !ok {
 		return &ValidationError{Name: "backup_schedule", err: errors.New(`ent: missing required field "BackupConfig.backup_schedule"`)}
+	}
+	if _, ok := _c.mutation.BackupRetentionDays(); !ok {
+		return &ValidationError{Name: "backup_retention_days", err: errors.New(`ent: missing required field "BackupConfig.backup_retention_days"`)}
+	}
+	if _, ok := _c.mutation.BackupMaxCount(); !ok {
+		return &ValidationError{Name: "backup_max_count", err: errors.New(`ent: missing required field "BackupConfig.backup_max_count"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "BackupConfig.created_at"`)}
@@ -334,6 +376,14 @@ func (_c *BackupConfigCreate) createSpec() (*BackupConfig, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.BackupSchedule(); ok {
 		_spec.SetField(backupconfig.FieldBackupSchedule, field.TypeString, value)
 		_node.BackupSchedule = value
+	}
+	if value, ok := _c.mutation.BackupRetentionDays(); ok {
+		_spec.SetField(backupconfig.FieldBackupRetentionDays, field.TypeInt, value)
+		_node.BackupRetentionDays = value
+	}
+	if value, ok := _c.mutation.BackupMaxCount(); ok {
+		_spec.SetField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
+		_node.BackupMaxCount = value
 	}
 	if value, ok := _c.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)

@@ -93,6 +93,9 @@ func main() {
 	fs := storage.NewFileSystem("")
 	h := handler.NewHandler(client, fs)
 
+	// Start automatic backup scheduler
+	h.StartAutoBackup()
+
 	// 4. Routes
 	// API
 	api := e.Group("/api")
@@ -145,6 +148,14 @@ func main() {
 	protected.POST("/backup/s3", h.BackupS3)
 	protected.POST("/restore/webdav", h.RestoreWebDAV)
 	protected.POST("/restore/s3", h.RestoreS3)
+
+	// Backup List API
+	protected.GET("/backup/list/webdav", h.ListWebDAVBackups)
+	protected.GET("/backup/list/s3", h.ListS3Backups)
+
+	// Backup Verify API
+	protected.POST("/backup/verify/webdav", h.VerifyWebDAVBackup)
+	protected.POST("/backup/verify/s3", h.VerifyS3Backup)
 
 	// Serve uploaded files from data directory
 	uploadsDir := filepath.Join(getDataDir(), "uploads")
