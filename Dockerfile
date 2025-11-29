@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -15,9 +15,9 @@ COPY . .
 # Build with CGO enabled for SQLite and inject version info
 RUN CGO_ENABLED=1 go build -trimpath \
     -ldflags="-s -w \
-      -X smarticky/internal/version.Version=${VERSION} \
-      -X smarticky/internal/version.BuildTime=${BUILD_TIME} \
-      -X smarticky/internal/version.GitCommit=${GIT_COMMIT}" \
+    -X smarticky/internal/version.Version=${VERSION} \
+    -X smarticky/internal/version.BuildTime=${BUILD_TIME} \
+    -X smarticky/internal/version.GitCommit=${GIT_COMMIT}" \
     -o smarticky ./cmd/server
 
 FROM alpine:latest

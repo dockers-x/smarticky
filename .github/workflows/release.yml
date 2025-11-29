@@ -72,13 +72,6 @@ jobs:
             goarm: 7
             exe: smarticky
 
-          - os: ubuntu-latest
-            platform: linux-armv6
-            goos: linux
-            goarch: arm
-            goarm: 6
-            exe: smarticky
-
           # Windows builds
           - os: ubuntu-latest
             platform: windows-amd64
@@ -106,7 +99,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: "1.25"
           check-latest: true
 
       - name: Get dependencies
