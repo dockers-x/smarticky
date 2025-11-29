@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Smarticky Notes</title>
+    <link rel="icon" type="image/png" href="/static/img/logo.png">
     <link rel="stylesheet" href="/static/css/custom.css">
     <style>
         .login-container {
@@ -41,19 +42,6 @@
             color: #666;
             font-size: 16px;
             margin: 0;
-        }
-
-        .login-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 40px;
         }
 
         .form-group {
@@ -134,7 +122,9 @@
 <body>
     <div class="login-container">
         <div class="login-card">
-            <div class="login-icon">🔐</div>
+            <div class="about-logo">
+                <img src="/static/img/logo.png" alt="Smarticky Logo">
+            </div>
             <div class="login-header">
                 <h1 id="login-title">Welcome Back</h1>
                 <p id="login-subtitle">Sign in to continue</p>
