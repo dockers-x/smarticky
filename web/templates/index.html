@@ -3,17 +3,23 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
     <title>Smarticky Notes</title>
     <link rel="icon" type="image/png" href="/static/img/logo.png">
     <link rel="stylesheet" href="/static/css/smartisan.css?v=2" />
-    <link rel="stylesheet" href="/static/css/custom.css?v=4" />
+    <link rel="stylesheet" href="/static/css/custom.css?v=8" />
 </head>
 
 <body>
     <div id="app">
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <span onclick="showAbout()" style="cursor: pointer;" title="About Smarticky">Smarticky</span>
                 <button onclick="createNote()" class="btn btn-new-note" title="New Note">
@@ -79,6 +85,9 @@
         <!-- Note List -->
         <div class="note-list-panel" id="note-list-panel">
             <div class="search-bar">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()" title="Menu">
+                    <i data-feather="menu"></i>
+                </button>
                 <i data-feather="search"></i>
                 <input type="text" placeholder="Search..." oninput="searchNotes(this.value)" id="search-input" />
             </div>
@@ -663,7 +672,7 @@
     <script src="/static/js/marked.min.js"></script>
     <!-- snapdom for image export -->
     <script src="/static/js/snapdom.js"></script>
-    <script src="/static/js/app.js?v=4"></script>
+    <script src="/static/js/app.js?v=7"></script>
     <script>
         // Initialize Feather Icons
         feather.replace();

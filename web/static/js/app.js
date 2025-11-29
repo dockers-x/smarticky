@@ -419,12 +419,22 @@ function selectNote(note) {
     state.currentNote = note;
     renderList(); // to update active class
     renderEditor(); // Will show lock screen with unlock button
+
+    // On mobile, open the editor panel
+    if (window.innerWidth <= 768) {
+      document.body.classList.add('mobile-editor-open');
+    }
     return;
   }
 
   state.currentNote = note;
   renderList(); // to update active class
   renderEditor();
+
+  // On mobile, open the editor panel when a note is selected
+  if (window.innerWidth <= 768) {
+    document.body.classList.add('mobile-editor-open');
+  }
 }
 
 // Render Editor
@@ -456,6 +466,9 @@ function renderEditor() {
   if (isLocked) {
     panel.innerHTML = `
             <div class="editor-header">
+                <button class="mobile-back-btn" onclick="closeMobileEditor()" title="Back">
+                    <i data-feather="arrow-left"></i>
+                </button>
                 <span>${t("last_updated")}: ${new Date(note.updated_at).toLocaleString()}</span>
                 <div class="toolbar">
                     <button class="btn" onclick="showPasswordModal()" title="${t("unlock_note")}">
@@ -478,6 +491,9 @@ function renderEditor() {
 
   panel.innerHTML = `
         <div class="editor-header">
+            <button class="mobile-back-btn" onclick="closeMobileEditor()" title="Back">
+                <i data-feather="arrow-left"></i>
+            </button>
             <div class="save-status" id="save-status"></div>
             <span>${t("last_updated")}: ${new Date(note.updated_at).toLocaleString()}</span>
             <div class="toolbar">
@@ -1577,20 +1593,33 @@ async function updateMarkdownPreview() {
 // ====== Sidebar Expander Functions ======
 
 function toggleSidebar() {
-  state.sidebarExpanded = !state.sidebarExpanded;
-  const sidebar = document.querySelector(".sidebar");
-  const body = document.body;
+  // Check if mobile view
+  if (window.innerWidth <= 768) {
+    // Mobile: Toggle sidebar drawer
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
 
-  if (state.sidebarExpanded) {
-    sidebar.classList.remove("collapsed");
-    body.classList.remove("sidebar-collapsed");
+    if (!sidebar || !overlay) return;
+
+    sidebar.classList.toggle('mobile-visible');
+    overlay.classList.toggle('visible');
   } else {
-    sidebar.classList.add("collapsed");
-    body.classList.add("sidebar-collapsed");
-  }
+    // Desktop: Toggle sidebar collapse
+    state.sidebarExpanded = !state.sidebarExpanded;
+    const sidebar = document.querySelector(".sidebar");
+    const body = document.body;
 
-  // Save preference to localStorage
-  localStorage.setItem("sidebarExpanded", state.sidebarExpanded);
+    if (state.sidebarExpanded) {
+      sidebar.classList.remove("collapsed");
+      body.classList.remove("sidebar-collapsed");
+    } else {
+      sidebar.classList.add("collapsed");
+      body.classList.add("sidebar-collapsed");
+    }
+
+    // Save preference to localStorage
+    localStorage.setItem("sidebarExpanded", state.sidebarExpanded);
+  }
 }
 
 // Load sidebar state on init
@@ -2830,5 +2859,12 @@ async function showAbout() {
 
   // Show the about modal
   showModal('about-modal');
+}
+
+// Close mobile editor and return to note list
+function closeMobileEditor() {
+  if (window.innerWidth <= 768) {
+    document.body.classList.remove('mobile-editor-open');
+  }
 }
 
