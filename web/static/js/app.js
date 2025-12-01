@@ -27,7 +27,12 @@ let state = {
   unlockedNotes: new Set(), // Track unlocked notes in this session
   sidebarExpanded: true, // Track if sidebar is expanded
   attachmentsExpanded: false, // Track if attachments section is expanded (default collapsed)
+  markdownViewMode: 'preview', // Default to preview mode
 };
+
+// Timers for debouncing and status display
+let debounceTimer = null;
+let saveStatusTimer = null;
 
 // Auth functions
 function getAuthToken() {
@@ -580,33 +585,46 @@ function renderEditor() {
   if (!isTrash && note.id) {
     renderAttachments(note.id);
   }
+
+  // 如果在预览模式，需要延迟更新预览内容（确保DOM已渲染）
+  if (state.markdownViewMode === 'preview') {
+    console.log('renderEditor: scheduling preview update');
+    setTimeout(() => {
+      console.log('renderEditor: executing delayed preview update');
+      updateMarkdownPreview();
+    }, 100);
+  }
 }
 
 function renderMarkdownEditor(note, isTrash) {
   // For Typora-like experience, only use traditional editor with source/preview modes
   return `
         <div class="editor-content markdown-editor-wrapper">
-            <!-- 标签管理区域 -->
-            <div class="tag-management" style="
-                margin-bottom: 10px;
-                padding: 10px;
-                background: var(--bg-secondary);
-                border-radius: 6px;
-                border: 1px solid var(--border-light);
-            ">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                    <i data-feather="tag" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
-                    <span style="font-size: 14px; color: var(--text-secondary);">${t("tags") || "Tags"}</span>
+            <!-- 标签管理区域 - 锤子风格 (仅源码模式显示) -->
+            <div class="tag-management-smartisan" style="display: ${state.markdownViewMode === 'source' ? 'block' : 'none'};">
+                <div class="tag-header">
+                    <div class="tag-icon-wrapper">
+                        <i data-feather="tag" style="width: 18px; height: 18px;"></i>
+                    </div>
+                    <span class="tag-header-title">${t("tags") || "Tags"}</span>
                 </div>
-                <div id="current-tags" class="current-tags" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px;">
+                <div id="current-tags" class="current-tags-smartisan">
                     ${renderCurrentTags(note)}
                 </div>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="tag-input" placeholder="${t("add_tag") || "Add tag..."}"
-                           style="flex: 1; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 4px; font-size: 13px;"
-                           onkeypress="handleTagInput(event, '${note.id}')"
+                <div class="tag-input-wrapper-smartisan">
+                    <input type="text"
+                           id="tag-input"
+                           placeholder="${t("add_tag_placeholder") || "添加标签... (回车或空格添加)"}"
+                           onkeypress="handleTagInput(event)"
                            oninput="handleTagAutocomplete(this.value)"
-                           onblur="setTimeout(() => hideTagAutocomplete(), 200)">
+                           onblur="setTimeout(() => hideTagAutocomplete(), 200)"
+                           ${isTrash ? "disabled" : ""}>
+                    <button class="tag-add-btn"
+                            onclick="if (state.currentNote && state.currentNote.id) addTag(state.currentNote.id)"
+                            ${isTrash ? "disabled" : ""}
+                            title="${t("add_tag") || "添加标签"}">
+                        <i data-feather="plus" style="width: 16px; height: 16px;"></i>
+                    </button>
                 </div>
             </div>
 
@@ -683,25 +701,15 @@ function updateEditorType() {
 // Tag管理函数
 function renderCurrentTags(note) {
   if (!note.tags || note.tags.length === 0) {
-    return `<span style="color: var(--text-tertiary); font-size: 13px;">${t("no_tags") || "No tags"}</span>`;
+    return `<div class="no-tags-hint">${t("no_tags") || "暂无标签"}</div>`;
   }
 
   return note.tags.map(tag => `
-    <span class="tag-item" style="
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      background: ${tag.color || 'var(--primary-color)'};
-      color: white;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 500;
-    ">
-      ${tag.name}
+    <span class="tag-item-smartisan" style="background: ${tag.color || 'var(--primary-color)'};">
+      <span class="tag-name">${escapeHtml(tag.name)}</span>
       <button onclick="removeTag('${note.id}', '${tag.id}')"
-              style="background: none; border: none; color: white; cursor: pointer; padding: 0; margin: 0;"
-              title="${t("remove_tag") || "Remove tag"}">
+              class="tag-remove-btn"
+              title="${t("remove_tag") || "移除标签"}">
         <i data-feather="x" style="width: 12px; height: 12px;"></i>
       </button>
     </span>
@@ -712,11 +720,34 @@ async function addTag(noteId) {
   const input = document.getElementById('tag-input');
   const tagName = input.value.trim();
 
-  if (!tagName) return;
+  if (!tagName) {
+    showNotification(t("tag_name_required") || "Please enter a tag name", "warning");
+    return;
+  }
+
+  // 验证noteId
+  if (!noteId || !state.currentNote || !state.currentNote.id) {
+    console.error('Invalid note ID:', noteId, 'Current note:', state.currentNote);
+    showNotification(t("note_not_selected") || "Please select a note first", "error");
+    return;
+  }
+
+  // 使用state.currentNote.id作为权威来源
+  const validNoteId = state.currentNote.id;
+
+  // 初始化tags数组（如果不存在）
+  if (!state.currentNote.tags) {
+    state.currentNote.tags = [];
+  }
 
   // 检查是否已经存在相同的tag
-  if (state.currentNote.tags && state.currentNote.tags.some(tag => tag.name.toLowerCase() === tagName.toLowerCase())) {
-    showNotification(t("tag_exists") || "Tag already exists", "warning");
+  const isDuplicate = state.currentNote.tags.some(tag =>
+    tag && tag.name && tag.name.toLowerCase() === tagName.toLowerCase()
+  );
+
+  if (isDuplicate) {
+    showNotification(t("tag_exists") || "Tag already exists in this note", "warning");
+    input.value = '';
     return;
   }
 
@@ -730,66 +761,75 @@ async function addTag(noteId) {
       existingTag = allTags.find(tag => tag.name.toLowerCase() === tagName.toLowerCase());
     }
 
-    let tagToUse;
+    let tagToUse = null;
 
     if (existingTag) {
       // 使用现有的tag
+      console.log('Using existing tag:', existingTag);
       tagToUse = existingTag;
     } else {
       // 创建新tag
+      console.log('Creating new tag:', tagName);
       const createRes = await fetchWithAuth(`${API_BASE}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: tagName, color: '' })
+        body: JSON.stringify({ name: tagName, color: generateRandomTagColor() })
       });
 
-      if (!createRes || !createRes.ok) {
-        const error = createRes ? await createRes.json() : { error: "Network error" };
-        if (createRes.status === 409) {
-          // Tag已存在，获取现有tag
-          const getExistingTagRes = await fetchWithAuth(`${API_BASE}/tags`);
-          if (getExistingTagRes && getExistingTagRes.ok) {
-            const allTags = await getExistingTagRes.json();
-            tagToUse = allTags.find(tag => tag.name.toLowerCase() === tagName.toLowerCase());
-          }
-        } else {
-          showNotification(t("create_tag_failed") || "Failed to create tag", "error");
+      if (createRes && createRes.ok) {
+        tagToUse = await createRes.json();
+      } else {
+        // 无论什么错误，都尝试重新获取tag列表
+        console.log('Tag creation failed, trying to fetch existing tag');
+        const retryRes = await fetchWithAuth(`${API_BASE}/tags`);
+        if (retryRes && retryRes.ok) {
+          const allTags = await retryRes.json();
+          tagToUse = allTags.find(tag => tag.name.toLowerCase() === tagName.toLowerCase());
+        }
+
+        // 如果还是找不到，才报错
+        if (!tagToUse) {
+          const error = createRes ? await createRes.json() : { error: "Network error" };
+          showNotification(error.error || t("create_tag_failed") || "Failed to create tag", "error");
           return;
         }
-      } else {
-        tagToUse = await createRes.json();
       }
     }
 
-    if (!tagToUse) {
+    if (!tagToUse || !tagToUse.id) {
       showNotification(t("tag_not_found") || "Tag not found", "error");
       return;
     }
 
-    // 检查是否已经添加了这个tag到note
-    const currentTagIds = state.currentNote.tags ? state.currentNote.tags.map(t => t.id) : [];
+    // 检查是否已经添加了这个tag到note（通过ID检查）
+    const currentTagIds = state.currentNote.tags.map(t => t.id);
     if (currentTagIds.includes(tagToUse.id)) {
-      showNotification(t("tag_already_added") || "Tag already added to note", "warning");
+      showNotification(t("tag_already_added") || "Tag already added to note", "info");
+      input.value = '';
       return;
     }
 
-    // 添加tag到note
-    const addRes = await fetchWithAuth(`${API_BASE}/notes/${noteId}/tags/${tagToUse.id}`, {
+    // 添加tag到note - 使用validNoteId
+    console.log('Adding tag to note:', validNoteId, 'tagId:', tagToUse.id);
+    const addRes = await fetchWithAuth(`${API_BASE}/notes/${validNoteId}/tags/${tagToUse.id}`, {
       method: 'POST'
     });
 
     if (!addRes || !addRes.ok) {
       const error = addRes ? await addRes.json() : { error: "Network error" };
-      showNotification(t("add_tag_failed") || "Failed to add tag to note", "error");
+      console.error('Add tag to note failed:', error);
+      showNotification(error.error || t("add_tag_failed") || "Failed to add tag to note", "error");
       return;
     }
 
     // 更新当前note的tags
-    if (!state.currentNote.tags) state.currentNote.tags = [];
     state.currentNote.tags.push(tagToUse);
 
     // 清空输入框
     input.value = '';
+
+    // 隐藏自动完成
+    hideTagAutocomplete();
 
     // 重新渲染编辑器
     renderEditor();
@@ -799,6 +839,21 @@ async function addTag(noteId) {
     console.error("Add tag error:", e);
     showNotification(t("tag_add_error") || "Error adding tag", "error");
   }
+}
+
+// 生成随机tag颜色
+function generateRandomTagColor() {
+  const colors = [
+    '#d9534f', // 红色
+    '#5cb85c', // 绿色
+    '#5bc0de', // 蓝色
+    '#f0ad4e', // 橙色
+    '#9b59b6', // 紫色
+    '#e91e63', // 粉色
+    '#00bcd4', // 青色
+    '#ff9800', // 深橙色
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 async function removeTag(noteId, tagId) {
@@ -831,13 +886,16 @@ async function removeTag(noteId, tagId) {
 function handleTagInput(event, noteId) {
   if (event.key === 'Enter') {
     event.preventDefault();
-    addTag(noteId);
+    // 使用state.currentNote.id作为权威来源
+    if (state.currentNote && state.currentNote.id) {
+      addTag(state.currentNote.id);
+    }
   } else if (event.key === ' ' || event.key === 'Spacebar') {
     // 按空格键添加tag
     event.preventDefault();
     const input = document.getElementById('tag-input');
-    if (input.value.trim()) {
-      addTag(noteId);
+    if (input.value.trim() && state.currentNote && state.currentNote.id) {
+      addTag(state.currentNote.id);
     }
   }
 }
@@ -942,21 +1000,24 @@ function selectAutocompleteTag(tagId, tagName) {
 // Switch to source mode (within traditional editor)
 function switchToSourceMode() {
   state.markdownViewMode = 'source';
-
-  // Ensure content is synchronized before switching
-  syncPreviewWithSource();
-
   renderEditor();
 }
 
 // Switch to preview mode (within traditional editor)
 function switchToPreviewMode() {
+  // 先从textarea同步内容到state
+  const textarea = document.getElementById('markdown-editor');
+  if (textarea && state.currentNote) {
+    state.currentNote.content = textarea.value;
+  }
+
   state.markdownViewMode = 'preview';
-
-  // Ensure content is synchronized before switching
-  syncPreviewWithSource();
-
   renderEditor();
+
+  // 延迟更新预览，确保DOM已经渲染
+  setTimeout(() => {
+    updateMarkdownPreview();
+  }, 10);
 }
 
 // Milkdown editor functions removed for Typora-like experience
@@ -1069,14 +1130,29 @@ function showSaveNotification() {
 
 async function updateNote(id, data) {
   try {
+    console.log('Updating note:', id, 'with data:', data);
     const res = await fetchWithAuth(`${API_BASE}/notes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
-    if (!res) return; // Auth failed
+    if (!res) {
+      console.error('Update failed: no response (auth failed?)');
+      showSaveStatus("error");
+      return;
+    }
 
+    if (!res.ok) {
+      const error = await res.json();
+      console.error('Update failed with status:', res.status, 'error:', error);
+      showSaveStatus("error");
+      showNotification(error.error || "Failed to save note", "error");
+      return;
+    }
+
+    const updatedNote = await res.json();
+    console.log('Note updated successfully:', updatedNote);
     showSaveStatus("saved");
 
     // Refresh note in list
@@ -1087,8 +1163,9 @@ async function updateNote(id, data) {
       }
     }
   } catch (e) {
-    console.error("Failed to update note", e);
+    console.error("Failed to update note:", e);
     showSaveStatus("error");
+    showNotification("Failed to save note", "error");
   }
 }
 
@@ -1239,6 +1316,14 @@ function setNoteColor(color) {
   updateNote(state.currentNote.id, { color: color });
   state.currentNote.color = color;
   renderEditor();
+
+  // 如果在预览模式，需要更新预览内容
+  if (state.markdownViewMode === 'preview') {
+    setTimeout(() => {
+      updateMarkdownPreview();
+    }, 10);
+  }
+
   closeModal("color-modal");
 }
 
@@ -1953,13 +2038,31 @@ function syncPreviewWithSource() {
 }
 
 async function updateMarkdownPreview() {
-  if (state.markdownViewMode !== "preview") return;
+  if (state.markdownViewMode !== "preview") {
+    console.log('Not in preview mode, skipping update');
+    return;
+  }
 
   const previewEl = document.getElementById("markdown-preview-content");
-  if (!previewEl) return;
+  if (!previewEl) {
+    console.error('Preview element not found, retrying...');
+    // 重试一次，可能DOM还没渲染完成
+    setTimeout(() => {
+      const retryEl = document.getElementById("markdown-preview-content");
+      if (retryEl && state.markdownViewMode === "preview") {
+        console.log('Retry successful, updating preview');
+        updateMarkdownPreview();
+      } else {
+        console.error('Preview element still not found after retry');
+      }
+    }, 100);
+    return;
+  }
 
   const content = state.currentNote?.content || "";
   const note = state.currentNote;
+
+  console.log('Updating preview with content length:', content.length);
 
   try {
     // Use marked.js to render markdown on client-side
@@ -2004,6 +2107,7 @@ async function updateMarkdownPreview() {
     }
 
     previewEl.innerHTML = tagsHtml + html;
+    console.log('Preview updated successfully');
 
     // Refresh Feather icons in the rendered HTML
     feather.replace();
@@ -2203,7 +2307,10 @@ function renderUserList(users) {
             <td style="padding: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: #f0f0f0;">
-                        <img src="${user.avatar || "/static/img/default-avatar.svg"}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="${user.avatar || "/static/img/default-avatar.svg"}"
+                             alt="Avatar"
+                             onerror="this.src='/static/img/default-avatar.svg'"
+                             style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
                     <strong>${escapeHtml(user.username)}</strong>
                 </div>
@@ -2463,6 +2570,9 @@ async function handleAvatarSelect(event) {
     return;
   }
 
+  // Store original avatar URL for rollback on error
+  const originalAvatarUrl = currentUser.avatar || "/static/img/default-avatar.svg";
+
   // Preview image
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -2473,7 +2583,7 @@ async function handleAvatarSelect(event) {
   // Upload avatar
   try {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("avatar", file);
 
     const res = await fetchWithAuth(
       `${API_BASE}/users/${currentUser.id}/avatar`,
@@ -2484,6 +2594,8 @@ async function handleAvatarSelect(event) {
     );
 
     if (!res || !res.ok) {
+      // Restore original avatar on failure
+      document.getElementById("profile-avatar-preview").src = originalAvatarUrl;
       alert(t("upload_failed") || "Failed to upload avatar");
       return;
     }
@@ -2500,6 +2612,8 @@ async function handleAvatarSelect(event) {
     alert(t("upload_success") || "Avatar uploaded successfully");
   } catch (e) {
     console.error("Avatar upload error:", e);
+    // Restore original avatar on error
+    document.getElementById("profile-avatar-preview").src = originalAvatarUrl;
     alert(t("upload_failed") || "Failed to upload avatar");
   }
 }
@@ -3473,10 +3587,10 @@ async function downloadImageFromPreview() {
 }
 
 async function renderNoteForImage(note) {
-  // Title (h1 will be styled by smartisan.css)
-  let contentHTML = `<h1>${escapeHtml(note.title || "Untitled")}</h1>`;
-
   // Content - render markdown using marked.js with smartisan theme
+  // Note: Title is already rendered in export-header, so we only render content here
+  let contentHTML = '';
+
   try {
     const html = marked.parse(note.content || "");
     contentHTML += html;

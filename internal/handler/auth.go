@@ -47,6 +47,11 @@ func (h *Handler) generateAvatar(username string) (string, error) {
 		return "", fmt.Errorf("failed to generate avatar: %w", err)
 	}
 
+	// Verify the file was created and is readable
+	if _, err := h.fs.Stat(filePath); err != nil {
+		return "", fmt.Errorf("avatar file verification failed: %w", err)
+	}
+
 	// Return URL path for web access
 	return h.fs.GetUploadsURL("avatars", filename), nil
 }

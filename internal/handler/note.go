@@ -13,6 +13,7 @@ import (
 
 	"smarticky/ent"
 	"smarticky/ent/note"
+	"smarticky/ent/user"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -116,7 +117,12 @@ type UpdateNoteRequest struct {
 
 func (h *Handler) ListNotes(c echo.Context) error {
 	ctx := context.Background()
+	userID := c.Get("user_id").(int)
+
 	query := h.client.Note.Query()
+
+	// 只返回当前用户的笔记
+	query.Where(note.HasUserWith(user.IDEQ(userID)))
 
 	// Filters
 	if c.QueryParam("starred") == "true" {
@@ -195,11 +201,15 @@ func (h *Handler) CreateNote(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
+	// 获取当前用户ID
+	userID := c.Get("user_id").(int)
+
 	ctx := context.Background()
 	n, err := h.client.Note.Create().
 		SetTitle(req.Title).
 		SetContent(req.Content).
 		SetColor(req.Color).
+		SetUserID(userID).
 		Save(ctx)
 
 	if err != nil {
@@ -216,8 +226,17 @@ func (h *Handler) GetNote(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
 	}
 
+	userID := c.Get("user_id").(int)
+
 	ctx := context.Background()
-	n, err := h.client.Note.Get(ctx, id)
+	// 查询note，并验证是否属于当前用户
+	n, err := h.client.Note.Query().
+		Where(
+			note.ID(id),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		Only(ctx)
+
 	if ent.IsNotFound(err) {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
 	}
@@ -252,13 +271,32 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
 	}
 
+	userID := c.Get("user_id").(int)
+
 	var req UpdateNoteRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
 	ctx := context.Background()
-	update := h.client.Note.UpdateOneID(id).SetUpdatedAt(time.Now())
+
+	// 先验证笔记是否存在且属于当前用户
+	n, err := h.client.Note.Query().
+		Where(
+			note.ID(id),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		Only(ctx)
+
+	if ent.IsNotFound(err) {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
+	}
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	// 更新笔记
+	update := n.Update().SetUpdatedAt(time.Now())
 
 	if req.Title != nil {
 		update.SetTitle(*req.Title)
@@ -292,10 +330,7 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		update.SetIsDeleted(*req.IsDeleted)
 	}
 
-	n, err := update.Save(ctx)
-	if ent.IsNotFound(err) {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
-	}
+	n, err = update.Save(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -311,13 +346,24 @@ func (h *Handler) DeleteNote(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
 	}
 
+	userID := c.Get("user_id").(int)
+
 	ctx := context.Background()
-	err = h.client.Note.DeleteOneID(id).Exec(ctx)
-	if ent.IsNotFound(err) {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
-	}
+
+	// 删除时验证笔记是否属于当前用户
+	count, err := h.client.Note.Delete().
+		Where(
+			note.ID(id),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		Exec(ctx)
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	if count == 0 {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
 	}
 
 	return c.NoContent(http.StatusNoContent)
