@@ -536,6 +536,9 @@ function renderEditor() {
                 <button class="btn" onclick="shareAsImage()" title="${t("share_as_image") || "Share as Image"}">
                     <i data-feather="image"></i>
                 </button>
+                <button class="btn" onclick="shareSelectedTextAsImage()" title="${t("share_selected_text") || "Share Selected Text as Image"}">
+                    <i data-feather="crop"></i>
+                </button>
                 <button class="btn" onclick="uploadAttachment('${note.id}')" title="${t("attachments") || "Attachments"}">
                     <i data-feather="paperclip"></i>
                 </button>
@@ -603,6 +606,12 @@ function renderEditor() {
     setTimeout(() => {
       console.log('renderEditor: executing delayed preview update');
       updateMarkdownPreview();
+
+      // Apply selected font to preview
+      const selectedFont = localStorage.getItem('selected-font') || 'default';
+      if (typeof applyFontToEditor === 'function') {
+        applyFontToEditor(selectedFont);
+      }
     }, 100);
   }
 }
@@ -1012,6 +1021,12 @@ function selectAutocompleteTag(tagId, tagName) {
 function switchToSourceMode() {
   state.markdownViewMode = 'source';
   renderEditor();
+
+  // Apply selected font to editor
+  const selectedFont = localStorage.getItem('selected-font') || 'default';
+  if (typeof applyFontToEditor === 'function') {
+    setTimeout(() => applyFontToEditor(selectedFont), 10);
+  }
 }
 
 // Switch to preview mode (within traditional editor)
@@ -1028,6 +1043,12 @@ function switchToPreviewMode() {
   // 延迟更新预览，确保DOM已经渲染
   setTimeout(() => {
     updateMarkdownPreview();
+
+    // Apply selected font to preview
+    const selectedFont = localStorage.getItem('selected-font') || 'default';
+    if (typeof applyFontToEditor === 'function') {
+      applyFontToEditor(selectedFont);
+    }
   }, 10);
 }
 
@@ -3281,6 +3302,61 @@ async function shareAsImage() {
   }
 }
 
+// Share selected text as image
+async function shareSelectedTextAsImage() {
+  if (!state.currentNote) return;
+
+  // Get selected text from editor
+  let selectedText = '';
+  const textarea = document.getElementById('markdown-editor');
+  const previewContent = document.getElementById('markdown-preview-content');
+
+  if (textarea && state.markdownViewMode === 'source') {
+    // Get selection from textarea (source mode)
+    selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+  } else if (previewContent && state.markdownViewMode === 'preview') {
+    // Get selection from preview (preview mode)
+    const selection = window.getSelection();
+    selectedText = selection.toString();
+  }
+
+  // Trim and validate
+  selectedText = selectedText.trim();
+
+  if (!selectedText) {
+    showNotification(t("no_text_selected") || "Please select some text first", "warning");
+    return;
+  }
+
+  // Create a temporary note object with selected text
+  const tempNote = {
+    ...state.currentNote,
+    title: currentUser?.nickname || currentUser?.username || state.currentNote.title,
+    content: selectedText
+  };
+
+  // Show loading indicator
+  const loadingModal = showLoadingModal(
+    t("generating_image") || "Generating image...",
+  );
+
+  try {
+    // Generate the preview HTML for selected text
+    const previewHTML = await generateImagePreviewHTML(tempNote);
+
+    // Hide loading modal
+    closeLoadingModal(loadingModal);
+
+    // Show preview modal
+    showImagePreviewModal(previewHTML, tempNote);
+
+  } catch (error) {
+    console.error("Failed to generate image preview:", error);
+    closeLoadingModal(loadingModal);
+    alert(t("generate_image_failed") || "Failed to generate image preview");
+  }
+}
+
 // Generate HTML for image preview
 async function generateImagePreviewHTML(note) {
   // Get selected font
@@ -3420,9 +3496,9 @@ function showImagePreviewModal(previewHTML, note) {
   // Add modal to body
   document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-  // Show modal
+  // Show modal with proper centering
   const modal = document.getElementById('image-preview-modal');
-  modal.style.display = 'flex';
+  modal.classList.add('show');
 
   // Store note data for download
   modal.dataset.noteId = note.id;
@@ -3608,10 +3684,22 @@ async function downloadImageFromPreview() {
 
     document.body.appendChild(container);
 
-    // Use snapdom to capture
+    // Wait for fonts to be loaded before capturing
+    if (selectedFont && selectedFont !== 'default') {
+      try {
+        // Load the selected font
+        await document.fonts.load(`16px "${selectedFont}"`);
+        await document.fonts.ready;
+      } catch (e) {
+        console.warn('Font loading warning:', e);
+      }
+    }
+
+    // Use snapdom to capture with embedded fonts
     const result = await snapdom(container, {
       backgroundColor: container.style.background,
       scale: 2,
+      embedFonts: true,
     });
 
     // Remove temporary container

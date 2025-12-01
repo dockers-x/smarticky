@@ -114,13 +114,32 @@ function renderFontList() {
 // Load font using FontFace API
 async function loadFontFace(font) {
     try {
+        // Fetch font with authentication
+        const response = await fetch(font.download_url, {
+            headers: {
+                'Authorization': `Bearer ${getToken()}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Convert to blob and create object URL
+        const blob = await response.blob();
+        const fontUrl = URL.createObjectURL(blob);
+
+        // Load font using FontFace API
         const fontFace = new FontFace(
             font.name,
-            `url(${font.download_url})`
+            `url(${fontUrl})`
         );
         await fontFace.load();
         document.fonts.add(fontFace);
         console.log(`Font loaded: ${font.name}`);
+
+        // Clean up object URL after a delay (font should be loaded by then)
+        setTimeout(() => URL.revokeObjectURL(fontUrl), 5000);
     } catch (error) {
         console.error(`Failed to load font ${font.name}:`, error);
     }
@@ -337,23 +356,40 @@ function setSelectedFont(fontName) {
 // Apply font to editor
 function applyFontToEditor(fontName) {
     const editorDiv = document.querySelector('.milkdown');
-    if (!editorDiv) return;
+    const markdownEditor = document.getElementById('markdown-editor');
+    const previewContent = document.getElementById('markdown-preview-content');
 
-    if (fontName === 'default' || !fontName) {
-        editorDiv.style.fontFamily = '';
-    } else {
-        editorDiv.style.fontFamily = `'${fontName}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+    const fontFamilyValue = (fontName === 'default' || !fontName)
+        ? ''
+        : `'${fontName}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+
+    // Apply to Milkdown editor (if exists)
+    if (editorDiv) {
+        editorDiv.style.fontFamily = fontFamilyValue;
+    }
+
+    // Apply to traditional markdown editor
+    if (markdownEditor) {
+        markdownEditor.style.fontFamily = fontFamilyValue;
+    }
+
+    // Apply to preview content
+    if (previewContent) {
+        previewContent.style.fontFamily = fontFamilyValue;
     }
 }
 
 // Show font selector dropdown
-function showFontSelector(buttonElement) {
+async function showFontSelector(buttonElement) {
     // Remove existing dropdown if any
     const existingDropdown = document.querySelector('.font-selector-dropdown');
     if (existingDropdown) {
         existingDropdown.remove();
         return;
     }
+
+    // Reload fonts to ensure we have the latest list
+    await loadFonts();
 
     // Create dropdown
     const dropdown = document.createElement('div');
@@ -367,7 +403,7 @@ function showFontSelector(buttonElement) {
         max-height: 400px;
         overflow-y: auto;
         z-index: 1000;
-        min-width: 250px;
+        width: 200px;
     `;
 
     const currentFont = getSelectedFont();
@@ -392,7 +428,7 @@ function showFontSelector(buttonElement) {
         html += `
             <div class="font-option ${isSelected ? 'selected' : ''}"
                  onclick="selectFontOption('${font.name}')"
-                 style="padding: 10px 15px; cursor: pointer; font-family: '${font.name}';
+                 style="padding: 10px 15px; cursor: pointer; font-family: '${font.name}'; font-size: 14px;
                         ${isSelected ? 'background: #f0f0f0;' : ''}"
                  onmouseover="this.style.background='#f8f8f8'"
                  onmouseout="this.style.background='${isSelected ? '#f0f0f0' : ''}'">
@@ -410,12 +446,20 @@ function showFontSelector(buttonElement) {
             html += `
                 <div class="font-option ${isSelected ? 'selected' : ''}"
                      onclick="selectFontOption('${font.name}')"
-                     style="padding: 10px 15px; cursor: pointer; font-family: '${font.name}';
+                     style="padding: 10px 15px; cursor: pointer; font-family: '${font.name}'; font-size: 14px;
+                            display: flex; align-items: center; justify-content: space-between; gap: 10px;
                             ${isSelected ? 'background: #f0f0f0;' : ''}"
                      onmouseover="this.style.background='#f8f8f8'"
                      onmouseout="this.style.background='${isSelected ? '#f0f0f0' : ''}'">
-                    ${font.display_name} ${isSelected ? '✓' : ''}
-                    <br><small style="color: #999; font-size: 11px;">by ${font.uploaded_by}</small>
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${font.display_name}
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                        <small style="color: #999; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            by ${font.uploaded_by}
+                        </small>
+                        ${isSelected ? '<span style="color: #5bc0de;">✓</span>' : ''}
+                    </span>
                 </div>
             `;
         });
