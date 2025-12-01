@@ -154,6 +154,14 @@ function updateUIText() {
     }
   });
 
+  // Handle placeholder translations
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (key) {
+      el.placeholder = t(key);
+    }
+  });
+
   // Sidebar menu
   const menuTexts = {
     "menu-all": "all_notes",
@@ -518,6 +526,9 @@ function renderEditor() {
                 </button>
                 <button class="btn" onclick="showColorPicker()" title="${t("change_color") || "Change Color"}">
                     <i data-feather="droplet"></i>
+                </button>
+                <button class="btn" onclick="showFontSelector(this)" title="${t("select_font") || "Select Font"}">
+                    <i data-feather="type"></i>
                 </button>
                 <button class="btn" onclick="exportNote()" title="${t("export") || "Export"}">
                     <i data-feather="download"></i>
@@ -3272,6 +3283,9 @@ async function shareAsImage() {
 
 // Generate HTML for image preview
 async function generateImagePreviewHTML(note) {
+  // Get selected font
+  const selectedFont = localStorage.getItem('selected-font') || 'default';
+
   // Load export theme CSS content
   let cssContent = "";
   try {
@@ -3302,6 +3316,17 @@ async function generateImagePreviewHTML(note) {
       }
       .export-content p {
         margin: 20px 0;
+      }
+    `;
+  }
+
+  // Add custom font style if selected
+  if (selectedFont && selectedFont !== 'default') {
+    cssContent += `
+      .export-container,
+      .export-content,
+      .export-title {
+        font-family: '${selectedFont}', Georgia, "Songti SC", serif !important;
       }
     `;
   }
@@ -3467,15 +3492,25 @@ async function downloadImageFromPreview() {
   );
 
   try {
+    // Get selected font
+    const selectedFont = localStorage.getItem('selected-font') || 'default';
+
     // Create container for final rendering
     const container = document.createElement("div");
     container.className = "export-container loading";
+
+    // Set font family based on selection
+    let fontFamily = 'Georgia, "Songti SC", "宋体", serif';
+    if (selectedFont && selectedFont !== 'default') {
+      fontFamily = `'${selectedFont}', Georgia, "Songti SC", "宋体", serif`;
+    }
+
     container.style.cssText = `
       position: absolute;
       left: -9999px;
       top: 0;
       width: 900px;
-      font-family: Georgia, "Songti SC", "宋体", serif;
+      font-family: ${fontFamily};
       box-sizing: border-box;
       overflow: visible;
     `;
@@ -3514,6 +3549,19 @@ async function downloadImageFromPreview() {
         }
         .export-content p {
           margin: 20px 0;
+        }
+      `;
+    }
+
+    // Add custom font style if selected
+    if (selectedFont && selectedFont !== 'default') {
+      cssContent += `
+        .export-container,
+        .export-content,
+        .export-title,
+        .export-header,
+        .export-footer {
+          font-family: '${selectedFont}', Georgia, "Songti SC", serif !important;
         }
       `;
     }

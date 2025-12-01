@@ -64,6 +64,33 @@ var (
 		Columns:    BackupConfigsColumns,
 		PrimaryKey: []*schema.Column{BackupConfigsColumns[0]},
 	}
+	// FontsColumns holds the columns for the "fonts" table.
+	FontsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "display_name", Type: field.TypeString},
+		{Name: "file_path", Type: field.TypeString},
+		{Name: "file_size", Type: field.TypeInt64},
+		{Name: "format", Type: field.TypeEnum, Enums: []string{"ttf", "otf", "woff", "woff2"}},
+		{Name: "preview_text", Type: field.TypeString, Default: "The quick brown fox jumps over the lazy dog 我能吞下玻璃而不伤身体"},
+		{Name: "is_shared", Type: field.TypeBool, Default: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_fonts", Type: field.TypeInt},
+	}
+	// FontsTable holds the schema information for the "fonts" table.
+	FontsTable = &schema.Table{
+		Name:       "fonts",
+		Columns:    FontsColumns,
+		PrimaryKey: []*schema.Column{FontsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "fonts_users_fonts",
+				Columns:    []*schema.Column{FontsColumns[9]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// NotesColumns holds the columns for the "notes" table.
 	NotesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -162,6 +189,7 @@ var (
 	Tables = []*schema.Table{
 		AttachmentsTable,
 		BackupConfigsTable,
+		FontsTable,
 		NotesTable,
 		TagsTable,
 		UsersTable,
@@ -172,6 +200,7 @@ var (
 func init() {
 	AttachmentsTable.ForeignKeys[0].RefTable = NotesTable
 	AttachmentsTable.ForeignKeys[1].RefTable = UsersTable
+	FontsTable.ForeignKeys[0].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
 	NoteTagsTable.ForeignKeys[0].RefTable = NotesTable

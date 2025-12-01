@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"smarticky/ent/attachment"
+	"smarticky/ent/font"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -163,6 +164,21 @@ func (_c *UserCreate) AddTags(v ...*Tag) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTagIDs(ids...)
+}
+
+// AddFontIDs adds the "fonts" edge to the Font entity by IDs.
+func (_c *UserCreate) AddFontIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddFontIDs(ids...)
+	return _c
+}
+
+// AddFonts adds the "fonts" edges to the Font entity.
+func (_c *UserCreate) AddFonts(v ...*Font) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddFontIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -353,6 +369,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.FontsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

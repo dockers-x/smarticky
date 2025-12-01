@@ -5,6 +5,7 @@ package ent
 import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/font"
 	"smarticky/ent/note"
 	"smarticky/ent/schema"
 	"smarticky/ent/tag"
@@ -64,6 +65,40 @@ func init() {
 	backupconfig.DefaultUpdatedAt = backupconfigDescUpdatedAt.Default.(func() time.Time)
 	// backupconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	backupconfig.UpdateDefaultUpdatedAt = backupconfigDescUpdatedAt.UpdateDefault.(func() time.Time)
+	fontFields := schema.Font{}.Fields()
+	_ = fontFields
+	// fontDescName is the schema descriptor for name field.
+	fontDescName := fontFields[1].Descriptor()
+	// font.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	font.NameValidator = fontDescName.Validators[0].(func(string) error)
+	// fontDescDisplayName is the schema descriptor for display_name field.
+	fontDescDisplayName := fontFields[2].Descriptor()
+	// font.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
+	font.DisplayNameValidator = fontDescDisplayName.Validators[0].(func(string) error)
+	// fontDescFilePath is the schema descriptor for file_path field.
+	fontDescFilePath := fontFields[3].Descriptor()
+	// font.FilePathValidator is a validator for the "file_path" field. It is called by the builders before save.
+	font.FilePathValidator = fontDescFilePath.Validators[0].(func(string) error)
+	// fontDescFileSize is the schema descriptor for file_size field.
+	fontDescFileSize := fontFields[4].Descriptor()
+	// font.FileSizeValidator is a validator for the "file_size" field. It is called by the builders before save.
+	font.FileSizeValidator = fontDescFileSize.Validators[0].(func(int64) error)
+	// fontDescPreviewText is the schema descriptor for preview_text field.
+	fontDescPreviewText := fontFields[6].Descriptor()
+	// font.DefaultPreviewText holds the default value on creation for the preview_text field.
+	font.DefaultPreviewText = fontDescPreviewText.Default.(string)
+	// fontDescIsShared is the schema descriptor for is_shared field.
+	fontDescIsShared := fontFields[7].Descriptor()
+	// font.DefaultIsShared holds the default value on creation for the is_shared field.
+	font.DefaultIsShared = fontDescIsShared.Default.(bool)
+	// fontDescCreatedAt is the schema descriptor for created_at field.
+	fontDescCreatedAt := fontFields[8].Descriptor()
+	// font.DefaultCreatedAt holds the default value on creation for the created_at field.
+	font.DefaultCreatedAt = fontDescCreatedAt.Default.(func() time.Time)
+	// fontDescID is the schema descriptor for id field.
+	fontDescID := fontFields[0].Descriptor()
+	// font.DefaultID holds the default value on creation for the id field.
+	font.DefaultID = fontDescID.Default.(func() uuid.UUID)
 	noteFields := schema.Note{}.Fields()
 	_ = noteFields
 	// noteDescTitle is the schema descriptor for title field.

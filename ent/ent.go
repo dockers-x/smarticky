@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/font"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -79,6 +80,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			attachment.Table:   attachment.ValidColumn,
 			backupconfig.Table: backupconfig.ValidColumn,
+			font.Table:         font.ValidColumn,
 			note.Table:         note.ValidColumn,
 			tag.Table:          tag.ValidColumn,
 			user.Table:         user.ValidColumn,

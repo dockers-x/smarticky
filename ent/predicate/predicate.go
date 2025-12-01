@@ -12,6 +12,9 @@ type Attachment func(*sql.Selector)
 // BackupConfig is the predicate function for backupconfig builders.
 type BackupConfig func(*sql.Selector)
 
+// Font is the predicate function for font builders.
+type Font func(*sql.Selector)
+
 // Note is the predicate function for note builders.
 type Note func(*sql.Selector)
 

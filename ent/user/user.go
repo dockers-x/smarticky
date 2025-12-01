@@ -37,6 +37,8 @@ const (
 	EdgeAttachments = "attachments"
 	// EdgeTags holds the string denoting the tags edge name in mutations.
 	EdgeTags = "tags"
+	// EdgeFonts holds the string denoting the fonts edge name in mutations.
+	EdgeFonts = "fonts"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// NotesTable is the table that holds the notes relation/edge.
@@ -60,6 +62,13 @@ const (
 	TagsInverseTable = "tags"
 	// TagsColumn is the table column denoting the tags relation/edge.
 	TagsColumn = "user_tags"
+	// FontsTable is the table that holds the fonts relation/edge.
+	FontsTable = "fonts"
+	// FontsInverseTable is the table name for the Font entity.
+	// It exists in this package in order to avoid circular dependency with the "font" package.
+	FontsInverseTable = "fonts"
+	// FontsColumn is the table column denoting the fonts relation/edge.
+	FontsColumn = "user_fonts"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -217,6 +226,20 @@ func ByTags(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTagsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByFontsCount orders the results by fonts count.
+func ByFontsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newFontsStep(), opts...)
+	}
+}
+
+// ByFonts orders the results by fonts terms.
+func ByFonts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newFontsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newNotesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -236,5 +259,12 @@ func newTagsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TagsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TagsTable, TagsColumn),
+	)
+}
+func newFontsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(FontsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, FontsTable, FontsColumn),
 	)
 }

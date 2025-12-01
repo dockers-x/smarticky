@@ -47,9 +47,11 @@ type UserEdges struct {
 	Attachments []*Attachment `json:"attachments,omitempty"`
 	// Tags holds the value of the tags edge.
 	Tags []*Tag `json:"tags,omitempty"`
+	// Fonts holds the value of the fonts edge.
+	Fonts []*Font `json:"fonts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -77,6 +79,15 @@ func (e UserEdges) TagsOrErr() ([]*Tag, error) {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
+}
+
+// FontsOrErr returns the Fonts value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) FontsOrErr() ([]*Font, error) {
+	if e.loadedTypes[3] {
+		return e.Fonts, nil
+	}
+	return nil, &NotLoadedError{edge: "fonts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -185,6 +196,11 @@ func (_m *User) QueryAttachments() *AttachmentQuery {
 // QueryTags queries the "tags" edge of the User entity.
 func (_m *User) QueryTags() *TagQuery {
 	return NewUserClient(_m.config).QueryTags(_m)
+}
+
+// QueryFonts queries the "fonts" edge of the User entity.
+func (_m *User) QueryFonts() *FontQuery {
+	return NewUserClient(_m.config).QueryFonts(_m)
 }
 
 // Update returns a builder for updating this User.

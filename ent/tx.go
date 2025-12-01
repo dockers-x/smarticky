@@ -16,6 +16,8 @@ type Tx struct {
 	Attachment *AttachmentClient
 	// BackupConfig is the client for interacting with the BackupConfig builders.
 	BackupConfig *BackupConfigClient
+	// Font is the client for interacting with the Font builders.
+	Font *FontClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
 	// Tag is the client for interacting with the Tag builders.
@@ -155,6 +157,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Attachment = NewAttachmentClient(tx.config)
 	tx.BackupConfig = NewBackupConfigClient(tx.config)
+	tx.Font = NewFontClient(tx.config)
 	tx.Note = NewNoteClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)

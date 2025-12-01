@@ -32,6 +32,18 @@ func (f BackupConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BackupConfigMutation", m)
 }
 
+// The FontFunc type is an adapter to allow the use of ordinary
+// function as Font mutator.
+type FontFunc func(context.Context, *ent.FontMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FontFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FontMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FontMutation", m)
+}
+
 // The NoteFunc type is an adapter to allow the use of ordinary
 // function as Note mutator.
 type NoteFunc func(context.Context, *ent.NoteMutation) (ent.Value, error)

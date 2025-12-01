@@ -141,6 +141,12 @@ func main() {
 	protected.GET("/attachments/:id/download", h.DownloadAttachment)
 	protected.DELETE("/attachments/:id", h.DeleteAttachment)
 
+	// Fonts API
+	protected.POST("/fonts", h.UploadFont)
+	protected.GET("/fonts", h.GetFonts)
+	protected.GET("/fonts/:id/download", h.DownloadFont)
+	protected.DELETE("/fonts/:id", h.DeleteFont)
+
 	// User management (admin only for most)
 	adminRoutes := protected.Group("/users")
 	adminRoutes.Use(authmw.AdminOnly())

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"smarticky/ent/attachment"
+	"smarticky/ent/font"
 	"smarticky/ent/note"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -185,6 +186,21 @@ func (_u *UserUpdate) AddTags(v ...*Tag) *UserUpdate {
 	return _u.AddTagIDs(ids...)
 }
 
+// AddFontIDs adds the "fonts" edge to the Font entity by IDs.
+func (_u *UserUpdate) AddFontIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.AddFontIDs(ids...)
+	return _u
+}
+
+// AddFonts adds the "fonts" edges to the Font entity.
+func (_u *UserUpdate) AddFonts(v ...*Font) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddFontIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -251,6 +267,27 @@ func (_u *UserUpdate) RemoveTags(v ...*Tag) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTagIDs(ids...)
+}
+
+// ClearFonts clears all "fonts" edges to the Font entity.
+func (_u *UserUpdate) ClearFonts() *UserUpdate {
+	_u.mutation.ClearFonts()
+	return _u
+}
+
+// RemoveFontIDs removes the "fonts" edge to Font entities by IDs.
+func (_u *UserUpdate) RemoveFontIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.RemoveFontIDs(ids...)
+	return _u
+}
+
+// RemoveFonts removes "fonts" edges to Font entities.
+func (_u *UserUpdate) RemoveFonts(v ...*Font) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveFontIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -486,6 +523,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.FontsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedFontsIDs(); len(nodes) > 0 && !_u.mutation.FontsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FontsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -659,6 +741,21 @@ func (_u *UserUpdateOne) AddTags(v ...*Tag) *UserUpdateOne {
 	return _u.AddTagIDs(ids...)
 }
 
+// AddFontIDs adds the "fonts" edge to the Font entity by IDs.
+func (_u *UserUpdateOne) AddFontIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.AddFontIDs(ids...)
+	return _u
+}
+
+// AddFonts adds the "fonts" edges to the Font entity.
+func (_u *UserUpdateOne) AddFonts(v ...*Font) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddFontIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -725,6 +822,27 @@ func (_u *UserUpdateOne) RemoveTags(v ...*Tag) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTagIDs(ids...)
+}
+
+// ClearFonts clears all "fonts" edges to the Font entity.
+func (_u *UserUpdateOne) ClearFonts() *UserUpdateOne {
+	_u.mutation.ClearFonts()
+	return _u
+}
+
+// RemoveFontIDs removes the "fonts" edge to Font entities by IDs.
+func (_u *UserUpdateOne) RemoveFontIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.RemoveFontIDs(ids...)
+	return _u
+}
+
+// RemoveFonts removes "fonts" edges to Font entities.
+func (_u *UserUpdateOne) RemoveFonts(v ...*Font) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveFontIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -983,6 +1101,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FontsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedFontsIDs(); len(nodes) > 0 && !_u.mutation.FontsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FontsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FontsTable,
+			Columns: []string{user.FontsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
