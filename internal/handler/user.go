@@ -85,6 +85,13 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	newUser, err := createUser.Save(context.Background())
 
 	if err != nil {
+		// Clean up avatar file if user creation failed
+		if avatarPath != "" {
+			// Extract filename from URL path like "/uploads/avatars/file.png"
+			filename := filepath.Base(avatarPath)
+			filePath := filepath.Join(h.fs.GetUploadsDir("avatars"), filename)
+			_ = h.fs.Remove(filePath)
+		}
 		if ent.IsConstraintError(err) {
 			return c.JSON(http.StatusConflict, map[string]string{"error": "Username already exists"})
 		}

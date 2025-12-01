@@ -32,8 +32,9 @@ func (h *Handler) generateAvatar(username string) (string, error) {
 	// Get uploads directory from filesystem
 	avatarDir := h.fs.GetUploadsDir("avatars")
 
-	// Generate unique filename
-	filename := fmt.Sprintf("%s_%d.png", username, time.Now().UnixNano())
+	// Generate unique filename using timestamp
+	timestamp := time.Now().UnixNano()
+	filename := fmt.Sprintf("%s_%d.png", username, timestamp)
 	filePath := filepath.Join(avatarDir, filename)
 
 	// Generate avatar using govatar
@@ -49,6 +50,8 @@ func (h *Handler) generateAvatar(username string) (string, error) {
 
 	// Verify the file was created and is readable
 	if _, err := h.fs.Stat(filePath); err != nil {
+		// Try to clean up the file if it exists but stat failed
+		_ = h.fs.Remove(filePath)
 		return "", fmt.Errorf("avatar file verification failed: %w", err)
 	}
 
@@ -108,6 +111,13 @@ func (h *Handler) Setup(c echo.Context) error {
 	newUser, err := createUser.Save(context.Background())
 
 	if err != nil {
+		// Clean up avatar file if user creation failed
+		if avatarPath != "" {
+			// Extract filename from URL path like "/uploads/avatars/file.png"
+			filename := filepath.Base(avatarPath)
+			filePath := filepath.Join(h.fs.GetUploadsDir("avatars"), filename)
+			_ = h.fs.Remove(filePath)
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create admin user"})
 	}
 
