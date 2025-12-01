@@ -1,0 +1,402 @@
+/**
+ * Milkdown Theme for Smarticky Notes
+ * Custom styles that integrate Milkdown with Smarticky's design system
+ */
+
+/* 基础编辑器样式 */
+.milkdown-editor {
+    font-family: Georgia, "Songti SC", "宋体", serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.milkdown-editor-content {
+    min-height: 400px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 20px 24px;
+    outline: none;
+    background: var(--bg-primary);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    transition: border-color 0.2s ease;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.milkdown-editor-content:focus {
+    border-color: var(--primary-color);
+}
+
+.milkdown-editor-content[data-placeholder]::before {
+    content: attr(data-placeholder);
+    color: var(--text-tertiary);
+    position: absolute;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* 编辑器切换按钮样式 */
+.editor-type-selector {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    display: flex;
+    gap: 5px;
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 8px var(--shadow-medium);
+}
+
+.editor-type-btn {
+    padding: 6px 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+}
+
+.editor-type-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.editor-type-btn.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(217, 83, 79, 0.3);
+}
+
+.editor-type-btn.active:hover {
+    background: var(--primary-hover);
+}
+
+.editor-type-btn i {
+    width: 14px;
+    height: 14px;
+}
+
+/* 编辑器类型标签 */
+.editor-type-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-left: 10px;
+    font-weight: 500;
+}
+
+/* Milkdown容器样式 */
+#milkdown-container {
+    min-height: 400px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+#milkdown-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.1);
+}
+
+/* 暗色模式支持 */
+body.dark-mode .milkdown-editor {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+body.dark-mode .milkdown-editor-content {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+body.dark-mode .milkdown-editor-content[data-placeholder]::before {
+    color: var(--text-tertiary);
+}
+
+body.dark-mode #milkdown-container {
+    background: var(--bg-primary);
+    border-color: var(--border-dark);
+}
+
+body.dark-mode .editor-type-selector {
+    background: var(--bg-secondary);
+    border-color: var(--border-dark);
+}
+
+body.dark-mode .editor-type-btn {
+    color: var(--text-secondary);
+}
+
+body.dark-mode .editor-type-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+body.dark-mode .editor-type-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+body.dark-mode .editor-type-label {
+    color: var(--text-tertiary);
+}
+
+/* 便签颜色支持 */
+#milkdown-container[data-color="yellow"] {
+    background: #fff9e6 !important;
+}
+
+#milkdown-container[data-color="green"] {
+    background: #f0fff4 !important;
+}
+
+#milkdown-container[data-color="blue"] {
+    background: #f0f8ff !important;
+}
+
+#milkdown-container[data-color="pink"] {
+    background: #fff0f5 !important;
+}
+
+#milkdown-container[data-color="purple"] {
+    background: #f8f0ff !important;
+}
+
+/* 暗色模式下的便签颜色 */
+body.dark-mode #milkdown-container[data-color="yellow"] {
+    background: #3d3625 !important;
+}
+
+body.dark-mode #milkdown-container[data-color="green"] {
+    background: #253d25 !important;
+}
+
+body.dark-mode #milkdown-container[data-color="blue"] {
+    background: #25303d !important;
+}
+
+body.dark-mode #milkdown-container[data-color="pink"] {
+    background: #3d252b !important;
+}
+
+body.dark-mode #milkdown-container[data-color="purple"] {
+    background: #32253d !important;
+}
+
+/* 富文本内容样式 */
+.milkdown-editor-content h1,
+.milkdown-editor-content h2,
+.milkdown-editor-content h3,
+.milkdown-editor-content h4,
+.milkdown-editor-content h5,
+.milkdown-editor-content h6 {
+    margin: 16px 0 8px 0;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.milkdown-editor-content h1 {
+    font-size: 24px;
+    border-bottom: 2px solid var(--border-light);
+    padding-bottom: 8px;
+}
+
+.milkdown-editor-content h2 {
+    font-size: 20px;
+}
+
+.milkdown-editor-content h3 {
+    font-size: 18px;
+}
+
+.milkdown-editor-content h4 {
+    font-size: 16px;
+}
+
+.milkdown-editor-content p {
+    margin: 12px 0;
+    line-height: 1.7;
+}
+
+.milkdown-editor-content strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.milkdown-editor-content em {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.milkdown-editor-content code {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    border: 1px solid var(--border-light);
+}
+
+.milkdown-editor-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.milkdown-editor-content a:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.milkdown-editor-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 0 8px 8px 0;
+}
+
+.milkdown-editor-content ul,
+.milkdown-editor-content ol {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.milkdown-editor-content li {
+    margin: 6px 0;
+    line-height: 1.6;
+}
+
+/* 滚动条样式 */
+.milkdown-editor-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.milkdown-editor-content::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+.milkdown-editor-content::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: 4px;
+}
+
+.milkdown-editor-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .milkdown-editor-content {
+        padding: 16px;
+        font-size: 16px; /* 防止iOS缩放 */
+    }
+
+    .editor-type-selector {
+        top: 8px;
+        right: 8px;
+    }
+
+    .editor-type-btn {
+        min-width: 28px;
+        height: 28px;
+        padding: 4px 6px;
+    }
+
+    .editor-type-btn i {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* 错误状态样式 */
+.milkdown-editor.error {
+    border-color: var(--danger-color, #dc3545) !important;
+}
+
+.milkdown-editor.error .milkdown-editor-content {
+    border-color: var(--danger-color, #dc3545) !important;
+}
+
+/* 加载状态 */
+.milkdown-editor.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+body.dark-mode .milkdown-editor.loading::after {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.milkdown-editor.loading::before {
+    content: 'Loading editor...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-secondary);
+    font-size: 14px;
+    z-index: 10;
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.milkdown-editor {
+    animation: fadeIn 0.3s ease;
+}
+
+.editor-type-selector {
+    animation: slideInRight 0.2s ease;
+}

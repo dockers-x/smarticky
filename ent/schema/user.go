@@ -47,5 +47,6 @@ func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("notes", Note.Type),
 		edge.To("attachments", Attachment.Type),
+		edge.To("tags", Tag.Type), // User can have many tags
 	}
 }

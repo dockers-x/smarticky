@@ -92,6 +92,29 @@ var (
 			},
 		},
 	}
+	// TagsColumns holds the columns for the "tags" table.
+	TagsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "color", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_tags", Type: field.TypeInt, Nullable: true},
+	}
+	// TagsTable holds the schema information for the "tags" table.
+	TagsTable = &schema.Table{
+		Name:       "tags",
+		Columns:    TagsColumns,
+		PrimaryKey: []*schema.Column{TagsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tags_users_tags",
+				Columns:    []*schema.Column{TagsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -110,12 +133,39 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// NoteTagsColumns holds the columns for the "note_tags" table.
+	NoteTagsColumns = []*schema.Column{
+		{Name: "note_id", Type: field.TypeUUID},
+		{Name: "tag_id", Type: field.TypeUUID},
+	}
+	// NoteTagsTable holds the schema information for the "note_tags" table.
+	NoteTagsTable = &schema.Table{
+		Name:       "note_tags",
+		Columns:    NoteTagsColumns,
+		PrimaryKey: []*schema.Column{NoteTagsColumns[0], NoteTagsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_tags_note_id",
+				Columns:    []*schema.Column{NoteTagsColumns[0]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "note_tags_tag_id",
+				Columns:    []*schema.Column{NoteTagsColumns[1]},
+				RefColumns: []*schema.Column{TagsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AttachmentsTable,
 		BackupConfigsTable,
 		NotesTable,
+		TagsTable,
 		UsersTable,
+		NoteTagsTable,
 	}
 )
 
@@ -123,4 +173,7 @@ func init() {
 	AttachmentsTable.ForeignKeys[0].RefTable = NotesTable
 	AttachmentsTable.ForeignKeys[1].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = UsersTable
+	TagsTable.ForeignKeys[0].RefTable = UsersTable
+	NoteTagsTable.ForeignKeys[0].RefTable = NotesTable
+	NoteTagsTable.ForeignKeys[1].RefTable = TagsTable
 }

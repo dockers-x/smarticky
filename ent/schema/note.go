@@ -50,5 +50,6 @@ func (Note) Edges() []ent.Edge {
 			Ref("notes").
 			Unique(),
 		edge.To("attachments", Attachment.Type),
+		edge.To("tags", Tag.Type), // Many-to-many relationship with tags
 	}
 }

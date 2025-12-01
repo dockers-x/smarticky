@@ -127,6 +127,14 @@ func main() {
 	protected.DELETE("/notes/:id", h.DeleteNote)
 	protected.POST("/notes/:id/verify-password", h.VerifyNotePassword)
 
+	// Tags API
+	protected.GET("/tags", h.GetTags)
+	protected.POST("/tags", h.CreateTag)
+	protected.PUT("/tags/:id", h.UpdateTag)
+	protected.DELETE("/tags/:id", h.DeleteTag)
+	protected.POST("/notes/:noteId/tags/:tagId", h.AddTagToNote)
+	protected.DELETE("/notes/:noteId/tags/:tagId", h.RemoveTagFromNote)
+
 	// Attachments API
 	protected.POST("/notes/:id/attachments", h.UploadAttachment)
 	protected.GET("/notes/:id/attachments", h.ListAttachments)

@@ -129,6 +129,25 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		query.Where(note.IsDeleted(false))
 	}
 
+	// Color filtering
+	if color := c.QueryParam("color"); color != "" {
+		query.Where(note.ColorEQ(color))
+	}
+
+	// Tag filtering
+	if tags := c.QueryParam("tags"); tags != "" {
+		// For now, we'll implement a basic tag name filtering
+		// This will be enhanced once the tag system is fully implemented
+		tagNames := strings.Split(tags, ",")
+		for _, tagName := range tagNames {
+			tagName = strings.TrimSpace(tagName)
+			if tagName != "" {
+				// Placeholder for tag filtering - will be implemented after tag system is set up
+				// query.Where(note.HasTagsWith(tag.NameEQ(tagName)))
+			}
+		}
+	}
+
 	search := c.QueryParam("q")
 	if search != "" {
 		query.Where(
@@ -147,10 +166,24 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// Convert to response format that includes password field
-	response := make([]NoteResponse, len(notes))
+	// Convert to response format that includes tags
+	type NoteWithTagsResponse struct {
+		NoteResponse
+		Tags []*ent.Tag `json:"tags"`
+	}
+
+	response := make([]NoteWithTagsResponse, len(notes))
 	for i, n := range notes {
-		response[i] = noteToResponse(n)
+		// Get tags for this note
+		tags, err := n.QueryTags().All(ctx)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+
+		response[i] = NoteWithTagsResponse{
+			NoteResponse: noteToResponse(n),
+			Tags:         tags,
+		}
 	}
 
 	return c.JSON(http.StatusOK, response)
@@ -192,7 +225,24 @@ func (h *Handler) GetNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, noteToResponse(n))
+	// Get tags for this note
+	tags, err := n.QueryTags().All(ctx)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	// Convert to response format that includes tags
+	type NoteWithTagsResponse struct {
+		NoteResponse
+		Tags []*ent.Tag `json:"tags"`
+	}
+
+	response := NoteWithTagsResponse{
+		NoteResponse: noteToResponse(n),
+		Tags:         tags,
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) UpdateNote(c echo.Context) error {

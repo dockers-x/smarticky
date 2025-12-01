@@ -10,6 +10,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/note"
+	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"sync"
 
@@ -79,6 +80,7 @@ func checkColumn(t, c string) error {
 			attachment.Table:   attachment.ValidColumn,
 			backupconfig.Table: backupconfig.ValidColumn,
 			note.Table:         note.ValidColumn,
+			tag.Table:          tag.ValidColumn,
 			user.Table:         user.ValidColumn,
 		})
 	})

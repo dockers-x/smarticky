@@ -50,9 +50,11 @@ type NoteEdges struct {
 	User *User `json:"user,omitempty"`
 	// Attachments holds the value of the attachments edge.
 	Attachments []*Attachment `json:"attachments,omitempty"`
+	// Tags holds the value of the tags edge.
+	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -73,6 +75,15 @@ func (e NoteEdges) AttachmentsOrErr() ([]*Attachment, error) {
 		return e.Attachments, nil
 	}
 	return nil, &NotLoadedError{edge: "attachments"}
+}
+
+// TagsOrErr returns the Tags value or an error if the edge
+// was not loaded in eager-loading.
+func (e NoteEdges) TagsOrErr() ([]*Tag, error) {
+	if e.loadedTypes[2] {
+		return e.Tags, nil
+	}
+	return nil, &NotLoadedError{edge: "tags"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -193,6 +204,11 @@ func (_m *Note) QueryUser() *UserQuery {
 // QueryAttachments queries the "attachments" edge of the Note entity.
 func (_m *Note) QueryAttachments() *AttachmentQuery {
 	return NewNoteClient(_m.config).QueryAttachments(_m)
+}
+
+// QueryTags queries the "tags" edge of the Note entity.
+func (_m *Note) QueryTags() *TagQuery {
+	return NewNoteClient(_m.config).QueryTags(_m)
 }
 
 // Update returns a builder for updating this Note.

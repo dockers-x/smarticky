@@ -1,0 +1,412 @@
+/**
+ * Smarticky Notes 导出主题 - 锤子便签风格图片导出
+ * Premium export styling for sharing notes as images
+ */
+
+/* 导出容器样式 */
+.export-container {
+    background: var(--bg-primary);
+    border-radius: 16px;
+    padding: 40px;
+    margin: 20px auto;
+    max-width: 800px;
+    box-shadow: 0 8px 32px var(--shadow-dark);
+    border: 1px solid var(--border-light);
+    position: relative;
+    overflow: hidden;
+    font-family: Georgia, "Songti SC", "宋体", serif;
+}
+
+/* 导出头部 - 优雅设计 */
+.export-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border-light);
+}
+
+.export-title {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.3;
+    letter-spacing: -0.5px;
+}
+
+.export-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.export-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.export-date i {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+}
+
+.export-logo {
+    width: 40px;
+    height: 40px;
+    opacity: 0.3;
+}
+
+/* 导出内容区域 */
+.export-content {
+    font-size: 18px;
+    line-height: 1.8;
+    color: var(--text-primary);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: justify;
+    text-justify: inter-ideograph;
+    letter-spacing: 0.2px;
+}
+
+.export-content h1 {
+    font-size: 36px;
+    font-weight: 600;
+    margin: 0 0 24px 0;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border-light);
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+
+.export-content h2 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 32px 0 16px 0;
+    color: var(--text-primary);
+    position: relative;
+    padding-left: 16px;
+}
+
+.export-content h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 24px;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.export-content h3 {
+    font-size: 22px;
+    font-weight: 500;
+    margin: 24px 0 12px 0;
+    color: var(--text-secondary);
+}
+
+.export-content p {
+    margin: 20px 0;
+}
+
+.export-content ul, .export-content ol {
+    margin: 20px 0;
+    padding-left: 32px;
+}
+
+.export-content li {
+    margin: 10px 0;
+    line-height: 1.7;
+}
+
+.export-content blockquote {
+    margin: 24px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border-left: 4px solid var(--primary-color);
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.export-content code {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 16px;
+    border: 1px solid var(--border-light);
+}
+
+.export-content pre {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.export-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+}
+
+.export-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.export-content a:hover {
+    border-bottom-color: var(--primary-color);
+}
+
+.export-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 16px 0;
+    box-shadow: 0 4px 16px var(--shadow-medium);
+}
+
+/* 导出底部 - 品牌信息 */
+.export-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
+.export-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.7;
+}
+
+.export-brand img {
+    width: 20px;
+    height: 20px;
+}
+
+.export-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* 便签颜色主题 */
+.export-container[data-color="yellow"] {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3d9 100%);
+}
+
+.export-container[data-color="green"] {
+    background: linear-gradient(135deg, #f0fff4 0%, #e6f7ed 100%);
+}
+
+.export-container[data-color="blue"] {
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+}
+
+.export-container[data-color="pink"] {
+    background: linear-gradient(135deg, #fff0f5 0%, #ffe6ed 100%);
+}
+
+.export-container[data-color="purple"] {
+    background: linear-gradient(135deg, #f8f0ff 0%, #ede6f7 100%);
+}
+
+/* 暗色模式 */
+body.dark-mode .export-container {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    border-color: var(--border-dark);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .export-header {
+    border-bottom-color: var(--border-dark);
+}
+
+body.dark-mode .export-footer {
+    border-top-color: var(--border-dark);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .export-container {
+        padding: 24px 20px;
+        margin: 12px;
+        border-radius: 12px;
+    }
+
+    .export-header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+    }
+
+    .export-title {
+        font-size: 24px;
+    }
+
+    .export-content {
+        font-size: 17px; /* 防止iOS缩放 */
+        line-height: 1.7;
+    }
+
+    .export-meta {
+        font-size: 12px;
+        gap: 12px;
+    }
+
+    .export-footer {
+        margin-top: 24px;
+        padding-top: 16px;
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}
+
+/* 打印优化 */
+@media print {
+    .export-container {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        background: white;
+    }
+
+    .export-content {
+        color: #000;
+    }
+}
+
+/* 动画效果 */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.export-container {
+    animation: fadeInScale 0.4s ease;
+}
+
+/* 特殊效果 - 纸张纹理 */
+.export-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.03) 1px, transparent 0);
+    background-size: 20px 20px;
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+body.dark-mode .export-container::before {
+    background-image:
+        radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+}
+
+/* 导出按钮样式 */
+.export-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(217, 83, 79, 0.3);
+}
+
+.export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(217, 83, 79, 0.4);
+}
+
+.export-btn:active {
+    transform: translateY(0);
+}
+
+.export-btn i {
+    width: 16px;
+    height: 16px;
+}
+
+/* 加载状态 */
+.export-container.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    z-index: 10;
+}
+
+.export-container.loading::before {
+    content: 'Generating image...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-secondary);
+    font-size: 14px;
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.export-container.loading::before::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-light);
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

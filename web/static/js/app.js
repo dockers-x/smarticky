@@ -25,7 +25,6 @@ let state = {
   i18n: {},
   backupConfig: null,
   unlockedNotes: new Set(), // Track unlocked notes in this session
-  markdownViewMode: "source", // 'source' or 'preview'
   sidebarExpanded: true, // Track if sidebar is expanded
   attachmentsExpanded: false, // Track if attachments section is expanded (default collapsed)
 };
@@ -234,6 +233,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   await fetchNotes();
   await loadBackupConfig();
 
+  // Load all tags for autocomplete functionality
+  loadAllTags();
+
   // Theme check
   const isDark = localStorage.getItem("theme") === "dark";
   if (isDark) {
@@ -429,6 +431,10 @@ function selectNote(note) {
 
   state.currentNote = note;
   renderList(); // to update active class
+
+  // Load all tags for autocomplete functionality
+  loadAllTags();
+
   renderEditor();
 
   // On mobile, open the editor panel when a note is selected
@@ -568,6 +574,8 @@ function renderEditor() {
   // Refresh Feather Icons
   feather.replace();
 
+  // Milkdown initialization removed for Typora-like experience
+
   // Load attachments if not in trash
   if (!isTrash && note.id) {
     renderAttachments(note.id);
@@ -575,34 +583,383 @@ function renderEditor() {
 }
 
 function renderMarkdownEditor(note, isTrash) {
-  const viewMode = state.markdownViewMode;
-  const sourceDisplay = viewMode === "source" ? "block" : "none";
-  const previewDisplay = viewMode === "preview" ? "block" : "none";
-
+  // For Typora-like experience, only use traditional editor with source/preview modes
   return `
         <div class="editor-content markdown-editor-wrapper">
+            <!-- 标签管理区域 -->
+            <div class="tag-management" style="
+                margin-bottom: 10px;
+                padding: 10px;
+                background: var(--bg-secondary);
+                border-radius: 6px;
+                border: 1px solid var(--border-light);
+            ">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <i data-feather="tag" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
+                    <span style="font-size: 14px; color: var(--text-secondary);">${t("tags") || "Tags"}</span>
+                </div>
+                <div id="current-tags" class="current-tags" style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px;">
+                    ${renderCurrentTags(note)}
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="tag-input" placeholder="${t("add_tag") || "Add tag..."}"
+                           style="flex: 1; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 4px; font-size: 13px;"
+                           onkeypress="handleTagInput(event, '${note.id}')"
+                           oninput="handleTagAutocomplete(this.value)"
+                           onblur="setTimeout(() => hideTagAutocomplete(), 200)">
+                </div>
+            </div>
+
+            <!-- 源码/预览模式切换按钮 -->
+            <div class="editor-mode-selector" style="
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 100;
+                display: flex;
+                gap: 5px;
+                background: var(--bg-secondary);
+                padding: 4px;
+                border-radius: 6px;
+                border: 1px solid var(--border-light);
+                box-shadow: 0 2px 8px var(--shadow-medium);
+            ">
+                <button class="editor-mode-btn ${state.markdownViewMode === 'source' ? 'active' : ''}"
+                        onclick="switchToSourceMode()"
+                        title="${t("source_code") || "Source Code"}"
+                        style="${state.markdownViewMode === 'source' ? 'background: var(--primary-color); color: white;' : ''}">
+                    <i data-feather="code" style="width: 14px; height: 14px;"></i>
+                </button>
+                <button class="editor-mode-btn ${state.markdownViewMode === 'preview' ? 'active' : ''}"
+                        onclick="switchToPreviewMode()"
+                        title="${t("preview") || "Preview"}"
+                        style="${state.markdownViewMode === 'preview' ? 'background: var(--primary-color); color: white;' : ''}">
+                    <i data-feather="eye" style="width: 14px; height: 14px;"></i>
+                </button>
+            </div>
+
+            <!-- 源码编辑器 -->
             <textarea id="markdown-editor"
-                      style="display: ${sourceDisplay};"
+                      style="display: ${state.markdownViewMode === 'source' ? 'block' : 'none'};"
                       oninput="handleMarkdownInput('${note.id}', this)"
                       onkeydown="handleMarkdownKeydown(event)"
                       ${isTrash ? "disabled" : ""}
                       placeholder="${t("start_writing") || "Start writing..."}">${escapeHtml(note.content)}</textarea>
             <div id="markdown-autocomplete" class="markdown-autocomplete" style="display: none;"></div>
-            <div id="markdown-preview"
-                 class="markdown-preview markdown-body"
-                 style="display: ${previewDisplay};">
-                 <h1>${escapeHtml(note.title || t("untitled") || "Untitled")}</h1>
-                 <div id="markdown-preview-content"></div>
-            </div>
-            <div class="markdown-status-bar">
-                <button class="mode-toggle-btn" onclick="toggleMarkdownMode()" title="${t("toggle_preview") || "Toggle Preview"}">
-                    <i data-feather="${viewMode === "source" ? "eye" : "edit-3"}"></i>
-                    <span>${viewMode === "source" ? t("preview") || "Preview" : t("source") || "Source"}</span>
-                </button>
+
+            <!-- 预览模式内容 -->
+            <div id="markdown-preview-content"
+                 class="preview-content"
+                 style="display: ${state.markdownViewMode === 'preview' ? 'block' : 'none'};"
+                 onclick="handlePreviewClick(event)"
+                 title="${t("click_to_edit") || "Click to edit"}">
             </div>
         </div>
     `;
 }
+
+// 编辑器切换功能 - Removed Milkdown for Typora-like experience
+// Only traditional editor with source/preview modes is available
+
+// 同步编辑器数据 - Simplified for traditional editor only
+function syncEditorData() {
+  if (!state.currentNote) return;
+
+  // Only handle traditional editor (textarea)
+  const textarea = document.getElementById('markdown-editor');
+  if (textarea && textarea.value !== state.currentNote.content) {
+    state.currentNote.content = textarea.value;
+    // 立即保存到服务器
+    updateNoteDebounced(state.currentNote.id, 'content', textarea.value);
+  }
+}
+
+// 更新编辑器类型设置 - Removed as we only have traditional editor now
+function updateEditorType() {
+  // Function no longer needed, kept for compatibility
+  showNotification('Editor preference saved', 'success');
+}
+
+// Tag管理函数
+function renderCurrentTags(note) {
+  if (!note.tags || note.tags.length === 0) {
+    return `<span style="color: var(--text-tertiary); font-size: 13px;">${t("no_tags") || "No tags"}</span>`;
+  }
+
+  return note.tags.map(tag => `
+    <span class="tag-item" style="
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: ${tag.color || 'var(--primary-color)'};
+      color: white;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    ">
+      ${tag.name}
+      <button onclick="removeTag('${note.id}', '${tag.id}')"
+              style="background: none; border: none; color: white; cursor: pointer; padding: 0; margin: 0;"
+              title="${t("remove_tag") || "Remove tag"}">
+        <i data-feather="x" style="width: 12px; height: 12px;"></i>
+      </button>
+    </span>
+  `).join('');
+}
+
+async function addTag(noteId) {
+  const input = document.getElementById('tag-input');
+  const tagName = input.value.trim();
+
+  if (!tagName) return;
+
+  // 检查是否已经存在相同的tag
+  if (state.currentNote.tags && state.currentNote.tags.some(tag => tag.name.toLowerCase() === tagName.toLowerCase())) {
+    showNotification(t("tag_exists") || "Tag already exists", "warning");
+    return;
+  }
+
+  try {
+    // 首先尝试获取现有的tags
+    const getTagsRes = await fetchWithAuth(`${API_BASE}/tags`);
+    let existingTag = null;
+
+    if (getTagsRes && getTagsRes.ok) {
+      const allTags = await getTagsRes.json();
+      existingTag = allTags.find(tag => tag.name.toLowerCase() === tagName.toLowerCase());
+    }
+
+    let tagToUse;
+
+    if (existingTag) {
+      // 使用现有的tag
+      tagToUse = existingTag;
+    } else {
+      // 创建新tag
+      const createRes = await fetchWithAuth(`${API_BASE}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tagName, color: '' })
+      });
+
+      if (!createRes || !createRes.ok) {
+        const error = createRes ? await createRes.json() : { error: "Network error" };
+        if (createRes.status === 409) {
+          // Tag已存在，获取现有tag
+          const getExistingTagRes = await fetchWithAuth(`${API_BASE}/tags`);
+          if (getExistingTagRes && getExistingTagRes.ok) {
+            const allTags = await getExistingTagRes.json();
+            tagToUse = allTags.find(tag => tag.name.toLowerCase() === tagName.toLowerCase());
+          }
+        } else {
+          showNotification(t("create_tag_failed") || "Failed to create tag", "error");
+          return;
+        }
+      } else {
+        tagToUse = await createRes.json();
+      }
+    }
+
+    if (!tagToUse) {
+      showNotification(t("tag_not_found") || "Tag not found", "error");
+      return;
+    }
+
+    // 检查是否已经添加了这个tag到note
+    const currentTagIds = state.currentNote.tags ? state.currentNote.tags.map(t => t.id) : [];
+    if (currentTagIds.includes(tagToUse.id)) {
+      showNotification(t("tag_already_added") || "Tag already added to note", "warning");
+      return;
+    }
+
+    // 添加tag到note
+    const addRes = await fetchWithAuth(`${API_BASE}/notes/${noteId}/tags/${tagToUse.id}`, {
+      method: 'POST'
+    });
+
+    if (!addRes || !addRes.ok) {
+      const error = addRes ? await addRes.json() : { error: "Network error" };
+      showNotification(t("add_tag_failed") || "Failed to add tag to note", "error");
+      return;
+    }
+
+    // 更新当前note的tags
+    if (!state.currentNote.tags) state.currentNote.tags = [];
+    state.currentNote.tags.push(tagToUse);
+
+    // 清空输入框
+    input.value = '';
+
+    // 重新渲染编辑器
+    renderEditor();
+
+    showNotification(t("tag_added") || "Tag added successfully", "success");
+  } catch (e) {
+    console.error("Add tag error:", e);
+    showNotification(t("tag_add_error") || "Error adding tag", "error");
+  }
+}
+
+async function removeTag(noteId, tagId) {
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/notes/${noteId}/tags/${tagId}`, {
+      method: 'DELETE'
+    });
+
+    if (!res || !res.ok) {
+      const error = res ? await res.json() : { error: "Network error" };
+      showNotification(t("remove_tag_failed") || "Failed to remove tag", "error");
+      return;
+    }
+
+    // 从当前note的tags中移除
+    if (state.currentNote.tags) {
+      state.currentNote.tags = state.currentNote.tags.filter(tag => tag.id !== tagId);
+    }
+
+    // 重新渲染编辑器
+    renderEditor();
+
+    showNotification(t("tag_removed") || "Tag removed successfully", "success");
+  } catch (e) {
+    console.error("Remove tag error:", e);
+    showNotification(t("tag_remove_error") || "Error removing tag", "error");
+  }
+}
+
+function handleTagInput(event, noteId) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    addTag(noteId);
+  } else if (event.key === ' ' || event.key === 'Spacebar') {
+    // 按空格键添加tag
+    event.preventDefault();
+    const input = document.getElementById('tag-input');
+    if (input.value.trim()) {
+      addTag(noteId);
+    }
+  }
+}
+
+// Tag自动完成功能
+let allTags = [];
+let tagAutocompleteVisible = false;
+
+async function loadAllTags() {
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/tags`);
+    if (res && res.ok) {
+      allTags = await res.json();
+    }
+  } catch (e) {
+    console.error("Failed to load tags", e);
+  }
+}
+
+function handleTagAutocomplete(value) {
+  if (!value.trim()) {
+    hideTagAutocomplete();
+    return;
+  }
+
+  const filteredTags = allTags.filter(tag =>
+    tag.name.toLowerCase().includes(value.toLowerCase()) &&
+    (!state.currentNote.tags || !state.currentNote.tags.some(usedTag => usedTag.id === tag.id))
+  );
+
+  if (filteredTags.length === 0) {
+    hideTagAutocomplete();
+    return;
+  }
+
+  showTagAutocomplete(filteredTags, value);
+}
+
+function showTagAutocomplete(tags, currentValue) {
+  hideTagAutocomplete();
+
+  const input = document.getElementById('tag-input');
+  const rect = input.getBoundingClientRect();
+
+  const autocompleteHTML = `
+    <div id="tag-autocomplete" class="tag-autocomplete" style="
+      position: absolute;
+      top: ${rect.bottom + window.scrollY}px;
+      left: ${rect.left + window.scrollX}px;
+      width: ${rect.width}px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px var(--shadow-medium);
+      z-index: 1000;
+      max-height: 200px;
+      overflow-y: auto;
+    ">
+      ${tags.map((tag, index) => `
+        <div class="tag-autocomplete-item"
+             style="
+               padding: 8px 12px;
+               cursor: pointer;
+               font-size: 13px;
+               ${index === 0 ? 'background: var(--bg-secondary);' : ''}
+             "
+             onmouseover="this.style.background='var(--bg-secondary)'"
+             onmouseout="this.style.background='transparent'"
+             onclick="selectAutocompleteTag('${tag.id}', '${tag.name}')"
+        >
+          ${tag.name}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', autocompleteHTML);
+  tagAutocompleteVisible = true;
+}
+
+function hideTagAutocomplete() {
+  const autocomplete = document.getElementById('tag-autocomplete');
+  if (autocomplete) {
+    autocomplete.remove();
+  }
+  tagAutocompleteVisible = false;
+}
+
+function selectAutocompleteTag(tagId, tagName) {
+  const input = document.getElementById('tag-input');
+  input.value = tagName;
+  hideTagAutocomplete();
+
+  // 延迟一点执行添加，确保输入框已更新
+  setTimeout(() => {
+    if (state.currentNote) {
+      addTag(state.currentNote.id);
+    }
+  }, 100);
+}
+
+// Switch to source mode (within traditional editor)
+function switchToSourceMode() {
+  state.markdownViewMode = 'source';
+
+  // Ensure content is synchronized before switching
+  syncPreviewWithSource();
+
+  renderEditor();
+}
+
+// Switch to preview mode (within traditional editor)
+function switchToPreviewMode() {
+  state.markdownViewMode = 'preview';
+
+  // Ensure content is synchronized before switching
+  syncPreviewWithSource();
+
+  renderEditor();
+}
+
+// Milkdown editor functions removed for Typora-like experience
 
 // Create Note
 async function createNote() {
@@ -635,9 +992,28 @@ async function createNote() {
   }
 }
 
-// Update Note (Debounced)
-let debounceTimer;
-let saveStatusTimer;
+// 更新字数统计函数
+function updateWordCount() {
+  if (!state.currentNote) return;
+
+  const content = state.currentNote.content || '';
+  const wordCount = content.trim().length > 0 ? content.trim().split(/\s+/).length : 0;
+  const charCount = content.length;
+
+  // 可以在这里添加字数统计显示逻辑
+  // 例如更新状态栏或某个UI元素
+  console.log(`Words: ${wordCount}, Characters: ${charCount}`);
+}
+
+// 更新Markdown预览函数
+function updateMarkdownPreview() {
+  const previewContent = document.getElementById('markdown-preview-content');
+  if (!previewContent || !state.currentNote) return;
+
+  const content = state.currentNote.content || '';
+  const rendered = marked.parse(content);
+  previewContent.innerHTML = rendered;
+}
 
 function updateNoteDebounced(id, field, value) {
   // Update local state immediately for UI responsiveness
@@ -1561,6 +1937,21 @@ function toggleMarkdownMode() {
   }
 }
 
+// Sync content from source to preview in real-time
+function syncPreviewWithSource() {
+  if (state.markdownViewMode === "preview" && state.currentNote) {
+    // Ensure both textarea and state have the same content
+    const textarea = document.getElementById('markdown-editor');
+    if (textarea) {
+      // Sync textarea value to state if they differ
+      if (textarea.value !== state.currentNote.content) {
+        state.currentNote.content = textarea.value;
+      }
+      updateMarkdownPreview();
+    }
+  }
+}
+
 async function updateMarkdownPreview() {
   if (state.markdownViewMode !== "preview") return;
 
@@ -1568,6 +1959,7 @@ async function updateMarkdownPreview() {
   if (!previewEl) return;
 
   const content = state.currentNote?.content || "";
+  const note = state.currentNote;
 
   try {
     // Use marked.js to render markdown on client-side
@@ -1579,7 +1971,39 @@ async function updateMarkdownPreview() {
     }
 
     const html = marked.parse(content);
-    previewEl.innerHTML = html;
+
+    // Add tags display at the top of preview if tags exist
+    let tagsHtml = '';
+    if (note.tags && note.tags.length > 0) {
+      tagsHtml = `
+        <div class="preview-tags" style="
+          margin-bottom: 15px;
+          padding: 10px;
+          background: var(--bg-secondary);
+          border-radius: 6px;
+          border: 1px solid var(--border-light);
+        ">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <i data-feather="tag" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+            <span style="font-size: 13px; color: var(--text-secondary);">${t("tags") || "Tags"}</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+            ${note.tags.map(tag => `
+              <span class="tag" style="
+                background: ${tag.color || 'var(--primary-color)'};
+                color: white;
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+              ">${escapeHtml(tag.name)}</span>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    previewEl.innerHTML = tagsHtml + html;
 
     // Refresh Feather icons in the rendered HTML
     feather.replace();
@@ -2494,7 +2918,9 @@ const markdownCompletions = [
 function handleMarkdownInput(noteId, textarea) {
   // Update note content
   updateNoteDebounced(noteId, "content", textarea.value);
-  updateMarkdownPreview();
+
+  // Sync preview with source in real-time
+  syncPreviewWithSource();
 
   // Check for auto-completion triggers
   const cursorPos = textarea.selectionStart;
@@ -2701,6 +3127,8 @@ function getCursorPosition(textarea) {
 
 // ====== Long Image Share Feature ======
 
+// ====== Image Export with Preview ======
+
 async function shareAsImage() {
   if (!state.currentNote) return;
 
@@ -2712,82 +3140,331 @@ async function shareAsImage() {
   );
 
   try {
-    // Load smartisan.css content
-    let cssContent = "";
-    try {
-      const cssResponse = await fetch("/static/css/smartisan.css");
-      cssContent = await cssResponse.text();
-    } catch (e) {
-      console.error("Failed to load smartisan.css:", e);
+    // Generate the preview HTML first
+    const previewHTML = await generateImagePreviewHTML(note);
+
+    // Hide loading modal
+    closeLoadingModal(loadingModal);
+
+    // Show preview modal
+    showImagePreviewModal(previewHTML, note);
+
+  } catch (error) {
+    console.error("Failed to generate image preview:", error);
+    closeLoadingModal(loadingModal);
+    alert(t("generate_image_failed") || "Failed to generate image preview");
+  }
+}
+
+// Generate HTML for image preview
+async function generateImagePreviewHTML(note) {
+  // Load export theme CSS content
+  let cssContent = "";
+  try {
+    const cssResponse = await fetch("/static/css/export-theme.css");
+    cssContent = await cssResponse.text();
+  } catch (e) {
+    console.error("Failed to load export-theme.css:", e);
+    // Fallback to basic styling
+    cssContent = `
+      .export-container {
+        background: var(--bg-primary);
+        padding: 40px;
+        border-radius: 16px;
+        font-family: Georgia, "Songti SC", serif;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .export-content {
+        font-size: 18px;
+        line-height: 1.8;
+        color: var(--text-primary);
+      }
+      .export-content h1 {
+        font-size: 32px;
+        margin-bottom: 24px;
+        border-bottom: 2px solid var(--border-light);
+        padding-bottom: 16px;
+      }
+      .export-content p {
+        margin: 20px 0;
+      }
+    `;
+  }
+
+  // Create HTML structure
+  let html = `
+    <div class="export-container" style="position: relative;">
+      <style>${cssContent}</style>
+  `;
+
+  // Apply note color if available
+  if (note.color) {
+    html = html.replace('class="export-container"', `class="export-container" data-color="${note.color}"`);
+  }
+
+  // Create export header
+  html += `
+    <div class="export-header">
+      <div>
+        <h1 class="export-title">${escapeHtml(note.title || "Untitled Note")}</h1>
+      </div>
+      <div class="export-meta">
+        <div class="export-date">
+          <i data-feather="calendar"></i>
+          ${new Date(note.updated_at).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Create content wrapper
+  html += '<div class="export-content">';
+
+  // Render note content with enhanced markdown
+  const contentHTML = await renderNoteForImage(note);
+  html += contentHTML;
+
+  html += '</div>';
+
+  // Create export footer
+  html += `
+    <div class="export-footer">
+      <div class="export-brand">
+        <img src="/static/img/logo.png" alt="Smarticky" />
+        <span>Smarticky Notes</span>
+      </div>
+      <div class="export-info">
+        <span>${new Date().toLocaleString()}</span>
+      </div>
+    </div>
+  `;
+
+  html += '</div>';
+
+  return html;
+}
+
+// Show image preview modal
+function showImagePreviewModal(previewHTML, note) {
+  // Create modal HTML
+  const modalHTML = `
+    <div class="modal" id="image-preview-modal">
+      <div class="modal-content" style="max-width: 90vw; max-height: 90vh;">
+        <div class="modal-header">
+          <h2>${t("image_preview") || "Image Preview"}</h2>
+          <button class="modal-close" onclick="closeImagePreviewModal()">×</button>
+        </div>
+        <div class="modal-body" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+          <div id="image-preview-container" style="text-align: center;">
+            ${previewHTML}
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: center; gap: 10px; padding: 20px;">
+          <button class="btn btn-primary" onclick="downloadImageFromPreview()">
+            <i data-feather="download"></i> ${t("download_image") || "Download Image"}
+          </button>
+          <button class="btn btn-secondary" onclick="closeImagePreviewModal()">
+            <i data-feather="x"></i> ${t("cancel") || "Cancel"}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Remove existing modal if any
+  const existingModal = document.getElementById('image-preview-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Show modal
+  const modal = document.getElementById('image-preview-modal');
+  modal.style.display = 'flex';
+
+  // Store note data for download
+  modal.dataset.noteId = note.id;
+  modal.dataset.noteTitle = note.title || "Untitled";
+  modal.dataset.noteContent = note.content || "";
+  modal.dataset.noteUpdatedAt = note.updated_at;
+  modal.dataset.noteColor = note.color || "";
+
+  // Refresh feather icons
+  if (typeof feather !== 'undefined') {
+    feather.replace();
+  }
+
+  // Add click outside to close
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+      closeImagePreviewModal();
+    }
+  });
+}
+
+// Close image preview modal
+function closeImagePreviewModal() {
+  const modal = document.getElementById('image-preview-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+// Handle click on preview mode to switch to edit mode
+function handlePreviewClick(event) {
+  // Only switch to source mode if not clicking on links or other interactive elements
+  const target = event.target;
+  if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a, button')) {
+    return; // Don't switch if clicking on links/buttons
+  }
+
+  // Switch to source mode for editing
+  state.markdownViewMode = 'source';
+  renderEditor();
+
+  // Focus the textarea after switching
+  setTimeout(() => {
+    const textarea = document.getElementById('markdown-editor');
+    if (textarea) {
+      textarea.focus();
+    }
+  }, 100);
+}
+
+// Download image from preview
+async function downloadImageFromPreview() {
+  const modal = document.getElementById('image-preview-modal');
+  if (!modal) return;
+
+  const note = {
+    id: modal.dataset.noteId,
+    title: modal.dataset.noteTitle,
+    content: modal.dataset.noteContent,
+    updated_at: modal.dataset.noteUpdatedAt,
+    color: modal.dataset.noteColor
+  };
+
+  // Show loading
+  const loadingModal = showLoadingModal(
+    t("generating_image") || "Generating image...",
+  );
+
+  try {
+    // Create container for final rendering
+    const container = document.createElement("div");
+    container.className = "export-container loading";
+    container.style.cssText = `
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      width: 900px;
+      font-family: Georgia, "Songti SC", "宋体", serif;
+      box-sizing: border-box;
+      overflow: visible;
+    `;
+
+    // Apply note color if available
+    if (note.color) {
+      container.setAttribute('data-color', note.color);
     }
 
-    // Create a temporary container for rendering with smartisan theme
-    const container = document.createElement("div");
-    container.style.cssText = `
-            position: absolute;
-            left: -9999px;
-            top: 0;
-            width: 900px;
-            background: url('/static/img/cloud_note_bg.jpg');
-            background-size: cover;
-            background-position: center;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow: visible;
-        `;
+    // Load CSS content
+    let cssContent = "";
+    try {
+      const cssResponse = await fetch("/static/css/export-theme.css");
+      cssContent = await cssResponse.text();
+    } catch (e) {
+      console.error("Failed to load export-theme.css:", e);
+      cssContent = `
+        .export-container {
+          background: var(--bg-primary);
+          padding: 40px;
+          border-radius: 16px;
+          font-family: Georgia, "Songti SC", serif;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        .export-content {
+          font-size: 18px;
+          line-height: 1.8;
+          color: var(--text-primary);
+        }
+        .export-content h1 {
+          font-size: 32px;
+          margin-bottom: 24px;
+          border-bottom: 2px solid var(--border-light);
+          padding-bottom: 16px;
+        }
+        .export-content p {
+          margin: 20px 0;
+        }
+      `;
+    }
 
-    // Create style element with github-markdown.css
+    // Create style element
     const styleEl = document.createElement("style");
     styleEl.textContent = cssContent;
     container.appendChild(styleEl);
 
-    // Create content wrapper with markdown-body class
+    // Create the same HTML structure as preview
+    const header = document.createElement("div");
+    header.className = "export-header";
+    header.innerHTML = `
+      <div>
+        <h1 class="export-title">${escapeHtml(note.title || "Untitled Note")}</h1>
+      </div>
+      <div class="export-meta">
+        <div class="export-date">
+          <i data-feather="calendar"></i>
+          ${new Date(note.updated_at).toLocaleDateString()}
+        </div>
+      </div>
+    `;
+    container.appendChild(header);
+
     const contentWrapper = document.createElement("div");
-    contentWrapper.className = "markdown-body";
-    contentWrapper.style.cssText = `
-            padding: 100px 62px 150px 62px;
-            background: #fffcf6;
-            box-shadow: 0 3px 8px rgb(69 18 10 / 40%);
-            border-top: 1px solid #fffcf6;
-            border-radius: 4px;
-            overflow: visible;
-        `;
-
-    // Override background if note has custom color
-    if (note.color) {
-      const colorMap = {
-        yellow: "#fff9e6",
-        green: "#e8f8e8",
-        blue: "#e6f3ff",
-        pink: "#ffe6f0",
-        purple: "#f3e6ff",
-      };
-      contentWrapper.style.background = colorMap[note.color] || "#fffcf6";
-    }
-
-    // Render note content
+    contentWrapper.className = "export-content";
     const contentHTML = await renderNoteForImage(note);
     contentWrapper.innerHTML = contentHTML;
-
     container.appendChild(contentWrapper);
+
+    const footer = document.createElement("div");
+    footer.className = "export-footer";
+    footer.innerHTML = `
+      <div class="export-brand">
+        <img src="/static/img/logo.png" alt="Smarticky" />
+        <span>Smarticky Notes</span>
+      </div>
+      <div class="export-info">
+        <span>${new Date().toLocaleString()}</span>
+      </div>
+    `;
+    container.appendChild(footer);
+
     document.body.appendChild(container);
 
-    // Use snapdom to capture - it returns an object with export methods
+    // Use snapdom to capture
     const result = await snapdom(container, {
       backgroundColor: container.style.background,
-      scale: 2, // Higher quality
+      scale: 2,
     });
 
     // Remove temporary container
     document.body.removeChild(container);
 
-    // Download the image using snapdom's download method
+    // Download the image
     await result.download({
       format: "png",
       filename: `${note.title || "Untitled"}_${new Date().getTime()}`,
     });
 
     closeLoadingModal(loadingModal);
+    closeImagePreviewModal();
+
+    showNotification(t("image_downloaded") || "Image downloaded successfully", "success");
   } catch (error) {
     console.error("Failed to generate image:", error);
     closeLoadingModal(loadingModal);

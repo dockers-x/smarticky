@@ -18,6 +18,8 @@ type Tx struct {
 	BackupConfig *BackupConfigClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
+	// Tag is the client for interacting with the Tag builders.
+	Tag *TagClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -154,6 +156,7 @@ func (tx *Tx) init() {
 	tx.Attachment = NewAttachmentClient(tx.config)
 	tx.BackupConfig = NewBackupConfigClient(tx.config)
 	tx.Note = NewNoteClient(tx.config)
+	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 
