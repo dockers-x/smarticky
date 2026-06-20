@@ -94,6 +94,12 @@ func main() {
 	fs := storage.NewFileSystem("")
 	h := handler.NewHandler(client, fs)
 
+	if created, err := h.InitializeAdminFromEnv(context.Background(), os.Getenv); err != nil {
+		zap.L().Fatal("Failed to initialize admin from environment", zap.Error(err))
+	} else if created {
+		zap.L().Info("Initialized first admin from environment")
+	}
+
 	// Start automatic backup scheduler
 	h.StartAutoBackup()
 
@@ -124,6 +130,7 @@ func main() {
 	protected.POST("/notes", h.CreateNote)
 	protected.GET("/notes/:id", h.GetNote)
 	protected.PUT("/notes/:id", h.UpdateNote)
+	protected.DELETE("/notes/trash", h.EmptyTrash)
 	protected.DELETE("/notes/:id", h.DeleteNote)
 	protected.POST("/notes/:id/verify-password", h.VerifyNotePassword)
 

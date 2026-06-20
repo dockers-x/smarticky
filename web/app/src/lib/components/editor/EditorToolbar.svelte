@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { EditorView } from "@codemirror/view";
   import {
-    insertImage,
     insertTask,
     prefixLine,
     wrapSelection,
@@ -35,11 +34,6 @@
       label: "☐",
       title: t("task", $preferencesStore.language),
       run: () => view && insertTask(view),
-    },
-    {
-      label: t("imageLabel", $preferencesStore.language),
-      title: t("insertImage", $preferencesStore.language),
-      run: () => view && insertImage(view),
     },
   ];
 </script>

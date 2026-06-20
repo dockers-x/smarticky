@@ -2,6 +2,10 @@
   import type { ImportResult } from "../../api/imports";
   import type { User } from "../../api/types";
   import ImportCenter from "../import/ImportCenter.svelte";
+  import BackupPanel from "./BackupPanel.svelte";
+  import FontPanel from "./FontPanel.svelte";
+  import ProfilePanel from "./ProfilePanel.svelte";
+  import UserManagementPanel from "./UserManagementPanel.svelte";
   import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { importsStore } from "../../stores/imports";
@@ -11,7 +15,7 @@
   export let user: User | null = null;
   export let onClose: () => void = () => {};
 
-  type ToolsView = "menu" | "import";
+  type ToolsView = "menu" | "import" | "backup" | "fonts" | "profile" | "users";
 
   interface ToolRow {
     labelKey: MessageKey;
@@ -26,6 +30,10 @@
   function openImport(): void {
     importsStore.reset();
     view = "import";
+  }
+
+  function openView(nextView: ToolsView): void {
+    view = nextView;
   }
 
   async function handleImported(result: ImportResult): Promise<void> {
@@ -47,23 +55,24 @@
     },
     {
       labelKey: "backup",
-      action: () => notify(t("backupComing", $preferencesStore.language), "info"),
+      action: () => openView("backup"),
+      keepOpen: true,
     },
     {
       labelKey: "fontManagement",
-      action: () =>
-        notify(t("fontManagementComing", $preferencesStore.language), "info"),
+      action: () => openView("fonts"),
+      keepOpen: true,
     },
     {
       labelKey: "personalProfile",
-      action: () =>
-        notify(t("personalProfileComing", $preferencesStore.language), "info"),
+      action: () => openView("profile"),
+      keepOpen: true,
     },
     {
       labelKey: "userManagement",
       adminOnly: true,
-      action: () =>
-        notify(t("userManagementComing", $preferencesStore.language), "info"),
+      action: () => openView("users"),
+      keepOpen: true,
     },
     {
       labelKey: "logout",
@@ -81,15 +90,38 @@
   ];
 
   $: visibleRows = rows.filter((row) => !row.adminOnly || user?.role === "admin");
+  $: panelTitle =
+    view === "menu"
+      ? t("settings", $preferencesStore.language)
+      : view === "import"
+        ? t("import", $preferencesStore.language)
+        : view === "backup"
+          ? t("backupTitle", $preferencesStore.language)
+          : view === "fonts"
+            ? t("fontManagement", $preferencesStore.language)
+            : view === "profile"
+              ? t("personalProfile", $preferencesStore.language)
+              : t("userManagement", $preferencesStore.language);
 </script>
 
-<section class="tools-panel" class:import-view={view === "import"} aria-label={t("settings", $preferencesStore.language)}>
+<section class="tools-panel" class:expanded-view={view !== "menu"} aria-label={t("settings", $preferencesStore.language)}>
   <div class="tools-panel__header">
-    <h2>{view === "import" ? t("import", $preferencesStore.language) : t("settings", $preferencesStore.language)}</h2>
+    {#if view !== "menu"}
+      <button class="tools-panel__back" type="button" aria-label={t("back", $preferencesStore.language)} on:click={() => (view = "menu")}>‹</button>
+    {/if}
+    <h2>{panelTitle}</h2>
     <button type="button" aria-label={t("closeSettings", $preferencesStore.language)} on:click={onClose}>×</button>
   </div>
   {#if view === "import"}
     <ImportCenter onBack={() => (view = "menu")} onImported={handleImported} />
+  {:else if view === "backup"}
+    <BackupPanel />
+  {:else if view === "fonts"}
+    <FontPanel {user} />
+  {:else if view === "profile"}
+    <ProfilePanel {user} />
+  {:else if view === "users"}
+    <UserManagementPanel {user} />
   {:else}
     <div class="tools-list">
       {#each visibleRows as row}

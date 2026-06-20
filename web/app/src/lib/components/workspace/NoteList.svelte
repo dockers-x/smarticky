@@ -2,6 +2,7 @@
   import ToolsPanel from "../settings/ToolsPanel.svelte";
   import type { Note } from "../../api/types";
   import { authStore } from "../../stores/auth";
+  import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
   import EmptyState from "./EmptyState.svelte";
@@ -13,6 +14,12 @@
   }
 
   let settingsOpen = false;
+
+  $: filters = [
+    { id: "all" as const, label: t("allNotes", $preferencesStore.language) },
+    { id: "starred" as const, label: t("starred", $preferencesStore.language) },
+    { id: "trash" as const, label: t("trash", $preferencesStore.language) },
+  ];
 
   function groupLabel(date: Date, language: "zh" | "en"): string {
     const today = new Date();
@@ -47,6 +54,23 @@
     }
     return groups;
   }, []);
+
+  async function emptyTrash(): Promise<void> {
+    const confirmed = await confirmDialog({
+      title: t("emptyTrash", $preferencesStore.language),
+      message: t("emptyTrashMessage", $preferencesStore.language),
+      confirmLabel: t("emptyTrash", $preferencesStore.language),
+      cancelLabel: t("cancel", $preferencesStore.language),
+    });
+    if (!confirmed) return;
+
+    try {
+      await notesStore.emptyTrash();
+      notify(t("emptiedTrash", $preferencesStore.language), "success");
+    } catch {
+      notify(t("emptyTrashFailed", $preferencesStore.language), "error");
+    }
+  }
 </script>
 
 <section
@@ -62,14 +86,34 @@
       value={$notesStore.search}
       on:input={(event) => notesStore.setSearch(event.currentTarget.value)}
     />
-    <button
-      class="note-list-mobile-tool"
-      type="button"
-      aria-expanded={settingsOpen}
-      on:click={() => (settingsOpen = !settingsOpen)}
-    >
-      {t("settings", $preferencesStore.language)}
-    </button>
+    <div class="note-list-toolbar__actions">
+      {#if $notesStore.filter === "trash" && $notesStore.notes.length > 0}
+        <button class="note-list-danger-tool" type="button" on:click={emptyTrash}>
+          {t("emptyTrash", $preferencesStore.language)}
+        </button>
+      {/if}
+      <button
+        class="note-list-mobile-tool"
+        type="button"
+        aria-expanded={settingsOpen}
+        on:click={() => (settingsOpen = !settingsOpen)}
+      >
+        {t("settings", $preferencesStore.language)}
+      </button>
+    </div>
+  </div>
+
+  <div class="note-list-mobile-filters" aria-label={t("noteList", $preferencesStore.language)}>
+    {#each filters as filter}
+      <button
+        class:active={$notesStore.filter === filter.id}
+        type="button"
+        aria-pressed={$notesStore.filter === filter.id}
+        on:click={() => notesStore.setFilter(filter.id)}
+      >
+        {filter.label}
+      </button>
+    {/each}
   </div>
 
   {#if settingsOpen}
@@ -81,7 +125,7 @@
   {:else if $notesStore.loading}
     <div class="note-list-message">{t("loadingNotes", $preferencesStore.language)}</div>
   {:else if $notesStore.notes.length === 0}
-    <EmptyState />
+    <EmptyState filter={$notesStore.filter} />
   {:else}
     <div class="note-card-list">
       {#each groupedNotes as group (group.label)}
@@ -95,12 +139,14 @@
     </div>
   {/if}
 
-  <button
-    class="new-note-fab"
-    type="button"
-    aria-label={t("newNote", $preferencesStore.language)}
-    on:click={() => notesStore.create()}
-  >
-    +
-  </button>
+  {#if $notesStore.filter !== "trash"}
+    <button
+      class="new-note-fab"
+      type="button"
+      aria-label={t("newNote", $preferencesStore.language)}
+      on:click={() => notesStore.create()}
+    >
+      +
+    </button>
+  {/if}
 </section>

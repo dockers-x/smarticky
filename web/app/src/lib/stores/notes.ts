@@ -121,6 +121,37 @@ function createNotesStore() {
         ),
       }));
     },
+    async deletePermanent(noteId: string) {
+      await apiFetch<void>(`/notes/${noteId}`, { method: "DELETE" });
+      update((state) => ({
+        ...state,
+        selected: state.selected?.id === noteId ? null : state.selected,
+        notes: state.notes.filter((note) => note.id !== noteId),
+      }));
+    },
+    async emptyTrash() {
+      const state = get({ subscribe });
+      const trashNoteIds = new Set(
+        state.notes.filter((note) => note.is_deleted).map((note) => note.id),
+      );
+
+      await apiFetch<{ deleted_count: number }>("/notes/trash", {
+        method: "DELETE",
+      });
+
+      update((current) => ({
+        ...current,
+        selected:
+          current.selected &&
+          (current.selected.is_deleted || trashNoteIds.has(current.selected.id))
+            ? null
+            : current.selected,
+        notes:
+          current.filter === "trash"
+            ? []
+            : current.notes.filter((note) => !note.is_deleted),
+      }));
+    },
     replaceSelected(note: Note) {
       update((state) => ({
         ...state,

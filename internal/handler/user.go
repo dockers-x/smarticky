@@ -124,10 +124,10 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	}
 
 	var req struct {
-		Email    string `json:"email"`
-		Nickname string `json:"nickname"`
-		Avatar   string `json:"avatar"`
-		Role     string `json:"role"`
+		Email    *string `json:"email"`
+		Nickname *string `json:"nickname"`
+		Avatar   *string `json:"avatar"`
+		Role     *string `json:"role"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -143,22 +143,23 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	// Update user
 	updateQuery := u.Update()
 
-	if req.Email != "" {
-		updateQuery = updateQuery.SetEmail(req.Email)
+	if req.Email != nil {
+		updateQuery = updateQuery.SetEmail(strings.TrimSpace(*req.Email))
 	}
 
-	if req.Nickname != "" {
-		updateQuery = updateQuery.SetNickname(req.Nickname)
+	if req.Nickname != nil {
+		updateQuery = updateQuery.SetNickname(strings.TrimSpace(*req.Nickname))
 	}
 
-	if req.Avatar != "" {
-		updateQuery = updateQuery.SetAvatar(req.Avatar)
+	if req.Avatar != nil {
+		updateQuery = updateQuery.SetAvatar(strings.TrimSpace(*req.Avatar))
 	}
 
 	// Only admin can change role
-	if req.Role != "" && currentRole == "admin" {
-		if req.Role == "admin" || req.Role == "user" {
-			updateQuery = updateQuery.SetRole(user.Role(req.Role))
+	if req.Role != nil && currentRole == "admin" {
+		role := strings.TrimSpace(*req.Role)
+		if role == "admin" || role == "user" {
+			updateQuery = updateQuery.SetRole(user.Role(role))
 		}
 	}
 

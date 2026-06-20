@@ -18,6 +18,14 @@ function createAuthStore() {
     error: "",
   });
 
+  function persistUser(user: User | null): void {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }
+
   return {
     subscribe,
     async hydrate() {
@@ -39,10 +47,11 @@ function createAuthStore() {
 
       try {
         const user = await apiFetch<User>("/auth/me");
+        persistUser(user);
         set({ loading: false, setupNeeded: false, user, error: "" });
       } catch {
         localStorage.removeItem("jwt_token");
-        localStorage.removeItem("user");
+        persistUser(null);
         set({
           loading: false,
           setupNeeded: false,
@@ -52,9 +61,13 @@ function createAuthStore() {
         window.location.href = "/login";
       }
     },
+    setUser(user: User) {
+      persistUser(user);
+      update((state) => ({ ...state, user }));
+    },
     logout() {
       localStorage.removeItem("jwt_token");
-      localStorage.removeItem("user");
+      persistUser(null);
       set({ loading: false, setupNeeded: false, user: null, error: "" });
       window.location.href = "/login";
     },

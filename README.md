@@ -100,7 +100,18 @@ go build -o smarticky ./cmd/server
 ```bash
 # 服务端口 / Server Port
 PORT=8080
+
+# 数据目录 / Data directory
+SMARTICKY_DATA_DIR=./data
+
+# 首次空库启动时创建管理员 / Create first admin only when the user table is empty
+SMARTICKY_ADMIN_USERNAME=admin
+SMARTICKY_ADMIN_PASSWORD=change-me-now
+SMARTICKY_ADMIN_EMAIL=admin@example.com
+SMARTICKY_ADMIN_NICKNAME=Owner
 ```
+
+`SMARTICKY_ADMIN_*` 只在数据库没有任何用户时生效；已有用户后不会再次创建或覆盖管理员账号。
 
 **注意**: WebDAV 和 S3 备份配置现在存储在数据库中，可通过 UI 或 API 管理，不再使用环境变量。
 

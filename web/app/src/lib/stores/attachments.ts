@@ -7,12 +7,12 @@ let loadSequence = 0;
 
 export async function loadAttachments(noteId: UUID): Promise<void> {
   const sequence = ++loadSequence;
-  const nextAttachments = await apiFetch<Attachment[]>(
+  const nextAttachments = await apiFetch<Attachment[] | null>(
     `/notes/${noteId}/attachments`,
   );
 
   if (sequence === loadSequence) {
-    attachments.set(nextAttachments);
+    attachments.set(nextAttachments ?? []);
   }
 }
 

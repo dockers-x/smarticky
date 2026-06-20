@@ -118,3 +118,96 @@ func TestAddTagToNoteRejectsTagOwnedByAnotherUser(t *testing.T) {
 		t.Fatalf("expected no tags attached, got %d", len(tags))
 	}
 }
+
+func TestEmptyTrashDeletesOnlyCurrentUsersDeletedNotes(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestEmptyTrashDeletesOnlyCurrentUsersDeletedNotes?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	other := client.User.Create().
+		SetUsername("other").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	client.Note.Create().
+		SetTitle("owner active").
+		SetUserID(owner.ID).
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("owner trash").
+		SetIsDeleted(true).
+		SetUserID(owner.ID).
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("other trash").
+		SetIsDeleted(true).
+		SetUserID(other.ID).
+		SaveX(ctx)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, "/api/notes/trash", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", owner.ID)
+
+	h := NewHandler(client, nil)
+	if err := h.EmptyTrash(c); err != nil {
+		t.Fatalf("EmptyTrash returned error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var got struct {
+		DeletedCount int `json:"deleted_count"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.DeletedCount != 1 {
+		t.Fatalf("expected one deleted note, got %d", got.DeletedCount)
+	}
+
+	remaining := client.Note.Query().CountX(ctx)
+	if remaining != 2 {
+		t.Fatalf("expected two remaining notes, got %d", remaining)
+	}
+}
+
+func TestListAttachmentsReturnsEmptyArrayWhenNoAttachments(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListAttachmentsReturnsEmptyArrayWhenNoAttachments?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	n := client.Note.Create().
+		SetTitle("note").
+		SetUserID(owner.ID).
+		SaveX(ctx)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/notes/"+n.ID.String()+"/attachments", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", owner.ID)
+	c.SetParamNames("id")
+	c.SetParamValues(n.ID.String())
+
+	h := NewHandler(client, nil)
+	if err := h.ListAttachments(c); err != nil {
+		t.Fatalf("ListAttachments returned error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if rec.Body.String() != "[]\n" {
+		t.Fatalf("expected empty JSON array, got %q", rec.Body.String())
+	}
+}

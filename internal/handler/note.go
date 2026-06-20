@@ -368,6 +368,23 @@ func (h *Handler) DeleteNote(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (h *Handler) EmptyTrash(c echo.Context) error {
+	userID := c.Get("user_id").(int)
+
+	count, err := h.client.Note.Delete().
+		Where(
+			note.IsDeleted(true),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		Exec(context.Background())
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]int{"deleted_count": count})
+}
+
 // VerifyNotePassword verifies if the provided password matches the note's password
 func (h *Handler) VerifyNotePassword(c echo.Context) error {
 	idStr := c.Param("id")

@@ -28,17 +28,17 @@ var allowedFontFormats = map[string]bool{
 
 // FontResponse represents a font with uploader info
 type FontResponse struct {
-	ID           uuid.UUID `json:"id"`
-	Name         string    `json:"name"`
-	DisplayName  string    `json:"display_name"`
-	Format       string    `json:"format"`
-	FileSize     int64     `json:"file_size"`
-	PreviewText  string    `json:"preview_text"`
-	IsShared     bool      `json:"is_shared"`
-	UploadedBy   string    `json:"uploaded_by"`
-	UploaderID   int       `json:"uploader_id"`
-	DownloadURL  string    `json:"download_url"`
-	CreatedAt    string    `json:"created_at"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	DisplayName string    `json:"display_name"`
+	Format      string    `json:"format"`
+	FileSize    int64     `json:"file_size"`
+	PreviewText string    `json:"preview_text"`
+	IsShared    bool      `json:"is_shared"`
+	UploadedBy  string    `json:"uploaded_by"`
+	UploaderID  int       `json:"uploader_id"`
+	DownloadURL string    `json:"download_url"`
+	CreatedAt   string    `json:"created_at"`
 }
 
 // UploadFont uploads a font file
@@ -248,7 +248,7 @@ func (h *Handler) DownloadFont(c echo.Context) error {
 func (h *Handler) DeleteFont(c echo.Context) error {
 	fontID := c.Param("id")
 	userID := c.Get("user_id").(int)
-	userRole := c.Get("user_role").(string)
+	userRole := c.Get("role").(string)
 
 	// Parse font UUID
 	fontUUID, err := uuid.Parse(fontID)

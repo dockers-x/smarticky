@@ -128,7 +128,7 @@ func (h *Handler) ListAttachments(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch attachments"})
 	}
 
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0, len(attachments))
 	for _, att := range attachments {
 		result = append(result, map[string]interface{}{
 			"id":         att.ID,
