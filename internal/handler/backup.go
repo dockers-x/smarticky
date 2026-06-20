@@ -10,7 +10,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"smarticky/ent"
@@ -46,6 +48,23 @@ func (h *Handler) checkpointWAL() error {
 	_, err = db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	if err != nil {
 		return fmt.Errorf("failed to checkpoint WAL: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) removeDatabaseSidecars() error {
+	dbPath := h.getDBPath()
+	var failures []string
+
+	for _, suffix := range []string{"-wal", "-shm", "-journal"} {
+		path := dbPath + suffix
+		if err := h.fs.Remove(path); err != nil && !os.IsNotExist(err) {
+			failures = append(failures, fmt.Sprintf("%s: %v", path, err))
+		}
+	}
+
+	if len(failures) > 0 {
+		return fmt.Errorf("failed to remove database sidecar files: %s", strings.Join(failures, "; "))
 	}
 	return nil
 }
@@ -156,7 +175,10 @@ func (h *Handler) extractBackupArchive(data []byte) error {
 			return fmt.Errorf("failed to read tar header: %w", err)
 		}
 
-		target := filepath.Join(dataDir, header.Name)
+		target, err := safeArchiveTarget(dataDir, header.Name)
+		if err != nil {
+			return err
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -178,6 +200,20 @@ func (h *Handler) extractBackupArchive(data []byte) error {
 	}
 
 	return nil
+}
+
+func safeArchiveTarget(dataDir, name string) (string, error) {
+	cleanName := path.Clean(strings.ReplaceAll(name, "\\", "/"))
+	if cleanName == "." || cleanName == ".." || path.IsAbs(cleanName) || strings.HasPrefix(cleanName, "../") {
+		return "", fmt.Errorf("invalid archive path %q", name)
+	}
+
+	return filepath.Join(dataDir, filepath.FromSlash(cleanName)), nil
+}
+
+func isBackupFilename(name string) bool {
+	return strings.HasPrefix(name, "smarticky_backup_") ||
+		strings.HasPrefix(name, "smarticky_auto_backup_")
 }
 
 // GetBackupConfig retrieves or creates the backup configuration
@@ -448,6 +484,12 @@ func (h *Handler) RestoreWebDAV(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to download: %v", err)})
 	}
 
+	if err := h.checkpointWAL(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": fmt.Sprintf("failed to prepare database for pre-restore backup: %v", err),
+		})
+	}
+
 	// Create backup of current data before restore
 	backupArchive, err := h.createBackupArchive()
 	if err != nil {
@@ -469,12 +511,15 @@ func (h *Handler) RestoreWebDAV(c echo.Context) error {
 	if err := h.extractBackupArchive(data); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to extract backup: %v", err)})
 	}
+	if err := h.removeDatabaseSidecars(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 
 	// IMPORTANT: Database connections need to be reestablished
 	// The application should be restarted for the restored data to take full effect
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"message": "restore successful",
-		"warning": "Please restart the application for changes to take full effect",
+		"message":          "restore successful",
+		"warning":          "Please restart the application for changes to take full effect",
 		"restart_required": true,
 	})
 }
@@ -525,6 +570,12 @@ func (h *Handler) RestoreS3(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to read data"})
 	}
 
+	if err := h.checkpointWAL(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": fmt.Sprintf("failed to prepare database for pre-restore backup: %v", err),
+		})
+	}
+
 	// Create backup of current data before restore
 	backupArchive, err := h.createBackupArchive()
 	if err != nil {
@@ -545,6 +596,9 @@ func (h *Handler) RestoreS3(c echo.Context) error {
 	// Extract archive to data directory
 	if err := h.extractBackupArchive(data); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to extract backup: %v", err)})
+	}
+	if err := h.removeDatabaseSidecars(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	// IMPORTANT: Database connections need to be reestablished
@@ -713,12 +767,11 @@ func (h *Handler) ListWebDAVBackups(c echo.Context) error {
 	}
 
 	// Filter and format backup files
-	var backups []BackupFileInfo
+	backups := make([]BackupFileInfo, 0)
 	for _, file := range files {
 		// Only include files that match backup naming pattern
 		name := file.Name()
-		if (len(name) > 19 && name[:19] == "smarticky_backup_") ||
-			(len(name) > 24 && name[:24] == "smarticky_auto_backup_") {
+		if isBackupFilename(name) {
 			backups = append(backups, BackupFileInfo{
 				Filename:  name,
 				Size:      file.Size(),
@@ -776,12 +829,11 @@ func (h *Handler) ListS3Backups(c echo.Context) error {
 	}
 
 	// Filter and format backup files
-	var backups []BackupFileInfo
+	backups := make([]BackupFileInfo, 0)
 	for _, obj := range result.Contents {
 		name := *obj.Key
 		// Only include files that match backup naming pattern
-		if (len(name) > 19 && name[:19] == "smarticky_backup_") ||
-			(len(name) > 24 && name[:24] == "smarticky_auto_backup_") {
+		if isBackupFilename(name) {
 			backups = append(backups, BackupFileInfo{
 				Filename:  name,
 				Size:      *obj.Size,
@@ -797,12 +849,12 @@ func (h *Handler) ListS3Backups(c echo.Context) error {
 
 // BackupVerificationResult represents the result of backup verification
 type BackupVerificationResult struct {
-	Valid       bool                 `json:"valid"`
-	Error       string               `json:"error,omitempty"`
-	FileChecks  []FileCheckResult    `json:"file_checks"`
-	TotalSize   int64                `json:"total_size"`
-	FileCount   int                  `json:"file_count"`
-	VerifiedAt  time.Time            `json:"verified_at"`
+	Valid      bool              `json:"valid"`
+	Error      string            `json:"error,omitempty"`
+	FileChecks []FileCheckResult `json:"file_checks"`
+	TotalSize  int64             `json:"total_size"`
+	FileCount  int               `json:"file_count"`
+	VerifiedAt time.Time         `json:"verified_at"`
 }
 
 // FileCheckResult represents the check result for a single file
@@ -944,7 +996,11 @@ func (h *Handler) verifyBackupData(data []byte) BackupVerificationResult {
 			return result
 		}
 
-		target := "/" + header.Name
+		target, err := safeArchiveTarget("/", header.Name)
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -1059,8 +1115,7 @@ func (h *Handler) cleanupWebDAVBackups(config *ent.BackupConfig) error {
 
 	for _, file := range files {
 		name := file.Name()
-		if (len(name) > 19 && name[:19] == "smarticky_backup_") ||
-			(len(name) > 24 && name[:24] == "smarticky_auto_backup_") {
+		if isBackupFilename(name) {
 			backups = append(backups, struct {
 				Name    string
 				ModTime time.Time
@@ -1167,8 +1222,7 @@ func (h *Handler) cleanupS3Backups(ctx context.Context, backupConfig *ent.Backup
 
 	for _, obj := range result.Contents {
 		name := *obj.Key
-		if (len(name) > 19 && name[:19] == "smarticky_backup_") ||
-			(len(name) > 24 && name[:24] == "smarticky_auto_backup_") {
+		if isBackupFilename(name) {
 			backups = append(backups, struct {
 				Key     string
 				ModTime time.Time

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"smarticky/ent/enttest"
@@ -116,6 +117,66 @@ func TestAddTagToNoteRejectsTagOwnedByAnotherUser(t *testing.T) {
 	tags := n.QueryTags().AllX(ctx)
 	if len(tags) != 0 {
 		t.Fatalf("expected no tags attached, got %d", len(tags))
+	}
+}
+
+func TestVerifyNotePasswordRejectsOtherUsersNote(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestVerifyNotePasswordRejectsOtherUsersNote?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	other := client.User.Create().
+		SetUsername("other").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	passwordHash, err := hashPassword("secret")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	n := client.Note.Create().
+		SetTitle("Owner note").
+		SetContent("private").
+		SetIsLocked(true).
+		SetPassword(passwordHash).
+		SetUserID(owner.ID).
+		SaveX(ctx)
+
+	h := NewHandler(client, nil)
+
+	e := echo.New()
+	ownerReq := httptest.NewRequest(http.MethodPost, "/api/notes/"+n.ID.String()+"/verify-password", strings.NewReader(`{"password":"secret"}`))
+	ownerReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	ownerRec := httptest.NewRecorder()
+	ownerCtx := e.NewContext(ownerReq, ownerRec)
+	ownerCtx.Set("user_id", owner.ID)
+	ownerCtx.SetParamNames("id")
+	ownerCtx.SetParamValues(n.ID.String())
+
+	if err := h.VerifyNotePassword(ownerCtx); err != nil {
+		t.Fatalf("VerifyNotePassword returned error for owner: %v", err)
+	}
+	if ownerRec.Code != http.StatusOK {
+		t.Fatalf("expected owner status %d, got %d: %s", http.StatusOK, ownerRec.Code, ownerRec.Body.String())
+	}
+
+	otherReq := httptest.NewRequest(http.MethodPost, "/api/notes/"+n.ID.String()+"/verify-password", strings.NewReader(`{"password":"secret"}`))
+	otherReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	otherRec := httptest.NewRecorder()
+	otherCtx := e.NewContext(otherReq, otherRec)
+	otherCtx.Set("user_id", other.ID)
+	otherCtx.SetParamNames("id")
+	otherCtx.SetParamValues(n.ID.String())
+
+	if err := h.VerifyNotePassword(otherCtx); err != nil {
+		t.Fatalf("VerifyNotePassword returned error for other user: %v", err)
+	}
+	if otherRec.Code != http.StatusNotFound {
+		t.Fatalf("expected other user status %d, got %d: %s", http.StatusNotFound, otherRec.Code, otherRec.Body.String())
 	}
 }
 

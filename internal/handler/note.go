@@ -403,7 +403,13 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 	}
 
 	ctx := context.Background()
-	n, err := h.client.Note.Get(ctx, id)
+	userID := c.Get("user_id").(int)
+	n, err := h.client.Note.Query().
+		Where(
+			note.ID(id),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		Only(ctx)
 	if ent.IsNotFound(err) {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
 	}
