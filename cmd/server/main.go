@@ -141,6 +141,12 @@ func main() {
 	protected.GET("/attachments/:id/download", h.DownloadAttachment)
 	protected.DELETE("/attachments/:id", h.DeleteAttachment)
 
+	// Import API
+	protected.POST("/import/evernote/preview", h.PreviewEvernoteImport)
+	protected.POST("/import/evernote/confirm", h.ConfirmEvernoteImport)
+	protected.GET("/import/jobs", h.ListImportJobs)
+	protected.GET("/import/jobs/:id", h.GetImportJob)
+
 	// Fonts API
 	protected.POST("/fonts", h.UploadFont)
 	protected.GET("/fonts", h.GetFonts)
