@@ -78,6 +78,7 @@ func (h *Handler) GetTags(c echo.Context) error {
 // UpdateTag updates an existing tag
 func (h *Handler) UpdateTag(c echo.Context) error {
 	ctx := context.Background()
+	userID := c.Get("user_id").(int)
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid tag ID"})
@@ -92,15 +93,12 @@ func (h *Handler) UpdateTag(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 	}
 
-	// For now, just check if tag exists (we'll add user validation later)
-	t, err := h.client.Tag.Get(ctx, tagID)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tag not found"})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
+	t, err := h.client.Tag.Query().
+		Where(
+			tag.ID(tagID),
+			tag.HasUserWith(user.IDEQ(userID)),
+		).
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tag not found"})
@@ -184,15 +182,12 @@ func (h *Handler) AddTagToNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// For now, just check if tag exists (we'll add user validation later)
-	t, err := h.client.Tag.Get(ctx, tagID)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tag not found"})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
+	t, err := h.client.Tag.Query().
+		Where(
+			tag.ID(tagID),
+			tag.HasUserWith(user.IDEQ(userID)),
+		).
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tag not found"})
@@ -239,15 +234,12 @@ func (h *Handler) RemoveTagFromNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// For now, just check if tag exists (we'll add user validation later)
-	t, err := h.client.Tag.Get(ctx, tagID)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tag not found"})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
+	t, err := h.client.Tag.Query().
+		Where(
+			tag.ID(tagID),
+			tag.HasUserWith(user.IDEQ(userID)),
+		).
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "Tag not found"})

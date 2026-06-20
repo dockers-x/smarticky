@@ -13,6 +13,7 @@ import (
 
 	"smarticky/ent"
 	"smarticky/ent/note"
+	"smarticky/ent/tag"
 	"smarticky/ent/user"
 
 	"github.com/google/uuid"
@@ -141,16 +142,14 @@ func (h *Handler) ListNotes(c echo.Context) error {
 	}
 
 	// Tag filtering
-	if tags := c.QueryParam("tags"); tags != "" {
-		// For now, we'll implement a basic tag name filtering
-		// This will be enhanced once the tag system is fully implemented
-		tagNames := strings.Split(tags, ",")
+	if tagsParam := c.QueryParam("tags"); tagsParam != "" {
+		tagNames := strings.Split(tagsParam, ",")
 		for _, tagName := range tagNames {
 			tagName = strings.TrimSpace(tagName)
-			if tagName != "" {
-				// Placeholder for tag filtering - will be implemented after tag system is set up
-				// query.Where(note.HasTagsWith(tag.NameEQ(tagName)))
+			if tagName == "" {
+				continue
 			}
+			query.Where(note.HasTagsWith(tag.NameEQ(tagName), tag.HasUserWith(user.IDEQ(userID))))
 		}
 	}
 
