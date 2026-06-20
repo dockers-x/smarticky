@@ -32,7 +32,8 @@ RUN apk --no-cache add ca-certificates sqlite-libs
 WORKDIR /app
 
 COPY --from=builder /app/smarticky .
-COPY --from=builder /app/web ./web
+COPY --from=builder /app/web/static ./web/static
+COPY --from=builder /app/web/templates ./web/templates
 
 # Create data directory for persistent storage
 RUN mkdir -p /data
