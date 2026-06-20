@@ -1,4 +1,13 @@
 <script lang="ts">
+  import {
+    DatabaseBackup,
+    FileUp,
+    LogOut,
+    Type,
+    User as UserIcon,
+    Users,
+    X,
+  } from "@lucide/svelte";
   import type { ImportResult } from "../../api/imports";
   import type { User } from "../../api/types";
   import ImportCenter from "../import/ImportCenter.svelte";
@@ -15,24 +24,18 @@
   export let user: User | null = null;
   export let onClose: () => void = () => {};
 
-  type ToolsView = "menu" | "import" | "backup" | "fonts" | "profile" | "users";
+  type ToolsView = "import" | "backup" | "fonts" | "profile" | "users";
 
-  interface ToolRow {
+  interface ToolNavItem {
     labelKey: MessageKey;
-    action: () => void | Promise<void>;
-    danger?: boolean;
+    view: ToolsView;
     adminOnly?: boolean;
-    keepOpen?: boolean;
   }
 
-  let view: ToolsView = "menu";
+  let view: ToolsView = "profile";
 
-  function openImport(): void {
-    importsStore.reset();
-    view = "import";
-  }
-
-  function openView(nextView: ToolsView): void {
+  function selectView(nextView: ToolsView): void {
+    if (nextView === "import") importsStore.reset();
     view = nextView;
   }
 
@@ -47,96 +50,130 @@
     );
   }
 
-  const rows: ToolRow[] = [
+  function handleKeydown(event: KeyboardEvent): void {
+    if (event.key === "Escape") onClose();
+  }
+
+  async function logout(): Promise<void> {
+    const confirmed = await confirmDialog({
+      title: t("logout", $preferencesStore.language),
+      message: t("logoutConfirm", $preferencesStore.language),
+      confirmLabel: t("logout", $preferencesStore.language),
+      cancelLabel: t("cancel", $preferencesStore.language),
+    });
+    if (confirmed) authStore.logout();
+  }
+
+  const navItems: ToolNavItem[] = [
     {
       labelKey: "import",
-      action: openImport,
-      keepOpen: true,
+      view: "import",
     },
     {
       labelKey: "backup",
-      action: () => openView("backup"),
-      keepOpen: true,
+      view: "backup",
     },
     {
       labelKey: "fontManagement",
-      action: () => openView("fonts"),
-      keepOpen: true,
+      view: "fonts",
     },
     {
       labelKey: "personalProfile",
-      action: () => openView("profile"),
-      keepOpen: true,
+      view: "profile",
     },
     {
       labelKey: "userManagement",
       adminOnly: true,
-      action: () => openView("users"),
-      keepOpen: true,
-    },
-    {
-      labelKey: "logout",
-      danger: true,
-      action: async () => {
-        const confirmed = await confirmDialog({
-          title: t("logout", $preferencesStore.language),
-          message: t("logoutConfirm", $preferencesStore.language),
-          confirmLabel: t("logout", $preferencesStore.language),
-          cancelLabel: t("cancel", $preferencesStore.language),
-        });
-        if (confirmed) authStore.logout();
-      },
+      view: "users",
     },
   ];
 
-  $: visibleRows = rows.filter((row) => !row.adminOnly || user?.role === "admin");
+  $: visibleNavItems = navItems.filter((item) => !item.adminOnly || user?.role === "admin");
   $: panelTitle =
-    view === "menu"
-      ? t("settings", $preferencesStore.language)
-      : view === "import"
-        ? t("import", $preferencesStore.language)
-        : view === "backup"
-          ? t("backupTitle", $preferencesStore.language)
-          : view === "fonts"
-            ? t("fontManagement", $preferencesStore.language)
-            : view === "profile"
-              ? t("personalProfile", $preferencesStore.language)
-              : t("userManagement", $preferencesStore.language);
+    view === "import"
+      ? t("import", $preferencesStore.language)
+      : view === "backup"
+        ? t("backupTitle", $preferencesStore.language)
+        : view === "fonts"
+          ? t("fontManagement", $preferencesStore.language)
+          : view === "profile"
+            ? t("personalProfile", $preferencesStore.language)
+            : t("userManagement", $preferencesStore.language);
 </script>
 
-<section class="tools-panel" class:expanded-view={view !== "menu"} aria-label={t("settings", $preferencesStore.language)}>
-  <div class="tools-panel__header">
-    {#if view !== "menu"}
-      <button class="tools-panel__back" type="button" aria-label={t("back", $preferencesStore.language)} on:click={() => (view = "menu")}>‹</button>
-    {/if}
-    <h2>{panelTitle}</h2>
-    <button type="button" aria-label={t("closeSettings", $preferencesStore.language)} on:click={onClose}>×</button>
-  </div>
-  {#if view === "import"}
-    <ImportCenter onBack={() => (view = "menu")} onImported={handleImported} />
-  {:else if view === "backup"}
-    <BackupPanel />
-  {:else if view === "fonts"}
-    <FontPanel {user} />
-  {:else if view === "profile"}
-    <ProfilePanel {user} />
-  {:else if view === "users"}
-    <UserManagementPanel {user} />
-  {:else}
-    <div class="tools-list">
-      {#each visibleRows as row}
+<svelte:window on:keydown={handleKeydown} />
+
+<div
+  class="tools-panel-backdrop"
+  role="presentation"
+  on:click={(event) => {
+    if (event.currentTarget === event.target) onClose();
+  }}
+>
+  <div
+    class="tools-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-dialog-title"
+  >
+    <div class="tools-panel__header">
+      <div>
+        <h2 id="settings-dialog-title">{t("settings", $preferencesStore.language)}</h2>
+        <p>{panelTitle}</p>
+      </div>
+      <button class="tools-panel__close" type="button" aria-label={t("closeSettings", $preferencesStore.language)} on:click={onClose}>
+        <X size={20} strokeWidth={1.8} aria-hidden="true" />
+      </button>
+    </div>
+
+    <div class="tools-panel__body">
+      <nav class="tools-panel__nav" aria-label={t("settings", $preferencesStore.language)}>
+        {#each visibleNavItems as item}
+          <button
+            class:active={view === item.view}
+            type="button"
+            aria-current={view === item.view ? "page" : undefined}
+            on:click={() => selectView(item.view)}
+          >
+            {#if item.view === "import"}
+              <FileUp size={17} strokeWidth={1.8} aria-hidden="true" />
+            {:else if item.view === "backup"}
+              <DatabaseBackup size={17} strokeWidth={1.8} aria-hidden="true" />
+            {:else if item.view === "fonts"}
+              <Type size={17} strokeWidth={1.8} aria-hidden="true" />
+            {:else if item.view === "profile"}
+              <UserIcon size={17} strokeWidth={1.8} aria-hidden="true" />
+            {:else}
+              <Users size={17} strokeWidth={1.8} aria-hidden="true" />
+            {/if}
+            {t(item.labelKey, $preferencesStore.language)}
+          </button>
+        {/each}
         <button
-          class:danger={row.danger}
+          class="danger"
           type="button"
           on:click={() => {
-            void row.action();
-            if (!row.danger && !row.keepOpen) onClose();
+            void logout();
           }}
         >
-          <span>{t(row.labelKey, $preferencesStore.language)}</span>
-          <span aria-hidden="true">›</span>
+          <LogOut size={17} strokeWidth={1.8} aria-hidden="true" />
+          {t("logout", $preferencesStore.language)}
         </button>
-      {/each}
+      </nav>
+
+      <div class="tools-panel__content">
+        {#if view === "import"}
+          <ImportCenter showBack={false} onBack={() => selectView("profile")} onImported={handleImported} />
+        {:else if view === "backup"}
+          <BackupPanel />
+        {:else if view === "fonts"}
+          <FontPanel {user} />
+        {:else if view === "profile"}
+          <ProfilePanel {user} />
+        {:else if view === "users"}
+          <UserManagementPanel {user} />
+        {/if}
+      </div>
     </div>
-  {/if}
-</section>
+  </div>
+</div>

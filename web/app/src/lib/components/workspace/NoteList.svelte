@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Plus, Settings } from "@lucide/svelte";
   import ToolsPanel from "../settings/ToolsPanel.svelte";
   import type { Note } from "../../api/types";
   import { authStore } from "../../stores/auth";
@@ -98,6 +99,7 @@
         aria-expanded={settingsOpen}
         on:click={() => (settingsOpen = !settingsOpen)}
       >
+        <Settings size={16} strokeWidth={1.8} aria-hidden="true" />
         {t("settings", $preferencesStore.language)}
       </button>
     </div>
@@ -146,7 +148,7 @@
       aria-label={t("newNote", $preferencesStore.language)}
       on:click={() => notesStore.create()}
     >
-      +
+      <Plus size={25} strokeWidth={2.1} aria-hidden="true" />
     </button>
   {/if}
 </section>

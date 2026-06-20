@@ -6,6 +6,7 @@
 
   export let onBack: () => void = () => {};
   export let onImported: (result: ImportResult) => void | Promise<void> = () => {};
+  export let showBack = true;
 
   let fileInput: HTMLInputElement;
 
@@ -27,9 +28,11 @@
 </script>
 
 <div class="import-center">
-  <button class="import-center__back" type="button" on:click={onBack}>
-    {t("back", $preferencesStore.language)}
-  </button>
+  {#if showBack}
+    <button class="import-center__back" type="button" on:click={onBack}>
+      {t("back", $preferencesStore.language)}
+    </button>
+  {/if}
 
   <input
     bind:this={fileInput}
