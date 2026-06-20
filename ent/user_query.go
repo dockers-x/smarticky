@@ -9,6 +9,7 @@ import (
 	"math"
 	"smarticky/ent/attachment"
 	"smarticky/ent/font"
+	"smarticky/ent/importjob"
 	"smarticky/ent/note"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -31,6 +32,7 @@ type UserQuery struct {
 	withAttachments *AttachmentQuery
 	withTags        *TagQuery
 	withFonts       *FontQuery
+	withImportJobs  *ImportJobQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -148,6 +150,28 @@ func (_q *UserQuery) QueryFonts() *FontQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(font.Table, font.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.FontsTable, user.FontsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryImportJobs chains the current query on the "import_jobs" edge.
+func (_q *UserQuery) QueryImportJobs() *ImportJobQuery {
+	query := (&ImportJobClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(importjob.Table, importjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ImportJobsTable, user.ImportJobsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -351,6 +375,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withAttachments: _q.withAttachments.Clone(),
 		withTags:        _q.withTags.Clone(),
 		withFonts:       _q.withFonts.Clone(),
+		withImportJobs:  _q.withImportJobs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -398,6 +423,17 @@ func (_q *UserQuery) WithFonts(opts ...func(*FontQuery)) *UserQuery {
 		opt(query)
 	}
 	_q.withFonts = query
+	return _q
+}
+
+// WithImportJobs tells the query-builder to eager-load the nodes that are connected to
+// the "import_jobs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithImportJobs(opts ...func(*ImportJobQuery)) *UserQuery {
+	query := (&ImportJobClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withImportJobs = query
 	return _q
 }
 
@@ -479,11 +515,12 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [5]bool{
 			_q.withNotes != nil,
 			_q.withAttachments != nil,
 			_q.withTags != nil,
 			_q.withFonts != nil,
+			_q.withImportJobs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -529,6 +566,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadFonts(ctx, query, nodes,
 			func(n *User) { n.Edges.Fonts = []*Font{} },
 			func(n *User, e *Font) { n.Edges.Fonts = append(n.Edges.Fonts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withImportJobs; query != nil {
+		if err := _q.loadImportJobs(ctx, query, nodes,
+			func(n *User) { n.Edges.ImportJobs = []*ImportJob{} },
+			func(n *User, e *ImportJob) { n.Edges.ImportJobs = append(n.Edges.ImportJobs, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -654,6 +698,37 @@ func (_q *UserQuery) loadFonts(ctx context.Context, query *FontQuery, nodes []*U
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_fonts" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadImportJobs(ctx context.Context, query *ImportJobQuery, nodes []*User, init func(*User), assign func(*User, *ImportJob)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.ImportJob(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ImportJobsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_import_jobs
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_import_jobs" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_import_jobs" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

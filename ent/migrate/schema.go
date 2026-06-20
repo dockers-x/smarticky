@@ -91,6 +91,59 @@ var (
 			},
 		},
 	}
+	// ImportItemsColumns holds the columns for the "import_items" table.
+	ImportItemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "source_note_key", Type: field.TypeString},
+		{Name: "note_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "title", Type: field.TypeString, Default: "Untitled"},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "message", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "import_job_items", Type: field.TypeInt},
+	}
+	// ImportItemsTable holds the schema information for the "import_items" table.
+	ImportItemsTable = &schema.Table{
+		Name:       "import_items",
+		Columns:    ImportItemsColumns,
+		PrimaryKey: []*schema.Column{ImportItemsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "import_items_import_jobs_items",
+				Columns:    []*schema.Column{ImportItemsColumns[6]},
+				RefColumns: []*schema.Column{ImportJobsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// ImportJobsColumns holds the columns for the "import_jobs" table.
+	ImportJobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "source", Type: field.TypeString, Default: "evernote"},
+		{Name: "filename", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "previewed"},
+		{Name: "note_count", Type: field.TypeInt, Default: 0},
+		{Name: "imported_count", Type: field.TypeInt, Default: 0},
+		{Name: "skipped_count", Type: field.TypeInt, Default: 0},
+		{Name: "failed_count", Type: field.TypeInt, Default: 0},
+		{Name: "options_json", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "user_import_jobs", Type: field.TypeInt, Nullable: true},
+	}
+	// ImportJobsTable holds the schema information for the "import_jobs" table.
+	ImportJobsTable = &schema.Table{
+		Name:       "import_jobs",
+		Columns:    ImportJobsColumns,
+		PrimaryKey: []*schema.Column{ImportJobsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "import_jobs_users_import_jobs",
+				Columns:    []*schema.Column{ImportJobsColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// NotesColumns holds the columns for the "notes" table.
 	NotesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -190,6 +243,8 @@ var (
 		AttachmentsTable,
 		BackupConfigsTable,
 		FontsTable,
+		ImportItemsTable,
+		ImportJobsTable,
 		NotesTable,
 		TagsTable,
 		UsersTable,
@@ -201,6 +256,8 @@ func init() {
 	AttachmentsTable.ForeignKeys[0].RefTable = NotesTable
 	AttachmentsTable.ForeignKeys[1].RefTable = UsersTable
 	FontsTable.ForeignKeys[0].RefTable = UsersTable
+	ImportItemsTable.ForeignKeys[0].RefTable = ImportJobsTable
+	ImportJobsTable.ForeignKeys[0].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
 	NoteTagsTable.ForeignKeys[0].RefTable = NotesTable

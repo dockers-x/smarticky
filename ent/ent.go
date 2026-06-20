@@ -10,6 +10,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/font"
+	"smarticky/ent/importitem"
+	"smarticky/ent/importjob"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -81,6 +83,8 @@ func checkColumn(t, c string) error {
 			attachment.Table:   attachment.ValidColumn,
 			backupconfig.Table: backupconfig.ValidColumn,
 			font.Table:         font.ValidColumn,
+			importitem.Table:   importitem.ValidColumn,
+			importjob.Table:    importjob.ValidColumn,
 			note.Table:         note.ValidColumn,
 			tag.Table:          tag.ValidColumn,
 			user.Table:         user.ValidColumn,

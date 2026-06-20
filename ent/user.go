@@ -49,9 +49,11 @@ type UserEdges struct {
 	Tags []*Tag `json:"tags,omitempty"`
 	// Fonts holds the value of the fonts edge.
 	Fonts []*Font `json:"fonts,omitempty"`
+	// ImportJobs holds the value of the import_jobs edge.
+	ImportJobs []*ImportJob `json:"import_jobs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -88,6 +90,15 @@ func (e UserEdges) FontsOrErr() ([]*Font, error) {
 		return e.Fonts, nil
 	}
 	return nil, &NotLoadedError{edge: "fonts"}
+}
+
+// ImportJobsOrErr returns the ImportJobs value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ImportJobsOrErr() ([]*ImportJob, error) {
+	if e.loadedTypes[4] {
+		return e.ImportJobs, nil
+	}
+	return nil, &NotLoadedError{edge: "import_jobs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -201,6 +212,11 @@ func (_m *User) QueryTags() *TagQuery {
 // QueryFonts queries the "fonts" edge of the User entity.
 func (_m *User) QueryFonts() *FontQuery {
 	return NewUserClient(_m.config).QueryFonts(_m)
+}
+
+// QueryImportJobs queries the "import_jobs" edge of the User entity.
+func (_m *User) QueryImportJobs() *ImportJobQuery {
+	return NewUserClient(_m.config).QueryImportJobs(_m)
 }
 
 // Update returns a builder for updating this User.

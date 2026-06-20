@@ -39,6 +39,8 @@ const (
 	EdgeTags = "tags"
 	// EdgeFonts holds the string denoting the fonts edge name in mutations.
 	EdgeFonts = "fonts"
+	// EdgeImportJobs holds the string denoting the import_jobs edge name in mutations.
+	EdgeImportJobs = "import_jobs"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// NotesTable is the table that holds the notes relation/edge.
@@ -69,6 +71,13 @@ const (
 	FontsInverseTable = "fonts"
 	// FontsColumn is the table column denoting the fonts relation/edge.
 	FontsColumn = "user_fonts"
+	// ImportJobsTable is the table that holds the import_jobs relation/edge.
+	ImportJobsTable = "import_jobs"
+	// ImportJobsInverseTable is the table name for the ImportJob entity.
+	// It exists in this package in order to avoid circular dependency with the "importjob" package.
+	ImportJobsInverseTable = "import_jobs"
+	// ImportJobsColumn is the table column denoting the import_jobs relation/edge.
+	ImportJobsColumn = "user_import_jobs"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -240,6 +249,20 @@ func ByFonts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newFontsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByImportJobsCount orders the results by import_jobs count.
+func ByImportJobsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newImportJobsStep(), opts...)
+	}
+}
+
+// ByImportJobs orders the results by import_jobs terms.
+func ByImportJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newImportJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newNotesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -266,5 +289,12 @@ func newFontsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(FontsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, FontsTable, FontsColumn),
+	)
+}
+func newImportJobsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ImportJobsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ImportJobsTable, ImportJobsColumn),
 	)
 }

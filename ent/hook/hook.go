@@ -44,6 +44,30 @@ func (f FontFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FontMutation", m)
 }
 
+// The ImportItemFunc type is an adapter to allow the use of ordinary
+// function as ImportItem mutator.
+type ImportItemFunc func(context.Context, *ent.ImportItemMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ImportItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ImportItemMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ImportItemMutation", m)
+}
+
+// The ImportJobFunc type is an adapter to allow the use of ordinary
+// function as ImportJob mutator.
+type ImportJobFunc func(context.Context, *ent.ImportJobMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ImportJobFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ImportJobMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ImportJobMutation", m)
+}
+
 // The NoteFunc type is an adapter to allow the use of ordinary
 // function as Note mutator.
 type NoteFunc func(context.Context, *ent.NoteMutation) (ent.Value, error)

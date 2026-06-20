@@ -15,6 +15,12 @@ type BackupConfig func(*sql.Selector)
 // Font is the predicate function for font builders.
 type Font func(*sql.Selector)
 
+// ImportItem is the predicate function for importitem builders.
+type ImportItem func(*sql.Selector)
+
+// ImportJob is the predicate function for importjob builders.
+type ImportJob func(*sql.Selector)
+
 // Note is the predicate function for note builders.
 type Note func(*sql.Selector)
 

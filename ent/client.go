@@ -14,6 +14,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/font"
+	"smarticky/ent/importitem"
+	"smarticky/ent/importjob"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -36,6 +38,10 @@ type Client struct {
 	BackupConfig *BackupConfigClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
+	// ImportItem is the client for interacting with the ImportItem builders.
+	ImportItem *ImportItemClient
+	// ImportJob is the client for interacting with the ImportJob builders.
+	ImportJob *ImportJobClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
 	// Tag is the client for interacting with the Tag builders.
@@ -56,6 +62,8 @@ func (c *Client) init() {
 	c.Attachment = NewAttachmentClient(c.config)
 	c.BackupConfig = NewBackupConfigClient(c.config)
 	c.Font = NewFontClient(c.config)
+	c.ImportItem = NewImportItemClient(c.config)
+	c.ImportJob = NewImportJobClient(c.config)
 	c.Note = NewNoteClient(c.config)
 	c.Tag = NewTagClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -154,6 +162,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Attachment:   NewAttachmentClient(cfg),
 		BackupConfig: NewBackupConfigClient(cfg),
 		Font:         NewFontClient(cfg),
+		ImportItem:   NewImportItemClient(cfg),
+		ImportJob:    NewImportJobClient(cfg),
 		Note:         NewNoteClient(cfg),
 		Tag:          NewTagClient(cfg),
 		User:         NewUserClient(cfg),
@@ -179,6 +189,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Attachment:   NewAttachmentClient(cfg),
 		BackupConfig: NewBackupConfigClient(cfg),
 		Font:         NewFontClient(cfg),
+		ImportItem:   NewImportItemClient(cfg),
+		ImportJob:    NewImportJobClient(cfg),
 		Note:         NewNoteClient(cfg),
 		Tag:          NewTagClient(cfg),
 		User:         NewUserClient(cfg),
@@ -211,7 +223,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Attachment, c.BackupConfig, c.Font, c.Note, c.Tag, c.User,
+		c.Attachment, c.BackupConfig, c.Font, c.ImportItem, c.ImportJob, c.Note, c.Tag,
+		c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -221,7 +234,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Attachment, c.BackupConfig, c.Font, c.Note, c.Tag, c.User,
+		c.Attachment, c.BackupConfig, c.Font, c.ImportItem, c.ImportJob, c.Note, c.Tag,
+		c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -236,6 +250,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.BackupConfig.mutate(ctx, m)
 	case *FontMutation:
 		return c.Font.mutate(ctx, m)
+	case *ImportItemMutation:
+		return c.ImportItem.mutate(ctx, m)
+	case *ImportJobMutation:
+		return c.ImportJob.mutate(ctx, m)
 	case *NoteMutation:
 		return c.Note.mutate(ctx, m)
 	case *TagMutation:
@@ -691,6 +709,320 @@ func (c *FontClient) mutate(ctx context.Context, m *FontMutation) (Value, error)
 		return (&FontDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Font mutation op: %q", m.Op())
+	}
+}
+
+// ImportItemClient is a client for the ImportItem schema.
+type ImportItemClient struct {
+	config
+}
+
+// NewImportItemClient returns a client for the ImportItem from the given config.
+func NewImportItemClient(c config) *ImportItemClient {
+	return &ImportItemClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `importitem.Hooks(f(g(h())))`.
+func (c *ImportItemClient) Use(hooks ...Hook) {
+	c.hooks.ImportItem = append(c.hooks.ImportItem, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `importitem.Intercept(f(g(h())))`.
+func (c *ImportItemClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ImportItem = append(c.inters.ImportItem, interceptors...)
+}
+
+// Create returns a builder for creating a ImportItem entity.
+func (c *ImportItemClient) Create() *ImportItemCreate {
+	mutation := newImportItemMutation(c.config, OpCreate)
+	return &ImportItemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ImportItem entities.
+func (c *ImportItemClient) CreateBulk(builders ...*ImportItemCreate) *ImportItemCreateBulk {
+	return &ImportItemCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ImportItemClient) MapCreateBulk(slice any, setFunc func(*ImportItemCreate, int)) *ImportItemCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ImportItemCreateBulk{err: fmt.Errorf("calling to ImportItemClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ImportItemCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ImportItemCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ImportItem.
+func (c *ImportItemClient) Update() *ImportItemUpdate {
+	mutation := newImportItemMutation(c.config, OpUpdate)
+	return &ImportItemUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ImportItemClient) UpdateOne(_m *ImportItem) *ImportItemUpdateOne {
+	mutation := newImportItemMutation(c.config, OpUpdateOne, withImportItem(_m))
+	return &ImportItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ImportItemClient) UpdateOneID(id int) *ImportItemUpdateOne {
+	mutation := newImportItemMutation(c.config, OpUpdateOne, withImportItemID(id))
+	return &ImportItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ImportItem.
+func (c *ImportItemClient) Delete() *ImportItemDelete {
+	mutation := newImportItemMutation(c.config, OpDelete)
+	return &ImportItemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ImportItemClient) DeleteOne(_m *ImportItem) *ImportItemDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ImportItemClient) DeleteOneID(id int) *ImportItemDeleteOne {
+	builder := c.Delete().Where(importitem.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ImportItemDeleteOne{builder}
+}
+
+// Query returns a query builder for ImportItem.
+func (c *ImportItemClient) Query() *ImportItemQuery {
+	return &ImportItemQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeImportItem},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ImportItem entity by its id.
+func (c *ImportItemClient) Get(ctx context.Context, id int) (*ImportItem, error) {
+	return c.Query().Where(importitem.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ImportItemClient) GetX(ctx context.Context, id int) *ImportItem {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryJob queries the job edge of a ImportItem.
+func (c *ImportItemClient) QueryJob(_m *ImportItem) *ImportJobQuery {
+	query := (&ImportJobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(importitem.Table, importitem.FieldID, id),
+			sqlgraph.To(importjob.Table, importjob.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, importitem.JobTable, importitem.JobColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ImportItemClient) Hooks() []Hook {
+	return c.hooks.ImportItem
+}
+
+// Interceptors returns the client interceptors.
+func (c *ImportItemClient) Interceptors() []Interceptor {
+	return c.inters.ImportItem
+}
+
+func (c *ImportItemClient) mutate(ctx context.Context, m *ImportItemMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ImportItemCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ImportItemUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ImportItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ImportItemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ImportItem mutation op: %q", m.Op())
+	}
+}
+
+// ImportJobClient is a client for the ImportJob schema.
+type ImportJobClient struct {
+	config
+}
+
+// NewImportJobClient returns a client for the ImportJob from the given config.
+func NewImportJobClient(c config) *ImportJobClient {
+	return &ImportJobClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `importjob.Hooks(f(g(h())))`.
+func (c *ImportJobClient) Use(hooks ...Hook) {
+	c.hooks.ImportJob = append(c.hooks.ImportJob, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `importjob.Intercept(f(g(h())))`.
+func (c *ImportJobClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ImportJob = append(c.inters.ImportJob, interceptors...)
+}
+
+// Create returns a builder for creating a ImportJob entity.
+func (c *ImportJobClient) Create() *ImportJobCreate {
+	mutation := newImportJobMutation(c.config, OpCreate)
+	return &ImportJobCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ImportJob entities.
+func (c *ImportJobClient) CreateBulk(builders ...*ImportJobCreate) *ImportJobCreateBulk {
+	return &ImportJobCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ImportJobClient) MapCreateBulk(slice any, setFunc func(*ImportJobCreate, int)) *ImportJobCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ImportJobCreateBulk{err: fmt.Errorf("calling to ImportJobClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ImportJobCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ImportJobCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ImportJob.
+func (c *ImportJobClient) Update() *ImportJobUpdate {
+	mutation := newImportJobMutation(c.config, OpUpdate)
+	return &ImportJobUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ImportJobClient) UpdateOne(_m *ImportJob) *ImportJobUpdateOne {
+	mutation := newImportJobMutation(c.config, OpUpdateOne, withImportJob(_m))
+	return &ImportJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ImportJobClient) UpdateOneID(id int) *ImportJobUpdateOne {
+	mutation := newImportJobMutation(c.config, OpUpdateOne, withImportJobID(id))
+	return &ImportJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ImportJob.
+func (c *ImportJobClient) Delete() *ImportJobDelete {
+	mutation := newImportJobMutation(c.config, OpDelete)
+	return &ImportJobDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ImportJobClient) DeleteOne(_m *ImportJob) *ImportJobDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ImportJobClient) DeleteOneID(id int) *ImportJobDeleteOne {
+	builder := c.Delete().Where(importjob.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ImportJobDeleteOne{builder}
+}
+
+// Query returns a query builder for ImportJob.
+func (c *ImportJobClient) Query() *ImportJobQuery {
+	return &ImportJobQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeImportJob},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ImportJob entity by its id.
+func (c *ImportJobClient) Get(ctx context.Context, id int) (*ImportJob, error) {
+	return c.Query().Where(importjob.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ImportJobClient) GetX(ctx context.Context, id int) *ImportJob {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a ImportJob.
+func (c *ImportJobClient) QueryUser(_m *ImportJob) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(importjob.Table, importjob.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, importjob.UserTable, importjob.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryItems queries the items edge of a ImportJob.
+func (c *ImportJobClient) QueryItems(_m *ImportJob) *ImportItemQuery {
+	query := (&ImportItemClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(importjob.Table, importjob.FieldID, id),
+			sqlgraph.To(importitem.Table, importitem.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, importjob.ItemsTable, importjob.ItemsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ImportJobClient) Hooks() []Hook {
+	return c.hooks.ImportJob
+}
+
+// Interceptors returns the client interceptors.
+func (c *ImportJobClient) Interceptors() []Interceptor {
+	return c.inters.ImportJob
+}
+
+func (c *ImportJobClient) mutate(ctx context.Context, m *ImportJobMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ImportJobCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ImportJobUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ImportJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ImportJobDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ImportJob mutation op: %q", m.Op())
 	}
 }
 
@@ -1212,6 +1544,22 @@ func (c *UserClient) QueryFonts(_m *User) *FontQuery {
 	return query
 }
 
+// QueryImportJobs queries the import_jobs edge of a User.
+func (c *UserClient) QueryImportJobs(_m *User) *ImportJobQuery {
+	query := (&ImportJobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(importjob.Table, importjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ImportJobsTable, user.ImportJobsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -1240,9 +1588,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Attachment, BackupConfig, Font, Note, Tag, User []ent.Hook
+		Attachment, BackupConfig, Font, ImportItem, ImportJob, Note, Tag,
+		User []ent.Hook
 	}
 	inters struct {
-		Attachment, BackupConfig, Font, Note, Tag, User []ent.Interceptor
+		Attachment, BackupConfig, Font, ImportItem, ImportJob, Note, Tag,
+		User []ent.Interceptor
 	}
 )

@@ -18,6 +18,10 @@ type Tx struct {
 	BackupConfig *BackupConfigClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
+	// ImportItem is the client for interacting with the ImportItem builders.
+	ImportItem *ImportItemClient
+	// ImportJob is the client for interacting with the ImportJob builders.
+	ImportJob *ImportJobClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
 	// Tag is the client for interacting with the Tag builders.
@@ -158,6 +162,8 @@ func (tx *Tx) init() {
 	tx.Attachment = NewAttachmentClient(tx.config)
 	tx.BackupConfig = NewBackupConfigClient(tx.config)
 	tx.Font = NewFontClient(tx.config)
+	tx.ImportItem = NewImportItemClient(tx.config)
+	tx.ImportJob = NewImportJobClient(tx.config)
 	tx.Note = NewNoteClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)

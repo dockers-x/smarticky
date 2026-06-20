@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"smarticky/ent/attachment"
 	"smarticky/ent/font"
+	"smarticky/ent/importjob"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -179,6 +180,21 @@ func (_c *UserCreate) AddFonts(v ...*Font) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddFontIDs(ids...)
+}
+
+// AddImportJobIDs adds the "import_jobs" edge to the ImportJob entity by IDs.
+func (_c *UserCreate) AddImportJobIDs(ids ...int) *UserCreate {
+	_c.mutation.AddImportJobIDs(ids...)
+	return _c
+}
+
+// AddImportJobs adds the "import_jobs" edges to the ImportJob entity.
+func (_c *UserCreate) AddImportJobs(v ...*ImportJob) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddImportJobIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -385,6 +401,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ImportJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ImportJobsTable,
+			Columns: []string{user.ImportJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(importjob.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

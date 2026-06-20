@@ -6,6 +6,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/font"
+	"smarticky/ent/importitem"
+	"smarticky/ent/importjob"
 	"smarticky/ent/note"
 	"smarticky/ent/schema"
 	"smarticky/ent/tag"
@@ -99,6 +101,54 @@ func init() {
 	fontDescID := fontFields[0].Descriptor()
 	// font.DefaultID holds the default value on creation for the id field.
 	font.DefaultID = fontDescID.Default.(func() uuid.UUID)
+	importitemFields := schema.ImportItem{}.Fields()
+	_ = importitemFields
+	// importitemDescSourceNoteKey is the schema descriptor for source_note_key field.
+	importitemDescSourceNoteKey := importitemFields[0].Descriptor()
+	// importitem.SourceNoteKeyValidator is a validator for the "source_note_key" field. It is called by the builders before save.
+	importitem.SourceNoteKeyValidator = importitemDescSourceNoteKey.Validators[0].(func(string) error)
+	// importitemDescTitle is the schema descriptor for title field.
+	importitemDescTitle := importitemFields[2].Descriptor()
+	// importitem.DefaultTitle holds the default value on creation for the title field.
+	importitem.DefaultTitle = importitemDescTitle.Default.(string)
+	// importitemDescStatus is the schema descriptor for status field.
+	importitemDescStatus := importitemFields[3].Descriptor()
+	// importitem.DefaultStatus holds the default value on creation for the status field.
+	importitem.DefaultStatus = importitemDescStatus.Default.(string)
+	importjobFields := schema.ImportJob{}.Fields()
+	_ = importjobFields
+	// importjobDescSource is the schema descriptor for source field.
+	importjobDescSource := importjobFields[0].Descriptor()
+	// importjob.DefaultSource holds the default value on creation for the source field.
+	importjob.DefaultSource = importjobDescSource.Default.(string)
+	// importjobDescFilename is the schema descriptor for filename field.
+	importjobDescFilename := importjobFields[1].Descriptor()
+	// importjob.FilenameValidator is a validator for the "filename" field. It is called by the builders before save.
+	importjob.FilenameValidator = importjobDescFilename.Validators[0].(func(string) error)
+	// importjobDescStatus is the schema descriptor for status field.
+	importjobDescStatus := importjobFields[2].Descriptor()
+	// importjob.DefaultStatus holds the default value on creation for the status field.
+	importjob.DefaultStatus = importjobDescStatus.Default.(string)
+	// importjobDescNoteCount is the schema descriptor for note_count field.
+	importjobDescNoteCount := importjobFields[3].Descriptor()
+	// importjob.DefaultNoteCount holds the default value on creation for the note_count field.
+	importjob.DefaultNoteCount = importjobDescNoteCount.Default.(int)
+	// importjobDescImportedCount is the schema descriptor for imported_count field.
+	importjobDescImportedCount := importjobFields[4].Descriptor()
+	// importjob.DefaultImportedCount holds the default value on creation for the imported_count field.
+	importjob.DefaultImportedCount = importjobDescImportedCount.Default.(int)
+	// importjobDescSkippedCount is the schema descriptor for skipped_count field.
+	importjobDescSkippedCount := importjobFields[5].Descriptor()
+	// importjob.DefaultSkippedCount holds the default value on creation for the skipped_count field.
+	importjob.DefaultSkippedCount = importjobDescSkippedCount.Default.(int)
+	// importjobDescFailedCount is the schema descriptor for failed_count field.
+	importjobDescFailedCount := importjobFields[6].Descriptor()
+	// importjob.DefaultFailedCount holds the default value on creation for the failed_count field.
+	importjob.DefaultFailedCount = importjobDescFailedCount.Default.(int)
+	// importjobDescCreatedAt is the schema descriptor for created_at field.
+	importjobDescCreatedAt := importjobFields[8].Descriptor()
+	// importjob.DefaultCreatedAt holds the default value on creation for the created_at field.
+	importjob.DefaultCreatedAt = importjobDescCreatedAt.Default.(func() time.Time)
 	noteFields := schema.Note{}.Fields()
 	_ = noteFields
 	// noteDescTitle is the schema descriptor for title field.
