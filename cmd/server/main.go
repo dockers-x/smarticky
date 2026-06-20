@@ -185,13 +185,22 @@ func main() {
 	webFS := echo.MustSubFS(web.Assets, "static")
 	e.StaticFS("/static", webFS)
 
-	// Frontend - Serve index.html from embedded FS
+	// Frontend - Serve compiled SPA shell from embedded FS
 	e.GET("/", func(c echo.Context) error {
-		htmlContent, err := web.Assets.ReadFile("templates/index.html")
-		if err != nil {
-			return c.String(http.StatusInternalServerError, "Failed to load page")
-		}
-		return c.HTMLBlob(http.StatusOK, htmlContent)
+		html := []byte(`<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smarticky</title>
+  <script type="module" crossorigin src="/static/app/assets/index.js"></script>
+  <link rel="stylesheet" crossorigin href="/static/app/assets/index.css">
+</head>
+<body>
+  <div id="smarticky-app"></div>
+</body>
+</html>`)
+		return c.HTMLBlob(http.StatusOK, html)
 	})
 
 	// Setup page

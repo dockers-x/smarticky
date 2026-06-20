@@ -6,3 +6,7 @@ data/
 .vscode/
 .idea/
 .claude/
+node_modules/
+web/app/node_modules/
+web/app/.svelte-kit/
+web/app/.vite/

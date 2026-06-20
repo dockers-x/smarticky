@@ -2,6 +2,8 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
+RUN apk --no-cache add nodejs npm
+
 # Build arguments for version info
 ARG VERSION=dev
 ARG BUILD_TIME=unknown
@@ -11,6 +13,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+RUN cd web/app && npm ci && npm run build
 
 # Build with CGO disabled (using pure Go SQLite implementation) and inject version info
 RUN CGO_ENABLED=0 go build -trimpath \
