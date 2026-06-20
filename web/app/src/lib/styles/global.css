@@ -166,6 +166,126 @@ h6 {
   color: var(--color-danger);
 }
 
+.tools-panel.import-view {
+  position: fixed;
+  top: 20px;
+  right: auto;
+  bottom: auto;
+  left: 20px;
+  width: min(420px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.import-center {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.import-center__back {
+  justify-self: start;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.import-upload {
+  display: grid;
+  gap: 8px;
+}
+
+.import-upload button,
+.import-primary-button,
+.import-result-actions button {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.import-upload button,
+.import-result-actions button {
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+}
+
+.import-primary-button {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.import-upload button:disabled,
+.import-primary-button:disabled {
+  cursor: default;
+  opacity: 0.56;
+}
+
+.import-upload span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--color-card);
+}
+
+.import-summary__item {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 12px 8px;
+  border-right: 1px solid var(--color-divider);
+}
+
+.import-summary__item:last-child {
+  border-right: 0;
+}
+
+.import-summary__item span {
+  color: var(--color-text);
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.import-summary__item small,
+.import-muted {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.import-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.import-muted {
+  margin: 0;
+}
+
+.import-result-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .note-list-pane {
   position: relative;
   padding: 20px;

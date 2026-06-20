@@ -1,22 +1,46 @@
 <script lang="ts">
+  import type { ImportResult } from "../../api/imports";
   import type { User } from "../../api/types";
+  import ImportCenter from "../import/ImportCenter.svelte";
   import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
+  import { importsStore } from "../../stores/imports";
+  import { notesStore } from "../../stores/notes";
 
   export let user: User | null = null;
   export let onClose: () => void = () => {};
+
+  type ToolsView = "menu" | "import";
 
   interface ToolRow {
     label: string;
     action: () => void | Promise<void>;
     danger?: boolean;
     adminOnly?: boolean;
+    keepOpen?: boolean;
+  }
+
+  let view: ToolsView = "menu";
+
+  function openImport(): void {
+    importsStore.reset();
+    view = "import";
+  }
+
+  async function handleImported(result: ImportResult): Promise<void> {
+    await notesStore.setFilter("all");
+    await notesStore.setSearch("");
+    notify(
+      result.failed_count > 0 ? "导入完成，部分条目失败" : "导入完成",
+      result.failed_count > 0 ? "info" : "success",
+    );
   }
 
   const rows: ToolRow[] = [
     {
       label: "导入",
-      action: () => notify("导入中心将在后续步骤接入", "info"),
+      action: openImport,
+      keepOpen: true,
     },
     {
       label: "备份",
@@ -53,24 +77,28 @@
   $: visibleRows = rows.filter((row) => !row.adminOnly || user?.role === "admin");
 </script>
 
-<section class="tools-panel" aria-label="工具">
+<section class="tools-panel" class:import-view={view === "import"} aria-label="工具">
   <div class="tools-panel__header">
-    <h2>工具</h2>
+    <h2>{view === "import" ? "导入" : "工具"}</h2>
     <button type="button" aria-label="关闭工具面板" on:click={onClose}>×</button>
   </div>
-  <div class="tools-list">
-    {#each visibleRows as row}
-      <button
-        class:danger={row.danger}
-        type="button"
-        on:click={() => {
-          void row.action();
-          if (!row.danger) onClose();
-        }}
-      >
-        <span>{row.label}</span>
-        <span aria-hidden="true">›</span>
-      </button>
-    {/each}
-  </div>
+  {#if view === "import"}
+    <ImportCenter onBack={() => (view = "menu")} onImported={handleImported} />
+  {:else}
+    <div class="tools-list">
+      {#each visibleRows as row}
+        <button
+          class:danger={row.danger}
+          type="button"
+          on:click={() => {
+            void row.action();
+            if (!row.danger && !row.keepOpen) onClose();
+          }}
+        >
+          <span>{row.label}</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
 </section>

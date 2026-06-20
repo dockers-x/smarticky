@@ -37,15 +37,26 @@ type Service struct {
 }
 
 type PreviewResult struct {
-	Job   *ent.ImportJob    `json:"job"`
-	Items []*ent.ImportItem `json:"items"`
+	Job           *ent.ImportJob    `json:"job"`
+	Items         []*ent.ImportItem `json:"items"`
+	JobID         int               `json:"job_id"`
+	Filename      string            `json:"filename"`
+	NoteCount     int               `json:"note_count"`
+	TagCount      int               `json:"tag_count"`
+	ResourceCount int               `json:"resource_count"`
+	WarningCount  int               `json:"warning_count"`
 }
 
 type ImportResult struct {
-	Job      *ent.ImportJob `json:"job"`
-	Imported int            `json:"imported"`
-	Skipped  int            `json:"skipped"`
-	Failed   int            `json:"failed"`
+	Job           *ent.ImportJob `json:"job"`
+	JobID         int            `json:"job_id"`
+	Status        string         `json:"status"`
+	Imported      int            `json:"imported"`
+	Skipped       int            `json:"skipped"`
+	Failed        int            `json:"failed"`
+	ImportedCount int            `json:"imported_count"`
+	SkippedCount  int            `json:"skipped_count"`
+	FailedCount   int            `json:"failed_count"`
 }
 
 type jobOptions struct {
@@ -146,7 +157,17 @@ func (s *Service) PreviewEvernote(ctx context.Context, userID int, filename stri
 		return nil, err
 	}
 
-	return &PreviewResult{Job: job, Items: items}, nil
+	tagCount, resourceCount, warningCount := previewCounts(doc)
+	return &PreviewResult{
+		Job:           job,
+		Items:         items,
+		JobID:         job.ID,
+		Filename:      job.Filename,
+		NoteCount:     job.NoteCount,
+		TagCount:      tagCount,
+		ResourceCount: resourceCount,
+		WarningCount:  warningCount,
+	}, nil
 }
 
 func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*ImportResult, error) {
@@ -159,13 +180,8 @@ func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*
 	if err != nil {
 		return nil, err
 	}
-	if job.Status == "completed" {
-		return &ImportResult{
-			Job:      job,
-			Imported: job.ImportedCount,
-			Skipped:  job.SkippedCount,
-			Failed:   job.FailedCount,
-		}, nil
+	if isTerminalImportStatus(job.Status) {
+		return resultFromJob(job), nil
 	}
 
 	options, err := decodeJobOptions(job.OptionsJSON)
@@ -230,8 +246,9 @@ func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*
 		}
 	}
 
+	status := finalImportStatus(result)
 	job, err = job.Update().
-		SetStatus("completed").
+		SetStatus(status).
 		SetImportedCount(result.Imported).
 		SetSkippedCount(result.Skipped).
 		SetFailedCount(result.Failed).
@@ -242,6 +259,11 @@ func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*
 	}
 
 	result.Job = job
+	result.JobID = job.ID
+	result.Status = job.Status
+	result.ImportedCount = result.Imported
+	result.SkippedCount = result.Skipped
+	result.FailedCount = result.Failed
 	return result, nil
 }
 
@@ -386,6 +408,54 @@ func titleOrUntitled(title string) string {
 		return "Untitled"
 	}
 	return title
+}
+
+func previewCounts(doc *evernote.Document) (int, int, int) {
+	tags := make(map[string]bool)
+	resourceCount := 0
+	warningCount := 0
+
+	for _, note := range doc.Notes {
+		for _, tagName := range note.Tags {
+			tags[tagName] = true
+		}
+		for _, resource := range note.Resources {
+			resourceCount++
+			if resource.DecodeError != "" {
+				warningCount++
+			}
+		}
+	}
+
+	return len(tags), resourceCount, warningCount
+}
+
+func resultFromJob(job *ent.ImportJob) *ImportResult {
+	return &ImportResult{
+		Job:           job,
+		JobID:         job.ID,
+		Status:        job.Status,
+		Imported:      job.ImportedCount,
+		Skipped:       job.SkippedCount,
+		Failed:        job.FailedCount,
+		ImportedCount: job.ImportedCount,
+		SkippedCount:  job.SkippedCount,
+		FailedCount:   job.FailedCount,
+	}
+}
+
+func finalImportStatus(result *ImportResult) string {
+	if result.Failed == 0 {
+		return "completed"
+	}
+	if result.Imported == 0 && result.Skipped == 0 {
+		return "failed"
+	}
+	return "completed_with_errors"
+}
+
+func isTerminalImportStatus(status string) bool {
+	return status == "completed" || status == "completed_with_errors" || status == "failed"
 }
 
 func duplicateKey(title string, created time.Time, content string) string {

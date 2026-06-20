@@ -27,6 +27,7 @@ func TestPreviewEvernoteCreatesJobAndPendingItem(t *testing.T) {
     <title>Meeting</title>
     <content><![CDATA[<en-note>Hello</en-note>]]></content>
     <created>20250101T010203Z</created>
+    <tag>Work</tag>
   </note>
 </en-export>`)
 
@@ -41,6 +42,9 @@ func TestPreviewEvernoteCreatesJobAndPendingItem(t *testing.T) {
 	}
 	if result.Job.NoteCount != 1 {
 		t.Fatalf("expected note count 1, got %d", result.Job.NoteCount)
+	}
+	if result.JobID != result.Job.ID || result.NoteCount != 1 || result.TagCount != 1 {
+		t.Fatalf("expected flat preview counts to match job, got job_id=%d note_count=%d tag_count=%d", result.JobID, result.NoteCount, result.TagCount)
 	}
 
 	items := result.Job.QueryItems().AllX(ctx)
@@ -83,6 +87,9 @@ func TestConfirmEvernoteImportsAndSkipsDuplicate(t *testing.T) {
 	}
 	if result.Imported != 1 || result.Skipped != 0 || result.Failed != 0 {
 		t.Fatalf("expected imported=1 skipped=0 failed=0, got imported=%d skipped=%d failed=%d", result.Imported, result.Skipped, result.Failed)
+	}
+	if result.JobID != preview.Job.ID || result.Status != "completed" || result.ImportedCount != 1 {
+		t.Fatalf("expected flat import result fields, got job_id=%d status=%q imported_count=%d", result.JobID, result.Status, result.ImportedCount)
 	}
 
 	notes := client.Note.Query().AllX(ctx)
