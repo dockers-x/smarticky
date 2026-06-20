@@ -94,6 +94,29 @@ function createNotesStore() {
       update((state) => ({ ...state, search }));
       await load();
     },
+    async updateSelected(
+      fields: Partial<
+        Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted">
+      >,
+    ) {
+      const state = get({ subscribe });
+      if (!state.selected) return;
+
+      const selectedID = state.selected.id;
+      update((current) => ({ ...current, error: "" }));
+      const updated = await apiFetch<Note>(`/notes/${selectedID}`, {
+        method: "PUT",
+        body: JSON.stringify(fields),
+      });
+
+      update((current) => ({
+        ...current,
+        selected: current.selected?.id === updated.id ? updated : current.selected,
+        notes: current.notes.map((note) =>
+          note.id === updated.id ? { ...note, ...updated } : note,
+        ),
+      }));
+    },
     replaceSelected(note: Note) {
       update((state) => ({
         ...state,

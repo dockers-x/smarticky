@@ -15,6 +15,16 @@ export default defineConfig({
           if (assetInfo.name?.endsWith(".css")) return "assets/index.css";
           return "assets/[name][extname]";
         },
+        manualChunks: (id) => {
+          if (
+            id.includes("/node_modules/@codemirror/") ||
+            id.includes("/node_modules/@lezer/") ||
+            id.includes("/node_modules/crelt/") ||
+            id.includes("/node_modules/style-mod/")
+          ) {
+            return "editor";
+          }
+        },
       },
     },
   },
