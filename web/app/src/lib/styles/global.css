@@ -233,6 +233,12 @@ h6 {
   border-bottom: 1px solid var(--color-divider);
 }
 
+.editor-header__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .editor-save-status {
   min-width: 56px;
   color: var(--color-text-muted);
@@ -243,6 +249,32 @@ h6 {
 
 .editor-save-status.visible {
   opacity: 1;
+}
+
+.editor-focus-toggle {
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.editor-focus-toggle:hover,
+.editor-focus-toggle[aria-pressed="true"] {
+  background: var(--color-surface-secondary);
+  color: var(--color-brand);
+}
+
+.editor-main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 248px;
+}
+
+.editor-pane.focus-mode .editor-main {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .editor-surface {
@@ -327,6 +359,135 @@ h6 {
   padding: 32px;
 }
 
+.editor-inspector {
+  min-width: 0;
+  overflow: auto;
+  padding: 20px;
+  border-left: 1px solid var(--color-divider);
+  background: var(--color-page);
+}
+
+.inspector-section + .inspector-section {
+  margin-top: 32px;
+}
+
+.inspector-section h2 {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 99px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.inspector-muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.inspector-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.inspector-add-row input {
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.inspector-add-row button,
+.inspector-secondary-button {
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.inspector-add-row button:not(:disabled):hover,
+.inspector-secondary-button:not(:disabled):hover {
+  color: var(--color-brand);
+}
+
+.attachment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.attachment-item span {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-item small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.inspector-error {
+  margin: 16px 0 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.workspace:has(.editor-pane.focus-mode) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace:has(.editor-pane.focus-mode) .sidebar,
+.workspace:has(.editor-pane.focus-mode) .note-list-pane {
+  display: none;
+}
+
 @media (max-width: 960px) {
   body {
     overflow: auto;
@@ -354,5 +515,14 @@ h6 {
 
   .editor-surface {
     padding: 24px 20px 48px;
+  }
+
+  .editor-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-inspector {
+    border-left: 0;
+    border-top: 1px solid var(--color-divider);
   }
 }

@@ -3,6 +3,7 @@
   import { onDestroy } from "svelte";
   import type { Note } from "../../api/types";
   import { notesStore } from "../../stores/notes";
+  import EditorInspector from "./EditorInspector.svelte";
   import EditorToolbar from "./EditorToolbar.svelte";
   import MarkdownEditor from "./MarkdownEditor.svelte";
 
@@ -18,6 +19,7 @@
   let contentTimer: ReturnType<typeof setTimeout> | null = null;
   let saveStatus: SaveStatus = "idle";
   let saveSequence = 0;
+  let focusMode = false;
 
   const statusText: Record<SaveStatus, string> = {
     idle: "",
@@ -96,27 +98,42 @@
   });
 </script>
 
-<section class="editor-pane" aria-label="编辑器">
+<section class:focus-mode={focusMode} class="editor-pane" aria-label="编辑器">
   {#if note}
     <header class="editor-header">
       <EditorToolbar view={editorView} />
-      <span class:visible={saveStatus !== "idle"} class="editor-save-status">
-        {statusText[saveStatus]}
-      </span>
+      <div class="editor-header__right">
+        <span class:visible={saveStatus !== "idle"} class="editor-save-status">
+          {statusText[saveStatus]}
+        </span>
+        <button
+          class="editor-focus-toggle"
+          type="button"
+          aria-pressed={focusMode}
+          on:click={() => (focusMode = !focusMode)}
+        >
+          {focusMode ? "退出" : "专注"}
+        </button>
+      </div>
     </header>
-    <div class="editor-surface">
-      <input
-        class="editor-title-input"
-        value={draftTitle}
-        placeholder="未命名"
-        aria-label="笔记标题"
-        on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
-      />
-      <MarkdownEditor
-        value={draftContent}
-        onChange={scheduleContentSave}
-        bindView={bindEditorView}
-      />
+    <div class="editor-main">
+      <div class="editor-surface">
+        <input
+          class="editor-title-input"
+          value={draftTitle}
+          placeholder="未命名"
+          aria-label="笔记标题"
+          on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
+        />
+        <MarkdownEditor
+          value={draftContent}
+          onChange={scheduleContentSave}
+          bindView={bindEditorView}
+        />
+      </div>
+      {#if !focusMode}
+        <EditorInspector {note} />
+      {/if}
     </div>
   {:else}
     <div class="editor-empty">
