@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Workspace from "./lib/components/workspace/Workspace.svelte";
   import { authStore } from "./lib/stores/auth";
 
   onMount(() => {
@@ -16,7 +17,5 @@
     </section>
   </main>
 {:else if $authStore.user}
-  <main class="workspace-root" aria-label="Smarticky workspace">
-    <p>欢迎回来，{$authStore.user.nickname || $authStore.user.username}</p>
-  </main>
+  <Workspace />
 {/if}
