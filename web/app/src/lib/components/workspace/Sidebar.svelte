@@ -1,5 +1,9 @@
 <script lang="ts">
+  import ToolsPanel from "../settings/ToolsPanel.svelte";
+  import { authStore } from "../../stores/auth";
   import { notesStore, type NoteFilter } from "../../stores/notes";
+
+  let toolsOpen = false;
 
   const filters: { id: NoteFilter; label: string }[] = [
     { id: "all", label: "全部笔记" },
@@ -22,5 +26,15 @@
       </button>
     {/each}
   </nav>
-  <button class="sidebar__tool" type="button">导入</button>
+  <button
+    class="sidebar__tool"
+    type="button"
+    aria-expanded={toolsOpen}
+    on:click={() => (toolsOpen = !toolsOpen)}
+  >
+    工具
+  </button>
+  {#if toolsOpen}
+    <ToolsPanel user={$authStore.user} onClose={() => (toolsOpen = false)} />
+  {/if}
 </aside>

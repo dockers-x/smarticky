@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import DialogHost from "./lib/components/common/DialogHost.svelte";
   import Workspace from "./lib/components/workspace/Workspace.svelte";
   import { authStore } from "./lib/stores/auth";
 
@@ -19,3 +20,5 @@
 {:else if $authStore.user}
   <Workspace />
 {/if}
+
+<DialogHost />

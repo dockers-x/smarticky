@@ -86,6 +86,9 @@ function createNotesStore() {
     select(note: Note) {
       update((state) => ({ ...state, selected: note }));
     },
+    clearSelection() {
+      update((state) => ({ ...state, selected: null }));
+    },
     async setFilter(filter: NoteFilter) {
       update((state) => ({ ...state, filter, selected: null }));
       await load();

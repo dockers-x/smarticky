@@ -2,6 +2,7 @@
   import type { EditorView } from "@codemirror/view";
   import { onDestroy } from "svelte";
   import type { Note } from "../../api/types";
+  import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
   import EditorInspector from "./EditorInspector.svelte";
   import EditorToolbar from "./EditorToolbar.svelte";
@@ -92,6 +93,41 @@
     }
   }
 
+  async function toggleStar(): Promise<void> {
+    if (!note) return;
+
+    try {
+      await notesStore.updateSelected({ is_starred: !note.is_starred });
+      notify(note.is_starred ? "已取消收藏" : "已收藏", "success");
+    } catch {
+      notify("更新收藏状态失败", "error");
+    }
+  }
+
+  async function toggleTrash(): Promise<void> {
+    if (!note) return;
+
+    const restoring = note.is_deleted;
+    const confirmed = await confirmDialog({
+      title: restoring ? "恢复笔记" : "移入废纸篓",
+      message: restoring
+        ? "确认将这篇笔记恢复到普通列表？"
+        : "确认将这篇笔记移入废纸篓？",
+      confirmLabel: restoring ? "恢复" : "移入",
+      cancelLabel: "取消",
+    });
+    if (!confirmed) return;
+
+    try {
+      await notesStore.updateSelected({ is_deleted: !restoring });
+      notesStore.clearSelection();
+      await notesStore.load();
+      notify(restoring ? "已恢复笔记" : "已移入废纸篓", "success");
+    } catch {
+      notify(restoring ? "恢复失败" : "移动失败", "error");
+    }
+  }
+
   onDestroy(() => {
     clearTimer(titleTimer);
     clearTimer(contentTimer);
@@ -106,6 +142,17 @@
         <span class:visible={saveStatus !== "idle"} class="editor-save-status">
           {statusText[saveStatus]}
         </span>
+        <button
+          class="editor-action-button"
+          type="button"
+          aria-pressed={note.is_starred}
+          on:click={toggleStar}
+        >
+          {note.is_starred ? "已收藏" : "收藏"}
+        </button>
+        <button class="editor-action-button danger" type="button" on:click={toggleTrash}>
+          {note.is_deleted ? "恢复" : "删除"}
+        </button>
         <button
           class="editor-focus-toggle"
           type="button"

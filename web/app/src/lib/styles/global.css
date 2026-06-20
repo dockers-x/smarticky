@@ -70,6 +70,7 @@ h6 {
 }
 
 .sidebar {
+  position: relative;
   padding: 20px;
 }
 
@@ -101,6 +102,68 @@ h6 {
 .sidebar button.active {
   background: var(--color-surface-secondary);
   color: var(--color-brand);
+}
+
+.sidebar__tool {
+  width: 100%;
+  margin-top: 24px;
+}
+
+.tools-panel {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  z-index: 20;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--color-card);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.tools-panel__header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tools-panel__header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.tools-panel__header button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  text-align: center;
+}
+
+.tools-list {
+  display: grid;
+}
+
+.tools-list button {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-divider);
+  padding: 0 16px;
+}
+
+.tools-list button:last-child {
+  border-bottom: 0;
+}
+
+.tools-list button.danger {
+  color: var(--color-danger);
 }
 
 .note-list-pane {
@@ -265,6 +328,26 @@ h6 {
 .editor-focus-toggle[aria-pressed="true"] {
   background: var(--color-surface-secondary);
   color: var(--color-brand);
+}
+
+.editor-action-button {
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.editor-action-button:hover,
+.editor-action-button[aria-pressed="true"] {
+  background: var(--color-surface-secondary);
+  color: var(--color-brand);
+}
+
+.editor-action-button.danger:hover {
+  color: var(--color-danger);
 }
 
 .editor-main {
@@ -486,6 +569,89 @@ h6 {
 .workspace:has(.editor-pane.focus-mode) .sidebar,
 .workspace:has(.editor-pane.focus-mode) .note-list-pane {
   display: none;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgb(28 28 26 / 28%);
+  padding: 20px;
+}
+
+.confirm-dialog {
+  width: min(360px, 100%);
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--color-card);
+  padding: 20px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.confirm-dialog p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.confirm-dialog__actions button {
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.confirm-dialog__actions button.danger {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.notification-stack {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 90;
+  display: grid;
+  gap: 8px;
+  width: min(320px, calc(100vw - 40px));
+}
+
+.notification {
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.notification.tone-success {
+  border-color: color-mix(in srgb, var(--color-brand) 32%, var(--color-divider));
+}
+
+.notification.tone-error {
+  color: var(--color-danger);
 }
 
 @media (max-width: 960px) {
