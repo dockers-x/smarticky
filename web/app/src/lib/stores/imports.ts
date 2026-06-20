@@ -5,6 +5,7 @@ import {
   type ImportPreview,
   type ImportResult,
 } from "../api/imports";
+import { t } from "./preferences";
 
 interface ImportsState {
   loading: boolean;
@@ -23,7 +24,7 @@ const initialState: ImportsState = {
 };
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "导入失败，请稍后重试";
+  return error instanceof Error ? error.message : t("importFailed");
 }
 
 function createImportsStore() {
@@ -40,7 +41,7 @@ function createImportsStore() {
           ...state,
           preview: null,
           result: null,
-          error: "请选择 .enex 文件",
+          error: t("selectFile"),
           fileName: file.name,
         }));
         return null;
@@ -80,7 +81,7 @@ function createImportsStore() {
     async confirm(): Promise<ImportResult | null> {
       const state = get({ subscribe });
       if (!state.preview) {
-        update((current) => ({ ...current, error: "请先选择 .enex 文件" }));
+        update((current) => ({ ...current, error: t("selectFileFirst") }));
         return null;
       }
 

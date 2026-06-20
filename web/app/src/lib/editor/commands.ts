@@ -1,5 +1,6 @@
 import { EditorSelection } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
+import { t } from "../stores/preferences";
 
 export function wrapSelection(
   view: EditorView,
@@ -42,7 +43,7 @@ export function insertTask(view: EditorView): void {
 
 export function insertImage(view: EditorView): void {
   const pos = view.state.selection.main.from;
-  const imageMarkdown = "![图片说明]()";
+  const imageMarkdown = `![${t("imageInsertAlt")}]()`;
 
   view.dispatch({
     changes: { from: pos, insert: imageMarkdown },

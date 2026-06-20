@@ -2,17 +2,18 @@
   import ToolsPanel from "../settings/ToolsPanel.svelte";
   import { authStore } from "../../stores/auth";
   import { notesStore, type NoteFilter } from "../../stores/notes";
+  import { preferencesStore, t } from "../../stores/preferences";
 
-  let toolsOpen = false;
+  let settingsOpen = false;
 
-  const filters: { id: NoteFilter; label: string }[] = [
-    { id: "all", label: "全部笔记" },
-    { id: "starred", label: "收藏" },
-    { id: "trash", label: "废纸篓" },
+  $: filters = [
+    { id: "all" as NoteFilter, label: t("allNotes", $preferencesStore.language) },
+    { id: "starred" as NoteFilter, label: t("starred", $preferencesStore.language) },
+    { id: "trash" as NoteFilter, label: t("trash", $preferencesStore.language) },
   ];
 </script>
 
-<aside class="sidebar" aria-label="导航">
+<aside class="sidebar" aria-label={t("noteList", $preferencesStore.language)}>
   <div class="sidebar__brand">Smarticky</div>
   <nav class="sidebar__nav">
     {#each filters as filter}
@@ -26,15 +27,26 @@
       </button>
     {/each}
   </nav>
+  <div class="sidebar__spacer"></div>
+  <div class="sidebar__preferences" aria-label={t("settings", $preferencesStore.language)}>
+    <button type="button" on:click={() => preferencesStore.toggleTheme()}>
+      {$preferencesStore.theme === "dark"
+        ? t("lightTheme", $preferencesStore.language)
+        : t("darkTheme", $preferencesStore.language)}
+    </button>
+    <button type="button" on:click={() => preferencesStore.toggleLanguage()}>
+      {$preferencesStore.language === "zh" ? "EN" : "中文"}
+    </button>
+  </div>
   <button
     class="sidebar__tool"
     type="button"
-    aria-expanded={toolsOpen}
-    on:click={() => (toolsOpen = !toolsOpen)}
+    aria-expanded={settingsOpen}
+    on:click={() => (settingsOpen = !settingsOpen)}
   >
-    工具
+    {t("settings", $preferencesStore.language)}
   </button>
-  {#if toolsOpen}
-    <ToolsPanel user={$authStore.user} onClose={() => (toolsOpen = false)} />
+  {#if settingsOpen}
+    <ToolsPanel user={$authStore.user} onClose={() => (settingsOpen = false)} />
   {/if}
 </aside>

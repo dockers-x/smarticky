@@ -1,6 +1,7 @@
 import { writable } from "svelte/store";
 import { apiFetch } from "../api/client";
 import type { SetupCheckResponse, User } from "../api/types";
+import { t } from "./preferences";
 
 interface AuthState {
   loading: boolean;
@@ -46,7 +47,7 @@ function createAuthStore() {
           loading: false,
           setupNeeded: false,
           user: null,
-          error: "登录已过期",
+          error: t("sessionExpired"),
         });
         window.location.href = "/login";
       }

@@ -3,6 +3,7 @@
   import type { Note } from "../../api/types";
   import { attachmentsStore } from "../../stores/attachments";
   import { notesStore } from "../../stores/notes";
+  import { preferencesStore, t } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
 
   export let note: Note;
@@ -41,7 +42,7 @@
       await notesStore.load();
       tagName = "";
     } catch (err) {
-      error = err instanceof Error ? err.message : "添加标签失败";
+      error = err instanceof Error ? err.message : t("addTagFailed", $preferencesStore.language);
     } finally {
       busy = false;
     }
@@ -57,16 +58,19 @@
       await attachmentsStore.upload(note.id, file);
       fileInput.value = "";
     } catch (err) {
-      error = err instanceof Error ? err.message : "上传附件失败";
+      error =
+        err instanceof Error
+          ? err.message
+          : t("uploadAttachmentFailed", $preferencesStore.language);
     } finally {
       busy = false;
     }
   }
 </script>
 
-<aside class="editor-inspector" aria-label="笔记信息">
+<aside class="editor-inspector" aria-label={t("noteInfo", $preferencesStore.language)}>
   <section class="inspector-section">
-    <h2>标签</h2>
+    <h2>{t("tags", $preferencesStore.language)}</h2>
     {#if note.tags?.length}
       <div class="tag-list">
         {#each note.tags as tag (tag.id)}
@@ -74,22 +78,24 @@
         {/each}
       </div>
     {:else}
-      <p class="inspector-muted">暂无标签</p>
+      <p class="inspector-muted">{t("noTags", $preferencesStore.language)}</p>
     {/if}
     <form class="inspector-add-row" on:submit|preventDefault={handleAddTag}>
       <input
         bind:value={tagName}
         type="text"
-        placeholder="添加标签"
-        aria-label="添加标签"
+        placeholder={t("addTag", $preferencesStore.language)}
+        aria-label={t("addTag", $preferencesStore.language)}
         disabled={busy}
       />
-      <button type="submit" disabled={busy || !tagName.trim()}>添加</button>
+      <button type="submit" disabled={busy || !tagName.trim()}>
+        {t("add", $preferencesStore.language)}
+      </button>
     </form>
   </section>
 
   <section class="inspector-section">
-    <h2>附件</h2>
+    <h2>{t("attachments", $preferencesStore.language)}</h2>
     {#if $attachmentsStore.length}
       <div class="attachment-list">
         {#each $attachmentsStore as attachment (attachment.id)}
@@ -100,7 +106,7 @@
         {/each}
       </div>
     {:else}
-      <p class="inspector-muted">暂无附件</p>
+      <p class="inspector-muted">{t("noAttachments", $preferencesStore.language)}</p>
     {/if}
     <input
       bind:this={fileInput}
@@ -114,7 +120,7 @@
       disabled={busy}
       on:click={() => fileInput.click()}
     >
-      添加附件
+      {t("addAttachment", $preferencesStore.language)}
     </button>
   </section>
 

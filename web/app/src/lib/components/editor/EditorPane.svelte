@@ -4,9 +4,11 @@
   import type { Note } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
+  import { preferencesStore, t } from "../../stores/preferences";
   import EditorInspector from "./EditorInspector.svelte";
   import EditorToolbar from "./EditorToolbar.svelte";
   import MarkdownEditor from "./MarkdownEditor.svelte";
+  import ShareImageDialog from "./ShareImageDialog.svelte";
 
   export let note: Note | null = null;
 
@@ -22,13 +24,15 @@
   let saveStatus: SaveStatus = "idle";
   let saveSequence = 0;
   let focusMode = false;
+  let detailsOpen = false;
+  let shareOpen = false;
 
-  const statusText: Record<SaveStatus, string> = {
+  $: statusText = {
     idle: "",
-    saving: "正在保存",
-    saved: "已保存",
-    error: "保存失败",
-  };
+    saving: t("saving", $preferencesStore.language),
+    saved: t("saved", $preferencesStore.language),
+    error: t("saveError", $preferencesStore.language),
+  } satisfies Record<SaveStatus, string>;
 
   function clearTimer(timer: ReturnType<typeof setTimeout> | null): void {
     if (timer) clearTimeout(timer);
@@ -43,6 +47,8 @@
     draftTitle = nextNote?.title ?? "";
     draftContent = nextNote?.content ?? "";
     saveStatus = nextNote ? "saved" : "idle";
+    detailsOpen = false;
+    shareOpen = false;
     void tick().then(resizeTitleInput);
   }
 
@@ -107,9 +113,14 @@
 
     try {
       await notesStore.updateSelected({ is_starred: !note.is_starred });
-      notify(note.is_starred ? "已取消收藏" : "已收藏", "success");
+      notify(
+        note.is_starred
+          ? t("starRemoved", $preferencesStore.language)
+          : t("starAdded", $preferencesStore.language),
+        "success",
+      );
     } catch {
-      notify("更新收藏状态失败", "error");
+      notify(t("updateStarFailed", $preferencesStore.language), "error");
     }
   }
 
@@ -118,12 +129,16 @@
 
     const restoring = note.is_deleted;
     const confirmed = await confirmDialog({
-      title: restoring ? "恢复笔记" : "移入废纸篓",
+      title: restoring
+        ? t("restoreNote", $preferencesStore.language)
+        : t("trashNote", $preferencesStore.language),
       message: restoring
-        ? "确认将这篇笔记恢复到普通列表？"
-        : "确认将这篇笔记移入废纸篓？",
-      confirmLabel: restoring ? "恢复" : "移入",
-      cancelLabel: "取消",
+        ? t("restoreNoteMessage", $preferencesStore.language)
+        : t("trashNoteMessage", $preferencesStore.language),
+      confirmLabel: restoring
+        ? t("restore", $preferencesStore.language)
+        : t("trashNote", $preferencesStore.language),
+      cancelLabel: t("cancel", $preferencesStore.language),
     });
     if (!confirmed) return;
 
@@ -131,9 +146,19 @@
       await notesStore.updateSelected({ is_deleted: !restoring });
       notesStore.clearSelection();
       await notesStore.load();
-      notify(restoring ? "已恢复笔记" : "已移入废纸篓", "success");
+      notify(
+        restoring
+          ? t("restoredNote", $preferencesStore.language)
+          : t("trashedNote", $preferencesStore.language),
+        "success",
+      );
     } catch {
-      notify(restoring ? "恢复失败" : "移动失败", "error");
+      notify(
+        restoring
+          ? t("restoreFailed", $preferencesStore.language)
+          : t("trashFailed", $preferencesStore.language),
+        "error",
+      );
     }
   }
 
@@ -147,14 +172,14 @@
   class:focus-mode={focusMode}
   class:has-note={Boolean(note)}
   class="editor-pane"
-  aria-label="编辑器"
+  aria-label={t("editor", $preferencesStore.language)}
 >
   {#if note}
     <header class="editor-header">
       <button
         class="editor-mobile-back"
         type="button"
-        aria-label="返回笔记列表"
+        aria-label={t("back", $preferencesStore.language)}
         on:click={() => notesStore.clearSelection()}
       >
         ‹
@@ -170,10 +195,22 @@
           aria-pressed={note.is_starred}
           on:click={toggleStar}
         >
-          {note.is_starred ? "已收藏" : "收藏"}
+          {note.is_starred
+            ? t("starAdded", $preferencesStore.language)
+            : t("star", $preferencesStore.language)}
         </button>
         <button class="editor-action-button danger" type="button" on:click={toggleTrash}>
-          {note.is_deleted ? "恢复" : "删除"}
+          {note.is_deleted
+            ? t("restore", $preferencesStore.language)
+            : t("delete", $preferencesStore.language)}
+        </button>
+        <button
+          class="editor-action-button"
+          type="button"
+          aria-pressed={detailsOpen}
+          on:click={() => (detailsOpen = !detailsOpen)}
+        >
+          {t("showDetails", $preferencesStore.language)}
         </button>
         <button
           class="editor-focus-toggle"
@@ -181,18 +218,23 @@
           aria-pressed={focusMode}
           on:click={() => (focusMode = !focusMode)}
         >
-          {focusMode ? "退出" : "专注"}
+          {focusMode
+            ? t("exitFocus", $preferencesStore.language)
+            : t("enterFocus", $preferencesStore.language)}
+        </button>
+        <button class="editor-share-button" type="button" on:click={() => (shareOpen = true)}>
+          {t("generateImage", $preferencesStore.language)}
         </button>
       </div>
     </header>
-    <div class="editor-main">
+    <div class:details-open={detailsOpen && !focusMode} class="editor-main">
       <div class="editor-surface">
         <textarea
           bind:this={titleInput}
           class="editor-title-input"
           value={draftTitle}
-          placeholder="未命名"
-          aria-label="笔记标题"
+          placeholder={t("untitled", $preferencesStore.language)}
+          aria-label={t("noteTitle", $preferencesStore.language)}
           rows="1"
           on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
         ></textarea>
@@ -202,13 +244,20 @@
           bindView={bindEditorView}
         />
       </div>
-      {#if !focusMode}
+      {#if detailsOpen && !focusMode}
         <EditorInspector {note} />
       {/if}
     </div>
+    {#if shareOpen}
+      <ShareImageDialog
+        title={draftTitle}
+        content={draftContent}
+        onClose={() => (shareOpen = false)}
+      />
+    {/if}
   {:else}
     <div class="editor-empty">
-      <p class="editor-empty-text">选择一篇笔记，或新建一篇</p>
+      <p class="editor-empty-text">{t("selectOrCreate", $preferencesStore.language)}</p>
     </div>
   {/if}
 </section>

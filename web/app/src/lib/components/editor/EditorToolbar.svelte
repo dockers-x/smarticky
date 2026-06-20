@@ -6,44 +6,45 @@
     prefixLine,
     wrapSelection,
   } from "../../editor/commands";
+  import { preferencesStore, t } from "../../stores/preferences";
 
   export let view: EditorView | null = null;
 
-  const actions = [
+  $: actions = [
     {
       label: "B",
-      title: "加粗",
+      title: t("bold", $preferencesStore.language),
       run: () => view && wrapSelection(view, "**"),
     },
     {
       label: "I",
-      title: "斜体",
+      title: t("italic", $preferencesStore.language),
       run: () => view && wrapSelection(view, "*"),
     },
     {
       label: "•",
-      title: "无序列表",
+      title: t("unorderedList", $preferencesStore.language),
       run: () => view && prefixLine(view, "- "),
     },
     {
       label: "1.",
-      title: "有序列表",
+      title: t("orderedList", $preferencesStore.language),
       run: () => view && prefixLine(view, "1. "),
     },
     {
       label: "☐",
-      title: "待办",
+      title: t("task", $preferencesStore.language),
       run: () => view && insertTask(view),
     },
     {
-      label: "图",
-      title: "插入图片",
+      label: t("imageLabel", $preferencesStore.language),
+      title: t("insertImage", $preferencesStore.language),
       run: () => view && insertImage(view),
     },
   ];
 </script>
 
-<div class="editor-toolbar" role="toolbar" aria-label="Markdown 工具栏">
+<div class="editor-toolbar" role="toolbar" aria-label={t("markdownToolbar", $preferencesStore.language)}>
   {#each actions as action}
     <button
       type="button"

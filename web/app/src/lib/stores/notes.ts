@@ -1,6 +1,7 @@
 import { get, writable } from "svelte/store";
 import { apiFetch } from "../api/client";
 import type { Note } from "../api/types";
+import { t } from "./preferences";
 
 export type NoteFilter = "all" | "starred" | "trash";
 
@@ -61,7 +62,7 @@ function createNotesStore() {
         ...current,
         loading: false,
         error:
-          error instanceof Error ? error.message : "无法加载笔记，请稍后重试",
+          error instanceof Error ? error.message : t("loadNotesFailed"),
       }));
     }
   }
@@ -72,7 +73,7 @@ function createNotesStore() {
     async create() {
       const note = await apiFetch<Note>("/notes", {
         method: "POST",
-        body: JSON.stringify({ title: "未命名", content: "", color: "" }),
+        body: JSON.stringify({ title: t("untitled"), content: "", color: "" }),
       });
       update((state) => ({
         ...state,

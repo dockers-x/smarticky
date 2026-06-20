@@ -6,6 +6,7 @@
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { importsStore } from "../../stores/imports";
   import { notesStore } from "../../stores/notes";
+  import { preferencesStore, t, type MessageKey } from "../../stores/preferences";
 
   export let user: User | null = null;
   export let onClose: () => void = () => {};
@@ -13,7 +14,7 @@
   type ToolsView = "menu" | "import";
 
   interface ToolRow {
-    label: string;
+    labelKey: MessageKey;
     action: () => void | Promise<void>;
     danger?: boolean;
     adminOnly?: boolean;
@@ -31,43 +32,48 @@
     await notesStore.setFilter("all");
     await notesStore.setSearch("");
     notify(
-      result.failed_count > 0 ? "导入完成，部分条目失败" : "导入完成",
+      result.failed_count > 0
+        ? t("importCompletedPartial", $preferencesStore.language)
+        : t("importCompleted", $preferencesStore.language),
       result.failed_count > 0 ? "info" : "success",
     );
   }
 
   const rows: ToolRow[] = [
     {
-      label: "导入",
+      labelKey: "import",
       action: openImport,
       keepOpen: true,
     },
     {
-      label: "备份",
-      action: () => notify("备份工具将在设置面板中接入", "info"),
+      labelKey: "backup",
+      action: () => notify(t("backupComing", $preferencesStore.language), "info"),
     },
     {
-      label: "字体管理",
-      action: () => notify("字体管理将在设置面板中接入", "info"),
+      labelKey: "fontManagement",
+      action: () =>
+        notify(t("fontManagementComing", $preferencesStore.language), "info"),
     },
     {
-      label: "个人资料",
-      action: () => notify("个人资料将在设置面板中接入", "info"),
+      labelKey: "personalProfile",
+      action: () =>
+        notify(t("personalProfileComing", $preferencesStore.language), "info"),
     },
     {
-      label: "用户管理",
+      labelKey: "userManagement",
       adminOnly: true,
-      action: () => notify("用户管理将在设置面板中接入", "info"),
+      action: () =>
+        notify(t("userManagementComing", $preferencesStore.language), "info"),
     },
     {
-      label: "退出登录",
+      labelKey: "logout",
       danger: true,
       action: async () => {
         const confirmed = await confirmDialog({
-          title: "退出登录",
-          message: "确认退出当前账号？",
-          confirmLabel: "退出",
-          cancelLabel: "取消",
+          title: t("logout", $preferencesStore.language),
+          message: t("logoutConfirm", $preferencesStore.language),
+          confirmLabel: t("logout", $preferencesStore.language),
+          cancelLabel: t("cancel", $preferencesStore.language),
         });
         if (confirmed) authStore.logout();
       },
@@ -77,10 +83,10 @@
   $: visibleRows = rows.filter((row) => !row.adminOnly || user?.role === "admin");
 </script>
 
-<section class="tools-panel" class:import-view={view === "import"} aria-label="工具">
+<section class="tools-panel" class:import-view={view === "import"} aria-label={t("settings", $preferencesStore.language)}>
   <div class="tools-panel__header">
-    <h2>{view === "import" ? "导入" : "工具"}</h2>
-    <button type="button" aria-label="关闭工具面板" on:click={onClose}>×</button>
+    <h2>{view === "import" ? t("import", $preferencesStore.language) : t("settings", $preferencesStore.language)}</h2>
+    <button type="button" aria-label={t("closeSettings", $preferencesStore.language)} on:click={onClose}>×</button>
   </div>
   {#if view === "import"}
     <ImportCenter onBack={() => (view = "menu")} onImported={handleImported} />
@@ -95,7 +101,7 @@
             if (!row.danger && !row.keepOpen) onClose();
           }}
         >
-          <span>{row.label}</span>
+          <span>{t(row.labelKey, $preferencesStore.language)}</span>
           <span aria-hidden="true">›</span>
         </button>
       {/each}

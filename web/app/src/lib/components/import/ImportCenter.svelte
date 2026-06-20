@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ImportResult } from "../../api/imports";
   import { importsStore } from "../../stores/imports";
+  import { preferencesStore, t } from "../../stores/preferences";
   import ImportSummary from "./ImportSummary.svelte";
 
   export let onBack: () => void = () => {};
@@ -26,14 +27,16 @@
 </script>
 
 <div class="import-center">
-  <button class="import-center__back" type="button" on:click={onBack}>返回</button>
+  <button class="import-center__back" type="button" on:click={onBack}>
+    {t("back", $preferencesStore.language)}
+  </button>
 
   <input
     bind:this={fileInput}
     class="visually-hidden"
     type="file"
     accept=".enex"
-    aria-label="选择 Evernote ENEX 文件"
+    aria-label={t("selectImportFile", $preferencesStore.language)}
     on:change={handleFileChange}
   />
 
@@ -43,7 +46,7 @@
       disabled={$importsStore.loading}
       on:click={() => fileInput?.click()}
     >
-      选择 .enex 文件
+      {t("selectFile", $preferencesStore.language)}
     </button>
     {#if $importsStore.fileName}
       <span title={$importsStore.fileName}>{$importsStore.fileName}</span>
@@ -55,7 +58,7 @@
   {/if}
 
   {#if $importsStore.loading}
-    <p class="import-muted" aria-live="polite">处理中</p>
+    <p class="import-muted" aria-live="polite">{t("importing", $preferencesStore.language)}</p>
   {/if}
 
   {#if $importsStore.preview && !$importsStore.result}
@@ -66,14 +69,16 @@
       disabled={$importsStore.loading}
       on:click={confirmImport}
     >
-      开始导入
+      {t("importStart", $preferencesStore.language)}
     </button>
   {/if}
 
   {#if $importsStore.result}
     <ImportSummary result={$importsStore.result} />
     <div class="import-result-actions">
-      <button type="button" on:click={() => importsStore.reset()}>继续导入</button>
+      <button type="button" on:click={() => importsStore.reset()}>
+        {t("continueImport", $preferencesStore.language)}
+      </button>
     </div>
   {/if}
 </div>

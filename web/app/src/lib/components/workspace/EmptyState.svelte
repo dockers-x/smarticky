@@ -1,7 +1,9 @@
-<script lang="ts"></script>
+<script lang="ts">
+  import { preferencesStore, t } from "../../stores/preferences";
+</script>
 
 <div class="empty-state">
   <div class="empty-state__mark" aria-hidden="true">✎</div>
-  <h2>写下你的第一篇笔记</h2>
-  <p>记录想法，沉淀思考</p>
+  <h2>{t("emptyNoteList", $preferencesStore.language)}</h2>
+  <p>{t("emptyNoteListSubtitle", $preferencesStore.language)}</p>
 </div>
