@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { EditorView } from "@codemirror/view";
-  import { onDestroy } from "svelte";
+  import { onDestroy, tick } from "svelte";
   import type { Note } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
@@ -16,6 +16,7 @@
   let activeNoteID = "";
   let draftTitle = "";
   let draftContent = "";
+  let titleInput: HTMLTextAreaElement | null = null;
   let titleTimer: ReturnType<typeof setTimeout> | null = null;
   let contentTimer: ReturnType<typeof setTimeout> | null = null;
   let saveStatus: SaveStatus = "idle";
@@ -42,6 +43,7 @@
     draftTitle = nextNote?.title ?? "";
     draftContent = nextNote?.content ?? "";
     saveStatus = nextNote ? "saved" : "idle";
+    void tick().then(resizeTitleInput);
   }
 
   $: if ((note?.id ?? "") !== activeNoteID) {
@@ -54,11 +56,18 @@
 
   function scheduleTitleSave(value: string): void {
     draftTitle = value;
+    resizeTitleInput();
     clearTimer(titleTimer);
     const noteID = activeNoteID;
     titleTimer = setTimeout(() => {
       void persistDraft(noteID, { title: value });
     }, 500);
+  }
+
+  function resizeTitleInput(): void {
+    if (!titleInput) return;
+    titleInput.style.height = "auto";
+    titleInput.style.height = `${titleInput.scrollHeight}px`;
   }
 
   function scheduleContentSave(value: string): void {
@@ -134,9 +143,22 @@
   });
 </script>
 
-<section class:focus-mode={focusMode} class="editor-pane" aria-label="编辑器">
+<section
+  class:focus-mode={focusMode}
+  class:has-note={Boolean(note)}
+  class="editor-pane"
+  aria-label="编辑器"
+>
   {#if note}
     <header class="editor-header">
+      <button
+        class="editor-mobile-back"
+        type="button"
+        aria-label="返回笔记列表"
+        on:click={() => notesStore.clearSelection()}
+      >
+        ‹
+      </button>
       <EditorToolbar view={editorView} />
       <div class="editor-header__right">
         <span class:visible={saveStatus !== "idle"} class="editor-save-status">
@@ -165,13 +187,15 @@
     </header>
     <div class="editor-main">
       <div class="editor-surface">
-        <input
+        <textarea
+          bind:this={titleInput}
           class="editor-title-input"
           value={draftTitle}
           placeholder="未命名"
           aria-label="笔记标题"
+          rows="1"
           on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
-        />
+        ></textarea>
         <MarkdownEditor
           value={draftContent}
           onChange={scheduleContentSave}

@@ -1,3 +1,4 @@
+/* Shared legacy CSS for setup/login pages; the authenticated workspace now uses the Svelte SPA bundle. */
 /* CSS Variables for Theme Management */
 :root {
     /* Primary Colors */

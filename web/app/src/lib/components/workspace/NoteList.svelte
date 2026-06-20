@@ -1,10 +1,18 @@
 <script lang="ts">
+  import ToolsPanel from "../settings/ToolsPanel.svelte";
+  import { authStore } from "../../stores/auth";
   import { notesStore } from "../../stores/notes";
   import EmptyState from "./EmptyState.svelte";
   import NoteCard from "./NoteCard.svelte";
+
+  let toolsOpen = false;
 </script>
 
-<section class="note-list-pane" aria-label="笔记列表">
+<section
+  class:editor-open={Boolean($notesStore.selected)}
+  class="note-list-pane"
+  aria-label="笔记列表"
+>
   <div class="note-list-toolbar">
     <input
       type="search"
@@ -13,7 +21,19 @@
       value={$notesStore.search}
       on:input={(event) => notesStore.setSearch(event.currentTarget.value)}
     />
+    <button
+      class="note-list-mobile-tool"
+      type="button"
+      aria-expanded={toolsOpen}
+      on:click={() => (toolsOpen = !toolsOpen)}
+    >
+      工具
+    </button>
   </div>
+
+  {#if toolsOpen}
+    <ToolsPanel user={$authStore.user} onClose={() => (toolsOpen = false)} />
+  {/if}
 
   {#if $notesStore.error}
     <div class="note-list-message" role="alert">{$notesStore.error}</div>

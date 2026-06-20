@@ -1,3 +1,4 @@
+// Legacy authenticated workspace script. The root route now serves the Svelte SPA shell.
 const API_BASE = "/api";
 
 // Configure marked.js to support GitHub Flavored Markdown (task lists, tables, etc.)
@@ -3794,4 +3795,3 @@ function closeMobileEditor() {
     document.body.classList.remove('mobile-editor-open');
   }
 }
-
