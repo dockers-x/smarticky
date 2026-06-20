@@ -14,6 +14,7 @@
   class:active
   class="note-card"
   type="button"
+  aria-pressed={active}
   on:click={() => notesStore.select(note)}
 >
   <span class="note-card__title">{note.title || "未命名"}</span>

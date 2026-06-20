@@ -8,13 +8,18 @@
   <div class="note-list-toolbar">
     <input
       type="search"
+      aria-label="搜索笔记"
       placeholder="搜索笔记"
       value={$notesStore.search}
       on:input={(event) => notesStore.setSearch(event.currentTarget.value)}
     />
   </div>
 
-  {#if $notesStore.notes.length === 0}
+  {#if $notesStore.error}
+    <div class="note-list-message" role="alert">{$notesStore.error}</div>
+  {:else if $notesStore.loading}
+    <div class="note-list-message">正在加载笔记</div>
+  {:else if $notesStore.notes.length === 0}
     <EmptyState />
   {:else}
     <div class="note-card-list">

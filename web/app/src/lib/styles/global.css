@@ -162,9 +162,21 @@ h6 {
 }
 
 .note-card__meta {
+  display: block;
   margin-top: 12px;
   color: var(--color-text-muted);
   font-size: 11px;
+}
+
+.note-list-message {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--color-card);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .new-note-fab {
@@ -202,4 +214,26 @@ h6 {
 .empty-state p,
 .editor-empty-text {
   color: var(--color-text-muted);
+}
+
+@media (max-width: 960px) {
+  body {
+    overflow: auto;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+    min-height: 100%;
+  }
+
+  .sidebar,
+  .note-list-pane,
+  .editor-pane {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-divider);
+  }
+
+  .note-card-list {
+    max-height: none;
+  }
 }

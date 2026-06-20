@@ -15,6 +15,7 @@
       <button
         class:active={$notesStore.filter === filter.id}
         type="button"
+        aria-pressed={$notesStore.filter === filter.id}
         on:click={() => notesStore.setFilter(filter.id)}
       >
         {filter.label}

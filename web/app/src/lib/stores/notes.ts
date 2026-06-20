@@ -22,6 +22,7 @@ function queryFor(state: NotesState): string {
 }
 
 function createNotesStore() {
+  let loadSequence = 0;
   const { subscribe, update } = writable<NotesState>({
     notes: [],
     selected: null,
@@ -32,20 +33,37 @@ function createNotesStore() {
   });
 
   async function load() {
+    const sequence = ++loadSequence;
     update((state) => ({ ...state, loading: true, error: "" }));
     const state = get({ subscribe });
     const query = queryFor(state);
-    const notes = await apiFetch<Note[]>(`/notes${query ? `?${query}` : ""}`);
 
-    update((current) => ({
-      ...current,
-      notes,
-      selected: current.selected
-        ? notes.find((note) => note.id === current.selected?.id) ||
-          current.selected
-        : null,
-      loading: false,
-    }));
+    try {
+      const notes = await apiFetch<Note[]>(
+        `/notes${query ? `?${query}` : ""}`,
+      );
+      if (sequence !== loadSequence) return;
+
+      update((current) => ({
+        ...current,
+        notes,
+        selected: current.selected
+          ? notes.find((note) => note.id === current.selected?.id) ||
+            current.selected
+          : null,
+        loading: false,
+        error: "",
+      }));
+    } catch (error) {
+      if (sequence !== loadSequence) return;
+
+      update((current) => ({
+        ...current,
+        loading: false,
+        error:
+          error instanceof Error ? error.message : "无法加载笔记，请稍后重试",
+      }));
+    }
   }
 
   return {
@@ -56,13 +74,14 @@ function createNotesStore() {
         method: "POST",
         body: JSON.stringify({ title: "未命名", content: "", color: "" }),
       });
-      await load();
       update((state) => ({
         ...state,
-        selected: note,
         filter: "all",
         search: "",
+        selected: note,
       }));
+      await load();
+      update((state) => ({ ...state, selected: note }));
     },
     select(note: Note) {
       update((state) => ({ ...state, selected: note }));
