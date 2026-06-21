@@ -47,6 +47,13 @@ A modern notes application built with Go, inspired by Smartisan Notes.
   - 自动备份计划（每日/每周）
   - **图形化配置界面**
 
+- 🔌 **MCP 接入** / MCP Access
+  - Streamable HTTP endpoint: `/mcp`
+  - 用户级 MCP Token，绑定当前笔记用户
+  - 支持查询、搜索、读取、创建笔记
+  - 支持将笔记生成 PNG 长图
+  - LazyCat 微服内支持应用间委托访问
+
 - 🐳 **Docker 部署** / Docker Deployment
   - 支持 Docker 容器化部署
   - Docker Compose 一键启动
@@ -109,6 +116,12 @@ SMARTICKY_ADMIN_USERNAME=admin
 SMARTICKY_ADMIN_PASSWORD=change-me-now
 SMARTICKY_ADMIN_EMAIL=admin@example.com
 SMARTICKY_ADMIN_NICKNAME=Owner
+
+# LazyCat 环境下才开启：信任 X-HC-User-ID / X-HC-SOURCE 转发身份
+SMARTICKY_TRUST_LAZYCAT_HEADERS=false
+
+# 可选：后端生图字体路径
+SMARTICKY_SHARE_FONT=/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc
 ```
 
 `SMARTICKY_ADMIN_*` 只在数据库没有任何用户时生效；已有用户后不会再次创建或覆盖管理员账号。
@@ -180,6 +193,27 @@ smarticky/
 - 恢复前会自动备份当前数据库
 - Backups are full SQLite database files (.db)
 - Current database is automatically backed up before restore
+
+### MCP
+
+- `POST /mcp` - MCP Streamable HTTP endpoint
+- `GET /api/mcp/tokens` - 列出当前用户的 MCP token
+- `POST /api/mcp/tokens` - 创建当前用户的 MCP token，明文只返回一次
+- `DELETE /api/mcp/tokens/:id` - 撤销当前用户的 MCP token
+- `GET /api/mcp/images/:id` - 下载当前用户生成的 MCP 笔记图片
+
+MCP tools:
+
+- `smarticky_list_notes`
+- `smarticky_search_notes`
+- `smarticky_get_note`
+- `smarticky_create_note`
+- `smarticky_generate_note_image`
+
+锁定笔记不会通过 MCP 返回正文，也不能通过 MCP 生成图片。
+
+LazyCat LPK exports `resources/mcp-providers/smarticky/mcp.yml` with `endpoint: /mcp`.
+For LazyCat delegated access, set the matching LazyCat user ID in the user's profile settings first.
 
 ## 开发 / Development
 

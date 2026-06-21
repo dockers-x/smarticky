@@ -1,4 +1,10 @@
 <script lang="ts">
+  import {
+    createMCPToken,
+    deleteMCPToken,
+    listMCPTokens,
+    type MCPToken,
+  } from "../../api/mcp";
   import type { User } from "../../api/types";
   import { updatePassword, updateUser, uploadAvatar } from "../../api/users";
   import { authStore } from "../../stores/auth";
@@ -10,20 +16,34 @@
   let activeUserID = 0;
   let email = "";
   let nickname = "";
+  let lazycatUID = "";
   let oldPassword = "";
   let newPassword = "";
   let confirmPassword = "";
   let avatarBusy = false;
   let profileBusy = false;
   let passwordBusy = false;
+  let mcpBusy = false;
+  let mcpLoadedUserID = 0;
+  let mcpTokenName = "";
+  let mcpPlainToken = "";
+  let mcpTokens: MCPToken[] = [];
 
   $: if (user && user.id !== activeUserID) {
     activeUserID = user.id;
     email = user.email ?? "";
     nickname = user.nickname ?? "";
+    lazycatUID = user.lazycat_uid ?? "";
     oldPassword = "";
     newPassword = "";
     confirmPassword = "";
+  }
+
+  $: if (user && user.id !== mcpLoadedUserID) {
+    mcpLoadedUserID = user.id;
+    mcpTokenName = "";
+    mcpPlainToken = "";
+    void loadMcpTokens();
   }
 
   function updateCurrentUser(fields: Partial<User>): void {
@@ -81,6 +101,7 @@
       const updated = await updateUser(user.id, {
         email: email.trim(),
         nickname: nickname.trim(),
+        lazycat_uid: lazycatUID.trim(),
       });
       authStore.setUser(updated);
       notify(t("profileSaved", $preferencesStore.language), "success");
@@ -133,6 +154,90 @@
       passwordBusy = false;
     }
   }
+
+  async function loadMcpTokens(): Promise<void> {
+    if (!user) return;
+    mcpBusy = true;
+    try {
+      mcpTokens = await listMCPTokens();
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : t("mcpTokenLoadFailed", $preferencesStore.language),
+        "error",
+      );
+    } finally {
+      mcpBusy = false;
+    }
+  }
+
+  async function createToken(): Promise<void> {
+    if (!user) return;
+    mcpBusy = true;
+    try {
+      const created = await createMCPToken(
+        mcpTokenName.trim() ||
+          t("mcpTokenDefaultName", $preferencesStore.language),
+      );
+      mcpPlainToken = created.token;
+      mcpTokenName = "";
+      await loadMcpTokens();
+      notify(t("mcpTokenCreated", $preferencesStore.language), "success");
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : t("mcpTokenCreateFailed", $preferencesStore.language),
+        "error",
+      );
+    } finally {
+      mcpBusy = false;
+    }
+  }
+
+  async function revokeToken(token: MCPToken): Promise<void> {
+    if (!window.confirm(t("mcpTokenDeleteConfirm", $preferencesStore.language))) {
+      return;
+    }
+
+    mcpBusy = true;
+    try {
+      await deleteMCPToken(token.id);
+      mcpTokens = mcpTokens.filter((item) => item.id !== token.id);
+      notify(t("mcpTokenDeleted", $preferencesStore.language), "success");
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : t("mcpTokenDeleteFailed", $preferencesStore.language),
+        "error",
+      );
+    } finally {
+      mcpBusy = false;
+    }
+  }
+
+  async function copyToken(): Promise<void> {
+    if (!mcpPlainToken) return;
+    try {
+      await navigator.clipboard.writeText(mcpPlainToken);
+      notify(t("mcpTokenCopied", $preferencesStore.language), "success");
+    } catch {
+      notify(t("mcpTokenCopyFailed", $preferencesStore.language), "error");
+    }
+  }
+
+  function formatDate(value?: string): string {
+    if (!value) return "-";
+    return new Intl.DateTimeFormat(
+      $preferencesStore.language === "zh" ? "zh-CN" : "en-US",
+      {
+        dateStyle: "medium",
+        timeStyle: "short",
+      },
+    ).format(new Date(value));
+  }
 </script>
 
 <div class="settings-view">
@@ -180,6 +285,15 @@
             placeholder={t("enterNickname", $preferencesStore.language)}
           />
         </label>
+        <label>
+          <span>{t("lazycatUid", $preferencesStore.language)}</span>
+          <input
+            bind:value={lazycatUID}
+            type="text"
+            placeholder={t("lazycatUidPlaceholder", $preferencesStore.language)}
+          />
+          <small>{t("lazycatUidHint", $preferencesStore.language)}</small>
+        </label>
         <div class="settings-actions">
           <button class="primary" type="button" disabled={profileBusy} on:click={saveProfile}>
             {t("saveSettings", $preferencesStore.language)}
@@ -223,6 +337,71 @@
             {t("changePassword", $preferencesStore.language)}
           </button>
         </div>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <div class="settings-section__header">
+        <h3>{t("mcpAccess", $preferencesStore.language)}</h3>
+        <button type="button" disabled={mcpBusy} on:click={loadMcpTokens}>
+          {t("refresh", $preferencesStore.language)}
+        </button>
+      </div>
+      <p class="settings-muted">{t("mcpAccessHint", $preferencesStore.language)}</p>
+
+      <div class="settings-form">
+        <label>
+          <span>{t("mcpTokenName", $preferencesStore.language)}</span>
+          <input
+            bind:value={mcpTokenName}
+            type="text"
+            placeholder={t("mcpTokenNamePlaceholder", $preferencesStore.language)}
+          />
+        </label>
+        <div class="settings-actions">
+          <button class="primary" type="button" disabled={mcpBusy} on:click={createToken}>
+            {t("mcpTokenCreate", $preferencesStore.language)}
+          </button>
+        </div>
+      </div>
+
+      {#if mcpPlainToken}
+        <div class="settings-secret-box">
+          <span>{t("mcpTokenOneTime", $preferencesStore.language)}</span>
+          <code>{mcpPlainToken}</code>
+          <button type="button" on:click={copyToken}>{t("copy", $preferencesStore.language)}</button>
+        </div>
+      {/if}
+
+      <div class="settings-table-wrap">
+        <table class="settings-table">
+          <thead>
+            <tr>
+              <th>{t("mcpTokenName", $preferencesStore.language)}</th>
+              <th>{t("createdAt", $preferencesStore.language)}</th>
+              <th>{t("mcpTokenLastUsed", $preferencesStore.language)}</th>
+              <th>{t("actions", $preferencesStore.language)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each mcpTokens as token}
+              <tr>
+                <td>{token.name}</td>
+                <td>{formatDate(token.created_at)}</td>
+                <td>{formatDate(token.last_used_at)}</td>
+                <td>
+                  <button class="danger" type="button" disabled={mcpBusy} on:click={() => revokeToken(token)}>
+                    {t("delete", $preferencesStore.language)}
+                  </button>
+                </td>
+              </tr>
+            {:else}
+              <tr>
+                <td colspan="4">{t("mcpTokenEmpty", $preferencesStore.language)}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
       </div>
     </section>
   {:else}

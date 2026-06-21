@@ -10,6 +10,7 @@ export interface CreateUserPayload {
   password: string;
   email?: string;
   nickname?: string;
+  lazycat_uid?: string;
   role: "admin" | "user";
 }
 
@@ -17,6 +18,7 @@ export interface UpdateUserPayload {
   email?: string;
   nickname?: string;
   avatar?: string;
+  lazycat_uid?: string;
   role?: "admin" | "user";
 }
 

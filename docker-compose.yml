@@ -13,6 +13,8 @@ services:
       - SMARTICKY_DATA_DIR=/data
       # Server configuration
       - PORT=8080
+      # Keep false outside LazyCat ingress. External MCP clients use user-bound tokens.
+      - SMARTICKY_TRUST_LAZYCAT_HEADERS=false
       # WebDAV backup configuration (optional)
       - WEBDAV_URL=
       - WEBDAV_USER=

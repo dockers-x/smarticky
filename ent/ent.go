@@ -12,6 +12,8 @@ import (
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
+	"smarticky/ent/mcpimage"
+	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -85,6 +87,8 @@ func checkColumn(t, c string) error {
 			font.Table:         font.ValidColumn,
 			importitem.Table:   importitem.ValidColumn,
 			importjob.Table:    importjob.ValidColumn,
+			mcpimage.Table:     mcpimage.ValidColumn,
+			mcptoken.Table:     mcptoken.ValidColumn,
 			note.Table:         note.ValidColumn,
 			tag.Table:          tag.ValidColumn,
 			user.Table:         user.ValidColumn,

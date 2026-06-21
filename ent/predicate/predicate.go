@@ -21,6 +21,12 @@ type ImportItem func(*sql.Selector)
 // ImportJob is the predicate function for importjob builders.
 type ImportJob func(*sql.Selector)
 
+// MCPImage is the predicate function for mcpimage builders.
+type MCPImage func(*sql.Selector)
+
+// MCPToken is the predicate function for mcptoken builders.
+type MCPToken func(*sql.Selector)
+
 // Note is the predicate function for note builders.
 type Note func(*sql.Selector)
 

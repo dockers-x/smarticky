@@ -22,6 +22,10 @@ type Tx struct {
 	ImportItem *ImportItemClient
 	// ImportJob is the client for interacting with the ImportJob builders.
 	ImportJob *ImportJobClient
+	// MCPImage is the client for interacting with the MCPImage builders.
+	MCPImage *MCPImageClient
+	// MCPToken is the client for interacting with the MCPToken builders.
+	MCPToken *MCPTokenClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
 	// Tag is the client for interacting with the Tag builders.
@@ -164,6 +168,8 @@ func (tx *Tx) init() {
 	tx.Font = NewFontClient(tx.config)
 	tx.ImportItem = NewImportItemClient(tx.config)
 	tx.ImportJob = NewImportJobClient(tx.config)
+	tx.MCPImage = NewMCPImageClient(tx.config)
+	tx.MCPToken = NewMCPTokenClient(tx.config)
 	tx.Note = NewNoteClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)

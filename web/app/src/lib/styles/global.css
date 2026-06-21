@@ -499,6 +499,39 @@ h6 {
   white-space: nowrap;
 }
 
+.settings-secret-box {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  padding: 12px;
+}
+
+.settings-secret-box span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.settings-secret-box code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.settings-secret-box button {
+  justify-self: end;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-brand);
+  color: #fff;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
 .settings-empty,
 .settings-error {
   margin: 0;

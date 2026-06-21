@@ -8,6 +8,8 @@ import (
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
+	"smarticky/ent/mcpimage"
+	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
 	"smarticky/ent/schema"
 	"smarticky/ent/tag"
@@ -149,6 +151,54 @@ func init() {
 	importjobDescCreatedAt := importjobFields[8].Descriptor()
 	// importjob.DefaultCreatedAt holds the default value on creation for the created_at field.
 	importjob.DefaultCreatedAt = importjobDescCreatedAt.Default.(func() time.Time)
+	mcpimageFields := schema.MCPImage{}.Fields()
+	_ = mcpimageFields
+	// mcpimageDescFilename is the schema descriptor for filename field.
+	mcpimageDescFilename := mcpimageFields[0].Descriptor()
+	// mcpimage.FilenameValidator is a validator for the "filename" field. It is called by the builders before save.
+	mcpimage.FilenameValidator = mcpimageDescFilename.Validators[0].(func(string) error)
+	// mcpimageDescPath is the schema descriptor for path field.
+	mcpimageDescPath := mcpimageFields[1].Descriptor()
+	// mcpimage.PathValidator is a validator for the "path" field. It is called by the builders before save.
+	mcpimage.PathValidator = mcpimageDescPath.Validators[0].(func(string) error)
+	// mcpimageDescContentType is the schema descriptor for content_type field.
+	mcpimageDescContentType := mcpimageFields[2].Descriptor()
+	// mcpimage.DefaultContentType holds the default value on creation for the content_type field.
+	mcpimage.DefaultContentType = mcpimageDescContentType.Default.(string)
+	// mcpimageDescSize is the schema descriptor for size field.
+	mcpimageDescSize := mcpimageFields[3].Descriptor()
+	// mcpimage.SizeValidator is a validator for the "size" field. It is called by the builders before save.
+	mcpimage.SizeValidator = mcpimageDescSize.Validators[0].(func(int64) error)
+	// mcpimageDescCreatedAt is the schema descriptor for created_at field.
+	mcpimageDescCreatedAt := mcpimageFields[4].Descriptor()
+	// mcpimage.DefaultCreatedAt holds the default value on creation for the created_at field.
+	mcpimage.DefaultCreatedAt = mcpimageDescCreatedAt.Default.(func() time.Time)
+	// mcpimageDescUpdatedAt is the schema descriptor for updated_at field.
+	mcpimageDescUpdatedAt := mcpimageFields[5].Descriptor()
+	// mcpimage.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	mcpimage.DefaultUpdatedAt = mcpimageDescUpdatedAt.Default.(func() time.Time)
+	// mcpimage.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	mcpimage.UpdateDefaultUpdatedAt = mcpimageDescUpdatedAt.UpdateDefault.(func() time.Time)
+	mcptokenFields := schema.MCPToken{}.Fields()
+	_ = mcptokenFields
+	// mcptokenDescName is the schema descriptor for name field.
+	mcptokenDescName := mcptokenFields[0].Descriptor()
+	// mcptoken.DefaultName holds the default value on creation for the name field.
+	mcptoken.DefaultName = mcptokenDescName.Default.(string)
+	// mcptokenDescTokenHash is the schema descriptor for token_hash field.
+	mcptokenDescTokenHash := mcptokenFields[1].Descriptor()
+	// mcptoken.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	mcptoken.TokenHashValidator = mcptokenDescTokenHash.Validators[0].(func(string) error)
+	// mcptokenDescCreatedAt is the schema descriptor for created_at field.
+	mcptokenDescCreatedAt := mcptokenFields[3].Descriptor()
+	// mcptoken.DefaultCreatedAt holds the default value on creation for the created_at field.
+	mcptoken.DefaultCreatedAt = mcptokenDescCreatedAt.Default.(func() time.Time)
+	// mcptokenDescUpdatedAt is the schema descriptor for updated_at field.
+	mcptokenDescUpdatedAt := mcptokenFields[4].Descriptor()
+	// mcptoken.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	mcptoken.DefaultUpdatedAt = mcptokenDescUpdatedAt.Default.(func() time.Time)
+	// mcptoken.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	mcptoken.UpdateDefaultUpdatedAt = mcptokenDescUpdatedAt.UpdateDefault.(func() time.Time)
 	noteFields := schema.Note{}.Fields()
 	_ = noteFields
 	// noteDescTitle is the schema descriptor for title field.
@@ -228,11 +278,11 @@ func init() {
 	// user.DefaultAvatar holds the default value on creation for the avatar field.
 	user.DefaultAvatar = userDescAvatar.Default.(string)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[6].Descriptor()
+	userDescCreatedAt := userFields[7].Descriptor()
 	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
 	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[7].Descriptor()
+	userDescUpdatedAt := userFields[8].Descriptor()
 	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -26,8 +26,8 @@ RUN CGO_ENABLED=0 go build -trimpath \
 
 FROM alpine:latest
 
-# Install ca-certificates and SQLite runtime
-RUN apk --no-cache add ca-certificates sqlite-libs
+# Install ca-certificates, SQLite runtime, and CJK fonts for server-side share image rendering
+RUN apk --no-cache add ca-certificates sqlite-libs font-noto-cjk
 
 WORKDIR /app
 

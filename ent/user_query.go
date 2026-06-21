@@ -10,6 +10,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
+	"smarticky/ent/mcpimage"
+	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -33,6 +35,8 @@ type UserQuery struct {
 	withTags        *TagQuery
 	withFonts       *FontQuery
 	withImportJobs  *ImportJobQuery
+	withMcpTokens   *MCPTokenQuery
+	withMcpImages   *MCPImageQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -172,6 +176,50 @@ func (_q *UserQuery) QueryImportJobs() *ImportJobQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(importjob.Table, importjob.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.ImportJobsTable, user.ImportJobsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMcpTokens chains the current query on the "mcp_tokens" edge.
+func (_q *UserQuery) QueryMcpTokens() *MCPTokenQuery {
+	query := (&MCPTokenClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(mcptoken.Table, mcptoken.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.McpTokensTable, user.McpTokensColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMcpImages chains the current query on the "mcp_images" edge.
+func (_q *UserQuery) QueryMcpImages() *MCPImageQuery {
+	query := (&MCPImageClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(mcpimage.Table, mcpimage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.McpImagesTable, user.McpImagesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -376,6 +424,8 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withTags:        _q.withTags.Clone(),
 		withFonts:       _q.withFonts.Clone(),
 		withImportJobs:  _q.withImportJobs.Clone(),
+		withMcpTokens:   _q.withMcpTokens.Clone(),
+		withMcpImages:   _q.withMcpImages.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -434,6 +484,28 @@ func (_q *UserQuery) WithImportJobs(opts ...func(*ImportJobQuery)) *UserQuery {
 		opt(query)
 	}
 	_q.withImportJobs = query
+	return _q
+}
+
+// WithMcpTokens tells the query-builder to eager-load the nodes that are connected to
+// the "mcp_tokens" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithMcpTokens(opts ...func(*MCPTokenQuery)) *UserQuery {
+	query := (&MCPTokenClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMcpTokens = query
+	return _q
+}
+
+// WithMcpImages tells the query-builder to eager-load the nodes that are connected to
+// the "mcp_images" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithMcpImages(opts ...func(*MCPImageQuery)) *UserQuery {
+	query := (&MCPImageClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMcpImages = query
 	return _q
 }
 
@@ -515,12 +587,14 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [5]bool{
+		loadedTypes = [7]bool{
 			_q.withNotes != nil,
 			_q.withAttachments != nil,
 			_q.withTags != nil,
 			_q.withFonts != nil,
 			_q.withImportJobs != nil,
+			_q.withMcpTokens != nil,
+			_q.withMcpImages != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -573,6 +647,20 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadImportJobs(ctx, query, nodes,
 			func(n *User) { n.Edges.ImportJobs = []*ImportJob{} },
 			func(n *User, e *ImportJob) { n.Edges.ImportJobs = append(n.Edges.ImportJobs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMcpTokens; query != nil {
+		if err := _q.loadMcpTokens(ctx, query, nodes,
+			func(n *User) { n.Edges.McpTokens = []*MCPToken{} },
+			func(n *User, e *MCPToken) { n.Edges.McpTokens = append(n.Edges.McpTokens, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMcpImages; query != nil {
+		if err := _q.loadMcpImages(ctx, query, nodes,
+			func(n *User) { n.Edges.McpImages = []*MCPImage{} },
+			func(n *User, e *MCPImage) { n.Edges.McpImages = append(n.Edges.McpImages, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -729,6 +817,68 @@ func (_q *UserQuery) loadImportJobs(ctx context.Context, query *ImportJobQuery, 
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_import_jobs" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadMcpTokens(ctx context.Context, query *MCPTokenQuery, nodes []*User, init func(*User), assign func(*User, *MCPToken)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.MCPToken(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.McpTokensColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_mcp_tokens
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_mcp_tokens" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_mcp_tokens" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadMcpImages(ctx context.Context, query *MCPImageQuery, nodes []*User, init func(*User), assign func(*User, *MCPImage)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.MCPImage(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.McpImagesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_mcp_images
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_mcp_images" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_mcp_images" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

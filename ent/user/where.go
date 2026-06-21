@@ -80,6 +80,11 @@ func Avatar(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldAvatar, v))
 }
 
+// LazycatUID applies equality check predicate on the "lazycat_uid" field. It's identical to LazycatUIDEQ.
+func LazycatUID(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldLazycatUID, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCreatedAt, v))
@@ -465,6 +470,81 @@ func AvatarContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldAvatar, v))
 }
 
+// LazycatUIDEQ applies the EQ predicate on the "lazycat_uid" field.
+func LazycatUIDEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldLazycatUID, v))
+}
+
+// LazycatUIDNEQ applies the NEQ predicate on the "lazycat_uid" field.
+func LazycatUIDNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldLazycatUID, v))
+}
+
+// LazycatUIDIn applies the In predicate on the "lazycat_uid" field.
+func LazycatUIDIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldLazycatUID, vs...))
+}
+
+// LazycatUIDNotIn applies the NotIn predicate on the "lazycat_uid" field.
+func LazycatUIDNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldLazycatUID, vs...))
+}
+
+// LazycatUIDGT applies the GT predicate on the "lazycat_uid" field.
+func LazycatUIDGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldLazycatUID, v))
+}
+
+// LazycatUIDGTE applies the GTE predicate on the "lazycat_uid" field.
+func LazycatUIDGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldLazycatUID, v))
+}
+
+// LazycatUIDLT applies the LT predicate on the "lazycat_uid" field.
+func LazycatUIDLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldLazycatUID, v))
+}
+
+// LazycatUIDLTE applies the LTE predicate on the "lazycat_uid" field.
+func LazycatUIDLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldLazycatUID, v))
+}
+
+// LazycatUIDContains applies the Contains predicate on the "lazycat_uid" field.
+func LazycatUIDContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldLazycatUID, v))
+}
+
+// LazycatUIDHasPrefix applies the HasPrefix predicate on the "lazycat_uid" field.
+func LazycatUIDHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldLazycatUID, v))
+}
+
+// LazycatUIDHasSuffix applies the HasSuffix predicate on the "lazycat_uid" field.
+func LazycatUIDHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldLazycatUID, v))
+}
+
+// LazycatUIDIsNil applies the IsNil predicate on the "lazycat_uid" field.
+func LazycatUIDIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldLazycatUID))
+}
+
+// LazycatUIDNotNil applies the NotNil predicate on the "lazycat_uid" field.
+func LazycatUIDNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldLazycatUID))
+}
+
+// LazycatUIDEqualFold applies the EqualFold predicate on the "lazycat_uid" field.
+func LazycatUIDEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldLazycatUID, v))
+}
+
+// LazycatUIDContainsFold applies the ContainsFold predicate on the "lazycat_uid" field.
+func LazycatUIDContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldLazycatUID, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCreatedAt, v))
@@ -652,6 +732,52 @@ func HasImportJobs() predicate.User {
 func HasImportJobsWith(preds ...predicate.ImportJob) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newImportJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasMcpTokens applies the HasEdge predicate on the "mcp_tokens" edge.
+func HasMcpTokens() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, McpTokensTable, McpTokensColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMcpTokensWith applies the HasEdge predicate on the "mcp_tokens" edge with a given conditions (other predicates).
+func HasMcpTokensWith(preds ...predicate.MCPToken) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newMcpTokensStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasMcpImages applies the HasEdge predicate on the "mcp_images" edge.
+func HasMcpImages() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, McpImagesTable, McpImagesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMcpImagesWith applies the HasEdge predicate on the "mcp_images" edge with a given conditions (other predicates).
+func HasMcpImagesWith(preds ...predicate.MCPImage) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newMcpImagesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

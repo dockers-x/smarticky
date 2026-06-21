@@ -124,12 +124,13 @@ func (h *Handler) Setup(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Admin user created successfully",
 		"user": map[string]interface{}{
-			"id":       newUser.ID,
-			"username": newUser.Username,
-			"email":    newUser.Email,
-			"nickname": newUser.Nickname,
-			"role":     newUser.Role,
-			"avatar":   newUser.Avatar,
+			"id":          newUser.ID,
+			"username":    newUser.Username,
+			"email":       newUser.Email,
+			"nickname":    newUser.Nickname,
+			"role":        newUser.Role,
+			"avatar":      newUser.Avatar,
+			"lazycat_uid": newUser.LazycatUID,
 		},
 	})
 }
@@ -191,12 +192,13 @@ func (h *Handler) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"token": tokenString,
 		"user": map[string]interface{}{
-			"id":       u.ID,
-			"username": u.Username,
-			"email":    u.Email,
-			"nickname": u.Nickname,
-			"role":     u.Role,
-			"avatar":   u.Avatar,
+			"id":          u.ID,
+			"username":    u.Username,
+			"email":       u.Email,
+			"nickname":    u.Nickname,
+			"role":        u.Role,
+			"avatar":      u.Avatar,
+			"lazycat_uid": u.LazycatUID,
 		},
 	})
 }
@@ -211,12 +213,13 @@ func (h *Handler) GetCurrentUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":       u.ID,
-		"username": u.Username,
-		"email":    u.Email,
-		"nickname": u.Nickname,
-		"role":     u.Role,
-		"avatar":   u.Avatar,
+		"id":          u.ID,
+		"username":    u.Username,
+		"email":       u.Email,
+		"nickname":    u.Nickname,
+		"role":        u.Role,
+		"avatar":      u.Avatar,
+		"lazycat_uid": u.LazycatUID,
 	})
 }
 

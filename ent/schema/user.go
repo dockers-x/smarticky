@@ -33,6 +33,10 @@ func (User) Fields() []ent.Field {
 		field.String("avatar").
 			Optional().
 			Default(""),
+		field.String("lazycat_uid").
+			Optional().
+			Nillable().
+			Unique(),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),
@@ -50,5 +54,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("tags", Tag.Type),   // User can have many tags
 		edge.To("fonts", Font.Type), // User can upload many fonts
 		edge.To("import_jobs", ImportJob.Type),
+		edge.To("mcp_tokens", MCPToken.Type),
+		edge.To("mcp_images", MCPImage.Type),
 	}
 }

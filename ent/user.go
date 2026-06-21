@@ -29,6 +29,8 @@ type User struct {
 	Role user.Role `json:"role,omitempty"`
 	// Avatar holds the value of the "avatar" field.
 	Avatar string `json:"avatar,omitempty"`
+	// LazycatUID holds the value of the "lazycat_uid" field.
+	LazycatUID *string `json:"lazycat_uid,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -51,9 +53,13 @@ type UserEdges struct {
 	Fonts []*Font `json:"fonts,omitempty"`
 	// ImportJobs holds the value of the import_jobs edge.
 	ImportJobs []*ImportJob `json:"import_jobs,omitempty"`
+	// McpTokens holds the value of the mcp_tokens edge.
+	McpTokens []*MCPToken `json:"mcp_tokens,omitempty"`
+	// McpImages holds the value of the mcp_images edge.
+	McpImages []*MCPImage `json:"mcp_images,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [5]bool
+	loadedTypes [7]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -101,6 +107,24 @@ func (e UserEdges) ImportJobsOrErr() ([]*ImportJob, error) {
 	return nil, &NotLoadedError{edge: "import_jobs"}
 }
 
+// McpTokensOrErr returns the McpTokens value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) McpTokensOrErr() ([]*MCPToken, error) {
+	if e.loadedTypes[5] {
+		return e.McpTokens, nil
+	}
+	return nil, &NotLoadedError{edge: "mcp_tokens"}
+}
+
+// McpImagesOrErr returns the McpImages value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) McpImagesOrErr() ([]*MCPImage, error) {
+	if e.loadedTypes[6] {
+		return e.McpImages, nil
+	}
+	return nil, &NotLoadedError{edge: "mcp_images"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -108,7 +132,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldNickname, user.FieldRole, user.FieldAvatar:
+		case user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldNickname, user.FieldRole, user.FieldAvatar, user.FieldLazycatUID:
 			values[i] = new(sql.NullString)
 		case user.FieldCreatedAt, user.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -169,6 +193,13 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Avatar = value.String
 			}
+		case user.FieldLazycatUID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field lazycat_uid", values[i])
+			} else if value.Valid {
+				_m.LazycatUID = new(string)
+				*_m.LazycatUID = value.String
+			}
 		case user.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -219,6 +250,16 @@ func (_m *User) QueryImportJobs() *ImportJobQuery {
 	return NewUserClient(_m.config).QueryImportJobs(_m)
 }
 
+// QueryMcpTokens queries the "mcp_tokens" edge of the User entity.
+func (_m *User) QueryMcpTokens() *MCPTokenQuery {
+	return NewUserClient(_m.config).QueryMcpTokens(_m)
+}
+
+// QueryMcpImages queries the "mcp_images" edge of the User entity.
+func (_m *User) QueryMcpImages() *MCPImageQuery {
+	return NewUserClient(_m.config).QueryMcpImages(_m)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -258,6 +299,11 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("avatar=")
 	builder.WriteString(_m.Avatar)
+	builder.WriteString(", ")
+	if v := _m.LazycatUID; v != nil {
+		builder.WriteString("lazycat_uid=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

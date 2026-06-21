@@ -9,6 +9,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
+	"smarticky/ent/mcpimage"
+	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -90,6 +92,20 @@ func (_c *UserCreate) SetAvatar(v string) *UserCreate {
 func (_c *UserCreate) SetNillableAvatar(v *string) *UserCreate {
 	if v != nil {
 		_c.SetAvatar(*v)
+	}
+	return _c
+}
+
+// SetLazycatUID sets the "lazycat_uid" field.
+func (_c *UserCreate) SetLazycatUID(v string) *UserCreate {
+	_c.mutation.SetLazycatUID(v)
+	return _c
+}
+
+// SetNillableLazycatUID sets the "lazycat_uid" field if the given value is not nil.
+func (_c *UserCreate) SetNillableLazycatUID(v *string) *UserCreate {
+	if v != nil {
+		_c.SetLazycatUID(*v)
 	}
 	return _c
 }
@@ -195,6 +211,36 @@ func (_c *UserCreate) AddImportJobs(v ...*ImportJob) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddImportJobIDs(ids...)
+}
+
+// AddMcpTokenIDs adds the "mcp_tokens" edge to the MCPToken entity by IDs.
+func (_c *UserCreate) AddMcpTokenIDs(ids ...int) *UserCreate {
+	_c.mutation.AddMcpTokenIDs(ids...)
+	return _c
+}
+
+// AddMcpTokens adds the "mcp_tokens" edges to the MCPToken entity.
+func (_c *UserCreate) AddMcpTokens(v ...*MCPToken) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMcpTokenIDs(ids...)
+}
+
+// AddMcpImageIDs adds the "mcp_images" edge to the MCPImage entity by IDs.
+func (_c *UserCreate) AddMcpImageIDs(ids ...int) *UserCreate {
+	_c.mutation.AddMcpImageIDs(ids...)
+	return _c
+}
+
+// AddMcpImages adds the "mcp_images" edges to the MCPImage entity.
+func (_c *UserCreate) AddMcpImages(v ...*MCPImage) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMcpImageIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -336,6 +382,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldAvatar, field.TypeString, value)
 		_node.Avatar = value
 	}
+	if value, ok := _c.mutation.LazycatUID(); ok {
+		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
+		_node.LazycatUID = &value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -417,6 +467,38 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(importjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.McpTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.McpImagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

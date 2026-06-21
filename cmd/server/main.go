@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"smarticky/ent"
 	"smarticky/internal/handler"
 	"smarticky/internal/logger"
+	mcpserver "smarticky/internal/mcp"
 	authmw "smarticky/internal/middleware"
 	"smarticky/internal/storage"
 	"smarticky/internal/version"
@@ -125,6 +127,12 @@ func main() {
 	protected.GET("/auth/me", h.GetCurrentUser)
 	protected.POST("/auth/logout", h.Logout)
 
+	// MCP management API
+	protected.GET("/mcp/tokens", h.ListMCPTokens)
+	protected.POST("/mcp/tokens", h.CreateMCPToken)
+	protected.DELETE("/mcp/tokens/:id", h.DeleteMCPToken)
+	protected.GET("/mcp/images/:id", h.DownloadMCPImage)
+
 	// Notes API
 	protected.GET("/notes", h.ListNotes)
 	protected.POST("/notes", h.CreateNote)
@@ -193,6 +201,20 @@ func main() {
 	// Serve uploaded files from data directory
 	uploadsDir := filepath.Join(getDataDir(), "uploads")
 	e.Static("/uploads", uploadsDir)
+
+	// MCP endpoint
+	trustLazyCatHeaders := strings.EqualFold(os.Getenv("SMARTICKY_TRUST_LAZYCAT_HEADERS"), "true")
+	e.Any("/mcp", echo.WrapHandler(mcpserver.NewHTTPHandler(
+		client,
+		h.NotesService(),
+		h.ShareImageService(),
+		trustLazyCatHeaders,
+	)))
+	e.GET("/mcp/images/:id", echo.WrapHandler(mcpserver.NewImageDownloadHandler(
+		client,
+		h.ShareImageService(),
+		trustLazyCatHeaders,
+	)))
 
 	// Static Files - Use embedded FS
 	webFS := echo.MustSubFS(web.Assets, "static")

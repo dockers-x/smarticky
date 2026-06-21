@@ -24,13 +24,14 @@ func (h *Handler) ListUsers(c echo.Context) error {
 	var result []map[string]interface{}
 	for _, u := range users {
 		result = append(result, map[string]interface{}{
-			"id":         u.ID,
-			"username":   u.Username,
-			"email":      u.Email,
-			"nickname":   u.Nickname,
-			"role":       u.Role,
-			"avatar":     u.Avatar,
-			"created_at": u.CreatedAt,
+			"id":          u.ID,
+			"username":    u.Username,
+			"email":       u.Email,
+			"nickname":    u.Nickname,
+			"role":        u.Role,
+			"avatar":      u.Avatar,
+			"lazycat_uid": u.LazycatUID,
+			"created_at":  u.CreatedAt,
 		})
 	}
 
@@ -40,11 +41,12 @@ func (h *Handler) ListUsers(c echo.Context) error {
 // CreateUser creates a new user (admin only)
 func (h *Handler) CreateUser(c echo.Context) error {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Email    string `json:"email"`
-		Nickname string `json:"nickname"`
-		Role     string `json:"role"`
+		Username   string `json:"username"`
+		Password   string `json:"password"`
+		Email      string `json:"email"`
+		Nickname   string `json:"nickname"`
+		Role       string `json:"role"`
+		LazycatUID string `json:"lazycat_uid"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -81,6 +83,9 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	if req.Nickname != "" {
 		createUser.SetNickname(req.Nickname)
 	}
+	if strings.TrimSpace(req.LazycatUID) != "" {
+		createUser.SetLazycatUID(strings.TrimSpace(req.LazycatUID))
+	}
 
 	newUser, err := createUser.Save(context.Background())
 
@@ -99,12 +104,13 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":       newUser.ID,
-		"username": newUser.Username,
-		"email":    newUser.Email,
-		"nickname": newUser.Nickname,
-		"role":     newUser.Role,
-		"avatar":   newUser.Avatar,
+		"id":          newUser.ID,
+		"username":    newUser.Username,
+		"email":       newUser.Email,
+		"nickname":    newUser.Nickname,
+		"role":        newUser.Role,
+		"avatar":      newUser.Avatar,
+		"lazycat_uid": newUser.LazycatUID,
 	})
 }
 
@@ -124,10 +130,11 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	}
 
 	var req struct {
-		Email    *string `json:"email"`
-		Nickname *string `json:"nickname"`
-		Avatar   *string `json:"avatar"`
-		Role     *string `json:"role"`
+		Email      *string `json:"email"`
+		Nickname   *string `json:"nickname"`
+		Avatar     *string `json:"avatar"`
+		Role       *string `json:"role"`
+		LazycatUID *string `json:"lazycat_uid"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -155,6 +162,15 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 		updateQuery = updateQuery.SetAvatar(strings.TrimSpace(*req.Avatar))
 	}
 
+	if req.LazycatUID != nil {
+		lazycatUID := strings.TrimSpace(*req.LazycatUID)
+		if lazycatUID == "" {
+			updateQuery = updateQuery.ClearLazycatUID()
+		} else {
+			updateQuery = updateQuery.SetLazycatUID(lazycatUID)
+		}
+	}
+
 	// Only admin can change role
 	if req.Role != nil && currentRole == "admin" {
 		role := strings.TrimSpace(*req.Role)
@@ -165,16 +181,20 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 
 	updatedUser, err := updateQuery.Save(context.Background())
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return c.JSON(http.StatusConflict, map[string]string{"error": "LazyCat user ID already exists"})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":       updatedUser.ID,
-		"username": updatedUser.Username,
-		"email":    updatedUser.Email,
-		"nickname": updatedUser.Nickname,
-		"role":     updatedUser.Role,
-		"avatar":   updatedUser.Avatar,
+		"id":          updatedUser.ID,
+		"username":    updatedUser.Username,
+		"email":       updatedUser.Email,
+		"nickname":    updatedUser.Nickname,
+		"role":        updatedUser.Role,
+		"avatar":      updatedUser.Avatar,
+		"lazycat_uid": updatedUser.LazycatUID,
 	})
 }
 

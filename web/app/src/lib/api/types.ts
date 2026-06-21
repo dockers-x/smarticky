@@ -7,6 +7,7 @@ export interface User {
   nickname?: string;
   role: "admin" | "user";
   avatar?: string;
+  lazycat_uid?: string | null;
 }
 
 export interface Tag {

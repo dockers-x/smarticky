@@ -1,0 +1,15 @@
+application:
+  subdomain: smarticky
+  upstreams:
+    - location: /
+      backend: http://smarticky:8080/
+
+services:
+  smarticky:
+    image: embed:smarticky
+    environment:
+      - PORT=8080
+      - SMARTICKY_DATA_DIR=/data
+      - SMARTICKY_TRUST_LAZYCAT_HEADERS=true
+    binds:
+      - /lzcapp/var/data:/data

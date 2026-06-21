@@ -68,6 +68,30 @@ func (f ImportJobFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ImportJobMutation", m)
 }
 
+// The MCPImageFunc type is an adapter to allow the use of ordinary
+// function as MCPImage mutator.
+type MCPImageFunc func(context.Context, *ent.MCPImageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MCPImageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MCPImageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MCPImageMutation", m)
+}
+
+// The MCPTokenFunc type is an adapter to allow the use of ordinary
+// function as MCPToken mutator.
+type MCPTokenFunc func(context.Context, *ent.MCPTokenMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MCPTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MCPTokenMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MCPTokenMutation", m)
+}
+
 // The NoteFunc type is an adapter to allow the use of ordinary
 // function as Note mutator.
 type NoteFunc func(context.Context, *ent.NoteMutation) (ent.Value, error)

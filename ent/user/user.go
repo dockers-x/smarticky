@@ -27,6 +27,8 @@ const (
 	FieldRole = "role"
 	// FieldAvatar holds the string denoting the avatar field in the database.
 	FieldAvatar = "avatar"
+	// FieldLazycatUID holds the string denoting the lazycat_uid field in the database.
+	FieldLazycatUID = "lazycat_uid"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -41,6 +43,10 @@ const (
 	EdgeFonts = "fonts"
 	// EdgeImportJobs holds the string denoting the import_jobs edge name in mutations.
 	EdgeImportJobs = "import_jobs"
+	// EdgeMcpTokens holds the string denoting the mcp_tokens edge name in mutations.
+	EdgeMcpTokens = "mcp_tokens"
+	// EdgeMcpImages holds the string denoting the mcp_images edge name in mutations.
+	EdgeMcpImages = "mcp_images"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// NotesTable is the table that holds the notes relation/edge.
@@ -78,6 +84,20 @@ const (
 	ImportJobsInverseTable = "import_jobs"
 	// ImportJobsColumn is the table column denoting the import_jobs relation/edge.
 	ImportJobsColumn = "user_import_jobs"
+	// McpTokensTable is the table that holds the mcp_tokens relation/edge.
+	McpTokensTable = "mcp_tokens"
+	// McpTokensInverseTable is the table name for the MCPToken entity.
+	// It exists in this package in order to avoid circular dependency with the "mcptoken" package.
+	McpTokensInverseTable = "mcp_tokens"
+	// McpTokensColumn is the table column denoting the mcp_tokens relation/edge.
+	McpTokensColumn = "user_mcp_tokens"
+	// McpImagesTable is the table that holds the mcp_images relation/edge.
+	McpImagesTable = "mcp_images"
+	// McpImagesInverseTable is the table name for the MCPImage entity.
+	// It exists in this package in order to avoid circular dependency with the "mcpimage" package.
+	McpImagesInverseTable = "mcp_images"
+	// McpImagesColumn is the table column denoting the mcp_images relation/edge.
+	McpImagesColumn = "user_mcp_images"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -89,6 +109,7 @@ var Columns = []string{
 	FieldNickname,
 	FieldRole,
 	FieldAvatar,
+	FieldLazycatUID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -184,6 +205,11 @@ func ByAvatar(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAvatar, opts...).ToFunc()
 }
 
+// ByLazycatUID orders the results by the lazycat_uid field.
+func ByLazycatUID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLazycatUID, opts...).ToFunc()
+}
+
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
@@ -263,6 +289,34 @@ func ByImportJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newImportJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByMcpTokensCount orders the results by mcp_tokens count.
+func ByMcpTokensCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMcpTokensStep(), opts...)
+	}
+}
+
+// ByMcpTokens orders the results by mcp_tokens terms.
+func ByMcpTokens(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMcpTokensStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByMcpImagesCount orders the results by mcp_images count.
+func ByMcpImagesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMcpImagesStep(), opts...)
+	}
+}
+
+// ByMcpImages orders the results by mcp_images terms.
+func ByMcpImages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMcpImagesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newNotesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -296,5 +350,19 @@ func newImportJobsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ImportJobsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ImportJobsTable, ImportJobsColumn),
+	)
+}
+func newMcpTokensStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(McpTokensInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, McpTokensTable, McpTokensColumn),
+	)
+}
+func newMcpImagesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(McpImagesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, McpImagesTable, McpImagesColumn),
 	)
 }

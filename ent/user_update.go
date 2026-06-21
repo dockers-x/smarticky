@@ -9,6 +9,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
+	"smarticky/ent/mcpimage"
+	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -136,6 +138,26 @@ func (_u *UserUpdate) ClearAvatar() *UserUpdate {
 	return _u
 }
 
+// SetLazycatUID sets the "lazycat_uid" field.
+func (_u *UserUpdate) SetLazycatUID(v string) *UserUpdate {
+	_u.mutation.SetLazycatUID(v)
+	return _u
+}
+
+// SetNillableLazycatUID sets the "lazycat_uid" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLazycatUID(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetLazycatUID(*v)
+	}
+	return _u
+}
+
+// ClearLazycatUID clears the value of the "lazycat_uid" field.
+func (_u *UserUpdate) ClearLazycatUID() *UserUpdate {
+	_u.mutation.ClearLazycatUID()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *UserUpdate) SetUpdatedAt(v time.Time) *UserUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -215,6 +237,36 @@ func (_u *UserUpdate) AddImportJobs(v ...*ImportJob) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddImportJobIDs(ids...)
+}
+
+// AddMcpTokenIDs adds the "mcp_tokens" edge to the MCPToken entity by IDs.
+func (_u *UserUpdate) AddMcpTokenIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddMcpTokenIDs(ids...)
+	return _u
+}
+
+// AddMcpTokens adds the "mcp_tokens" edges to the MCPToken entity.
+func (_u *UserUpdate) AddMcpTokens(v ...*MCPToken) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMcpTokenIDs(ids...)
+}
+
+// AddMcpImageIDs adds the "mcp_images" edge to the MCPImage entity by IDs.
+func (_u *UserUpdate) AddMcpImageIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddMcpImageIDs(ids...)
+	return _u
+}
+
+// AddMcpImages adds the "mcp_images" edges to the MCPImage entity.
+func (_u *UserUpdate) AddMcpImages(v ...*MCPImage) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMcpImageIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -327,6 +379,48 @@ func (_u *UserUpdate) RemoveImportJobs(v ...*ImportJob) *UserUpdate {
 	return _u.RemoveImportJobIDs(ids...)
 }
 
+// ClearMcpTokens clears all "mcp_tokens" edges to the MCPToken entity.
+func (_u *UserUpdate) ClearMcpTokens() *UserUpdate {
+	_u.mutation.ClearMcpTokens()
+	return _u
+}
+
+// RemoveMcpTokenIDs removes the "mcp_tokens" edge to MCPToken entities by IDs.
+func (_u *UserUpdate) RemoveMcpTokenIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveMcpTokenIDs(ids...)
+	return _u
+}
+
+// RemoveMcpTokens removes "mcp_tokens" edges to MCPToken entities.
+func (_u *UserUpdate) RemoveMcpTokens(v ...*MCPToken) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMcpTokenIDs(ids...)
+}
+
+// ClearMcpImages clears all "mcp_images" edges to the MCPImage entity.
+func (_u *UserUpdate) ClearMcpImages() *UserUpdate {
+	_u.mutation.ClearMcpImages()
+	return _u
+}
+
+// RemoveMcpImageIDs removes the "mcp_images" edge to MCPImage entities by IDs.
+func (_u *UserUpdate) RemoveMcpImageIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveMcpImageIDs(ids...)
+	return _u
+}
+
+// RemoveMcpImages removes "mcp_images" edges to MCPImage entities.
+func (_u *UserUpdate) RemoveMcpImages(v ...*MCPImage) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMcpImageIDs(ids...)
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *UserUpdate) Save(ctx context.Context) (int, error) {
 	_u.defaults()
@@ -421,6 +515,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.AvatarCleared() {
 		_spec.ClearField(user.FieldAvatar, field.TypeString)
+	}
+	if value, ok := _u.mutation.LazycatUID(); ok {
+		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
+	}
+	if _u.mutation.LazycatUIDCleared() {
+		_spec.ClearField(user.FieldLazycatUID, field.TypeString)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
@@ -643,6 +743,96 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(importjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.McpTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMcpTokensIDs(); len(nodes) > 0 && !_u.mutation.McpTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.McpTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.McpImagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMcpImagesIDs(); len(nodes) > 0 && !_u.mutation.McpImagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.McpImagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -772,6 +962,26 @@ func (_u *UserUpdateOne) ClearAvatar() *UserUpdateOne {
 	return _u
 }
 
+// SetLazycatUID sets the "lazycat_uid" field.
+func (_u *UserUpdateOne) SetLazycatUID(v string) *UserUpdateOne {
+	_u.mutation.SetLazycatUID(v)
+	return _u
+}
+
+// SetNillableLazycatUID sets the "lazycat_uid" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLazycatUID(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetLazycatUID(*v)
+	}
+	return _u
+}
+
+// ClearLazycatUID clears the value of the "lazycat_uid" field.
+func (_u *UserUpdateOne) ClearLazycatUID() *UserUpdateOne {
+	_u.mutation.ClearLazycatUID()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *UserUpdateOne) SetUpdatedAt(v time.Time) *UserUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -851,6 +1061,36 @@ func (_u *UserUpdateOne) AddImportJobs(v ...*ImportJob) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddImportJobIDs(ids...)
+}
+
+// AddMcpTokenIDs adds the "mcp_tokens" edge to the MCPToken entity by IDs.
+func (_u *UserUpdateOne) AddMcpTokenIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddMcpTokenIDs(ids...)
+	return _u
+}
+
+// AddMcpTokens adds the "mcp_tokens" edges to the MCPToken entity.
+func (_u *UserUpdateOne) AddMcpTokens(v ...*MCPToken) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMcpTokenIDs(ids...)
+}
+
+// AddMcpImageIDs adds the "mcp_images" edge to the MCPImage entity by IDs.
+func (_u *UserUpdateOne) AddMcpImageIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddMcpImageIDs(ids...)
+	return _u
+}
+
+// AddMcpImages adds the "mcp_images" edges to the MCPImage entity.
+func (_u *UserUpdateOne) AddMcpImages(v ...*MCPImage) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMcpImageIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -961,6 +1201,48 @@ func (_u *UserUpdateOne) RemoveImportJobs(v ...*ImportJob) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveImportJobIDs(ids...)
+}
+
+// ClearMcpTokens clears all "mcp_tokens" edges to the MCPToken entity.
+func (_u *UserUpdateOne) ClearMcpTokens() *UserUpdateOne {
+	_u.mutation.ClearMcpTokens()
+	return _u
+}
+
+// RemoveMcpTokenIDs removes the "mcp_tokens" edge to MCPToken entities by IDs.
+func (_u *UserUpdateOne) RemoveMcpTokenIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveMcpTokenIDs(ids...)
+	return _u
+}
+
+// RemoveMcpTokens removes "mcp_tokens" edges to MCPToken entities.
+func (_u *UserUpdateOne) RemoveMcpTokens(v ...*MCPToken) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMcpTokenIDs(ids...)
+}
+
+// ClearMcpImages clears all "mcp_images" edges to the MCPImage entity.
+func (_u *UserUpdateOne) ClearMcpImages() *UserUpdateOne {
+	_u.mutation.ClearMcpImages()
+	return _u
+}
+
+// RemoveMcpImageIDs removes the "mcp_images" edge to MCPImage entities by IDs.
+func (_u *UserUpdateOne) RemoveMcpImageIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveMcpImageIDs(ids...)
+	return _u
+}
+
+// RemoveMcpImages removes "mcp_images" edges to MCPImage entities.
+func (_u *UserUpdateOne) RemoveMcpImages(v ...*MCPImage) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMcpImageIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -1087,6 +1369,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.AvatarCleared() {
 		_spec.ClearField(user.FieldAvatar, field.TypeString)
+	}
+	if value, ok := _u.mutation.LazycatUID(); ok {
+		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
+	}
+	if _u.mutation.LazycatUIDCleared() {
+		_spec.ClearField(user.FieldLazycatUID, field.TypeString)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
@@ -1309,6 +1597,96 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(importjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.McpTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMcpTokensIDs(); len(nodes) > 0 && !_u.mutation.McpTokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.McpTokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpTokensTable,
+			Columns: []string{user.McpTokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcptoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.McpImagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMcpImagesIDs(); len(nodes) > 0 && !_u.mutation.McpImagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.McpImagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.McpImagesTable,
+			Columns: []string{user.McpImagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

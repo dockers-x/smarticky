@@ -11,6 +11,8 @@ import (
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
+	"smarticky/ent/mcpimage"
+	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -37,6 +39,8 @@ const (
 	TypeFont         = "Font"
 	TypeImportItem   = "ImportItem"
 	TypeImportJob    = "ImportJob"
+	TypeMCPImage     = "MCPImage"
+	TypeMCPToken     = "MCPToken"
 	TypeNote         = "Note"
 	TypeTag          = "Tag"
 	TypeUser         = "User"
@@ -4696,6 +4700,1336 @@ func (m *ImportJobMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ImportJob edge %s", name)
 }
 
+// MCPImageMutation represents an operation that mutates the MCPImage nodes in the graph.
+type MCPImageMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	filename      *string
+	_path         *string
+	content_type  *string
+	size          *int64
+	addsize       *int64
+	created_at    *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	user          *int
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*MCPImage, error)
+	predicates    []predicate.MCPImage
+}
+
+var _ ent.Mutation = (*MCPImageMutation)(nil)
+
+// mcpimageOption allows management of the mutation configuration using functional options.
+type mcpimageOption func(*MCPImageMutation)
+
+// newMCPImageMutation creates new mutation for the MCPImage entity.
+func newMCPImageMutation(c config, op Op, opts ...mcpimageOption) *MCPImageMutation {
+	m := &MCPImageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMCPImage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMCPImageID sets the ID field of the mutation.
+func withMCPImageID(id int) mcpimageOption {
+	return func(m *MCPImageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MCPImage
+		)
+		m.oldValue = func(ctx context.Context) (*MCPImage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MCPImage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMCPImage sets the old MCPImage of the mutation.
+func withMCPImage(node *MCPImage) mcpimageOption {
+	return func(m *MCPImageMutation) {
+		m.oldValue = func(context.Context) (*MCPImage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MCPImageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MCPImageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MCPImageMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MCPImageMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MCPImage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetFilename sets the "filename" field.
+func (m *MCPImageMutation) SetFilename(s string) {
+	m.filename = &s
+}
+
+// Filename returns the value of the "filename" field in the mutation.
+func (m *MCPImageMutation) Filename() (r string, exists bool) {
+	v := m.filename
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFilename returns the old "filename" field's value of the MCPImage entity.
+// If the MCPImage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPImageMutation) OldFilename(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFilename is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFilename requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFilename: %w", err)
+	}
+	return oldValue.Filename, nil
+}
+
+// ResetFilename resets all changes to the "filename" field.
+func (m *MCPImageMutation) ResetFilename() {
+	m.filename = nil
+}
+
+// SetPath sets the "path" field.
+func (m *MCPImageMutation) SetPath(s string) {
+	m._path = &s
+}
+
+// Path returns the value of the "path" field in the mutation.
+func (m *MCPImageMutation) Path() (r string, exists bool) {
+	v := m._path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPath returns the old "path" field's value of the MCPImage entity.
+// If the MCPImage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPImageMutation) OldPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPath: %w", err)
+	}
+	return oldValue.Path, nil
+}
+
+// ResetPath resets all changes to the "path" field.
+func (m *MCPImageMutation) ResetPath() {
+	m._path = nil
+}
+
+// SetContentType sets the "content_type" field.
+func (m *MCPImageMutation) SetContentType(s string) {
+	m.content_type = &s
+}
+
+// ContentType returns the value of the "content_type" field in the mutation.
+func (m *MCPImageMutation) ContentType() (r string, exists bool) {
+	v := m.content_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentType returns the old "content_type" field's value of the MCPImage entity.
+// If the MCPImage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPImageMutation) OldContentType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentType: %w", err)
+	}
+	return oldValue.ContentType, nil
+}
+
+// ResetContentType resets all changes to the "content_type" field.
+func (m *MCPImageMutation) ResetContentType() {
+	m.content_type = nil
+}
+
+// SetSize sets the "size" field.
+func (m *MCPImageMutation) SetSize(i int64) {
+	m.size = &i
+	m.addsize = nil
+}
+
+// Size returns the value of the "size" field in the mutation.
+func (m *MCPImageMutation) Size() (r int64, exists bool) {
+	v := m.size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSize returns the old "size" field's value of the MCPImage entity.
+// If the MCPImage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPImageMutation) OldSize(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSize is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSize requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSize: %w", err)
+	}
+	return oldValue.Size, nil
+}
+
+// AddSize adds i to the "size" field.
+func (m *MCPImageMutation) AddSize(i int64) {
+	if m.addsize != nil {
+		*m.addsize += i
+	} else {
+		m.addsize = &i
+	}
+}
+
+// AddedSize returns the value that was added to the "size" field in this mutation.
+func (m *MCPImageMutation) AddedSize() (r int64, exists bool) {
+	v := m.addsize
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSize resets all changes to the "size" field.
+func (m *MCPImageMutation) ResetSize() {
+	m.size = nil
+	m.addsize = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *MCPImageMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *MCPImageMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the MCPImage entity.
+// If the MCPImage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPImageMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *MCPImageMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *MCPImageMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *MCPImageMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the MCPImage entity.
+// If the MCPImage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPImageMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *MCPImageMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *MCPImageMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *MCPImageMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *MCPImageMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *MCPImageMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *MCPImageMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *MCPImageMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the MCPImageMutation builder.
+func (m *MCPImageMutation) Where(ps ...predicate.MCPImage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MCPImageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MCPImageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MCPImage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MCPImageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MCPImageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MCPImage).
+func (m *MCPImageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MCPImageMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.filename != nil {
+		fields = append(fields, mcpimage.FieldFilename)
+	}
+	if m._path != nil {
+		fields = append(fields, mcpimage.FieldPath)
+	}
+	if m.content_type != nil {
+		fields = append(fields, mcpimage.FieldContentType)
+	}
+	if m.size != nil {
+		fields = append(fields, mcpimage.FieldSize)
+	}
+	if m.created_at != nil {
+		fields = append(fields, mcpimage.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, mcpimage.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MCPImageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case mcpimage.FieldFilename:
+		return m.Filename()
+	case mcpimage.FieldPath:
+		return m.Path()
+	case mcpimage.FieldContentType:
+		return m.ContentType()
+	case mcpimage.FieldSize:
+		return m.Size()
+	case mcpimage.FieldCreatedAt:
+		return m.CreatedAt()
+	case mcpimage.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MCPImageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case mcpimage.FieldFilename:
+		return m.OldFilename(ctx)
+	case mcpimage.FieldPath:
+		return m.OldPath(ctx)
+	case mcpimage.FieldContentType:
+		return m.OldContentType(ctx)
+	case mcpimage.FieldSize:
+		return m.OldSize(ctx)
+	case mcpimage.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case mcpimage.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown MCPImage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MCPImageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case mcpimage.FieldFilename:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFilename(v)
+		return nil
+	case mcpimage.FieldPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPath(v)
+		return nil
+	case mcpimage.FieldContentType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentType(v)
+		return nil
+	case mcpimage.FieldSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSize(v)
+		return nil
+	case mcpimage.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case mcpimage.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MCPImage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MCPImageMutation) AddedFields() []string {
+	var fields []string
+	if m.addsize != nil {
+		fields = append(fields, mcpimage.FieldSize)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MCPImageMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case mcpimage.FieldSize:
+		return m.AddedSize()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MCPImageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case mcpimage.FieldSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSize(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MCPImage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MCPImageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MCPImageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MCPImageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown MCPImage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MCPImageMutation) ResetField(name string) error {
+	switch name {
+	case mcpimage.FieldFilename:
+		m.ResetFilename()
+		return nil
+	case mcpimage.FieldPath:
+		m.ResetPath()
+		return nil
+	case mcpimage.FieldContentType:
+		m.ResetContentType()
+		return nil
+	case mcpimage.FieldSize:
+		m.ResetSize()
+		return nil
+	case mcpimage.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case mcpimage.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPImage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MCPImageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, mcpimage.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MCPImageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case mcpimage.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MCPImageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MCPImageMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MCPImageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, mcpimage.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MCPImageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case mcpimage.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MCPImageMutation) ClearEdge(name string) error {
+	switch name {
+	case mcpimage.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPImage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MCPImageMutation) ResetEdge(name string) error {
+	switch name {
+	case mcpimage.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPImage edge %s", name)
+}
+
+// MCPTokenMutation represents an operation that mutates the MCPToken nodes in the graph.
+type MCPTokenMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	name          *string
+	token_hash    *string
+	last_used_at  *time.Time
+	created_at    *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	user          *int
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*MCPToken, error)
+	predicates    []predicate.MCPToken
+}
+
+var _ ent.Mutation = (*MCPTokenMutation)(nil)
+
+// mcptokenOption allows management of the mutation configuration using functional options.
+type mcptokenOption func(*MCPTokenMutation)
+
+// newMCPTokenMutation creates new mutation for the MCPToken entity.
+func newMCPTokenMutation(c config, op Op, opts ...mcptokenOption) *MCPTokenMutation {
+	m := &MCPTokenMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMCPToken,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMCPTokenID sets the ID field of the mutation.
+func withMCPTokenID(id int) mcptokenOption {
+	return func(m *MCPTokenMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MCPToken
+		)
+		m.oldValue = func(ctx context.Context) (*MCPToken, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MCPToken.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMCPToken sets the old MCPToken of the mutation.
+func withMCPToken(node *MCPToken) mcptokenOption {
+	return func(m *MCPTokenMutation) {
+		m.oldValue = func(context.Context) (*MCPToken, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MCPTokenMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MCPTokenMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MCPTokenMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MCPTokenMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MCPToken.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *MCPTokenMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *MCPTokenMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the MCPToken entity.
+// If the MCPToken object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPTokenMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *MCPTokenMutation) ResetName() {
+	m.name = nil
+}
+
+// SetTokenHash sets the "token_hash" field.
+func (m *MCPTokenMutation) SetTokenHash(s string) {
+	m.token_hash = &s
+}
+
+// TokenHash returns the value of the "token_hash" field in the mutation.
+func (m *MCPTokenMutation) TokenHash() (r string, exists bool) {
+	v := m.token_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTokenHash returns the old "token_hash" field's value of the MCPToken entity.
+// If the MCPToken object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPTokenMutation) OldTokenHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTokenHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTokenHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTokenHash: %w", err)
+	}
+	return oldValue.TokenHash, nil
+}
+
+// ResetTokenHash resets all changes to the "token_hash" field.
+func (m *MCPTokenMutation) ResetTokenHash() {
+	m.token_hash = nil
+}
+
+// SetLastUsedAt sets the "last_used_at" field.
+func (m *MCPTokenMutation) SetLastUsedAt(t time.Time) {
+	m.last_used_at = &t
+}
+
+// LastUsedAt returns the value of the "last_used_at" field in the mutation.
+func (m *MCPTokenMutation) LastUsedAt() (r time.Time, exists bool) {
+	v := m.last_used_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastUsedAt returns the old "last_used_at" field's value of the MCPToken entity.
+// If the MCPToken object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPTokenMutation) OldLastUsedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastUsedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastUsedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastUsedAt: %w", err)
+	}
+	return oldValue.LastUsedAt, nil
+}
+
+// ClearLastUsedAt clears the value of the "last_used_at" field.
+func (m *MCPTokenMutation) ClearLastUsedAt() {
+	m.last_used_at = nil
+	m.clearedFields[mcptoken.FieldLastUsedAt] = struct{}{}
+}
+
+// LastUsedAtCleared returns if the "last_used_at" field was cleared in this mutation.
+func (m *MCPTokenMutation) LastUsedAtCleared() bool {
+	_, ok := m.clearedFields[mcptoken.FieldLastUsedAt]
+	return ok
+}
+
+// ResetLastUsedAt resets all changes to the "last_used_at" field.
+func (m *MCPTokenMutation) ResetLastUsedAt() {
+	m.last_used_at = nil
+	delete(m.clearedFields, mcptoken.FieldLastUsedAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *MCPTokenMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *MCPTokenMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the MCPToken entity.
+// If the MCPToken object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPTokenMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *MCPTokenMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *MCPTokenMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *MCPTokenMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the MCPToken entity.
+// If the MCPToken object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MCPTokenMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *MCPTokenMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *MCPTokenMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *MCPTokenMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *MCPTokenMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *MCPTokenMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *MCPTokenMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *MCPTokenMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the MCPTokenMutation builder.
+func (m *MCPTokenMutation) Where(ps ...predicate.MCPToken) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MCPTokenMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MCPTokenMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MCPToken, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MCPTokenMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MCPTokenMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MCPToken).
+func (m *MCPTokenMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MCPTokenMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.name != nil {
+		fields = append(fields, mcptoken.FieldName)
+	}
+	if m.token_hash != nil {
+		fields = append(fields, mcptoken.FieldTokenHash)
+	}
+	if m.last_used_at != nil {
+		fields = append(fields, mcptoken.FieldLastUsedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, mcptoken.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, mcptoken.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MCPTokenMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case mcptoken.FieldName:
+		return m.Name()
+	case mcptoken.FieldTokenHash:
+		return m.TokenHash()
+	case mcptoken.FieldLastUsedAt:
+		return m.LastUsedAt()
+	case mcptoken.FieldCreatedAt:
+		return m.CreatedAt()
+	case mcptoken.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MCPTokenMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case mcptoken.FieldName:
+		return m.OldName(ctx)
+	case mcptoken.FieldTokenHash:
+		return m.OldTokenHash(ctx)
+	case mcptoken.FieldLastUsedAt:
+		return m.OldLastUsedAt(ctx)
+	case mcptoken.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case mcptoken.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown MCPToken field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MCPTokenMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case mcptoken.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case mcptoken.FieldTokenHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTokenHash(v)
+		return nil
+	case mcptoken.FieldLastUsedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastUsedAt(v)
+		return nil
+	case mcptoken.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case mcptoken.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MCPToken field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MCPTokenMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MCPTokenMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MCPTokenMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown MCPToken numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MCPTokenMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(mcptoken.FieldLastUsedAt) {
+		fields = append(fields, mcptoken.FieldLastUsedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MCPTokenMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MCPTokenMutation) ClearField(name string) error {
+	switch name {
+	case mcptoken.FieldLastUsedAt:
+		m.ClearLastUsedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPToken nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MCPTokenMutation) ResetField(name string) error {
+	switch name {
+	case mcptoken.FieldName:
+		m.ResetName()
+		return nil
+	case mcptoken.FieldTokenHash:
+		m.ResetTokenHash()
+		return nil
+	case mcptoken.FieldLastUsedAt:
+		m.ResetLastUsedAt()
+		return nil
+	case mcptoken.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case mcptoken.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPToken field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MCPTokenMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, mcptoken.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MCPTokenMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case mcptoken.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MCPTokenMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MCPTokenMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MCPTokenMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, mcptoken.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MCPTokenMutation) EdgeCleared(name string) bool {
+	switch name {
+	case mcptoken.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MCPTokenMutation) ClearEdge(name string) error {
+	switch name {
+	case mcptoken.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPToken unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MCPTokenMutation) ResetEdge(name string) error {
+	switch name {
+	case mcptoken.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown MCPToken edge %s", name)
+}
+
 // NoteMutation represents an operation that mutates the Note nodes in the graph.
 type NoteMutation struct {
 	config
@@ -6435,6 +7769,7 @@ type UserMutation struct {
 	nickname           *string
 	role               *user.Role
 	avatar             *string
+	lazycat_uid        *string
 	created_at         *time.Time
 	updated_at         *time.Time
 	clearedFields      map[string]struct{}
@@ -6453,6 +7788,12 @@ type UserMutation struct {
 	import_jobs        map[int]struct{}
 	removedimport_jobs map[int]struct{}
 	clearedimport_jobs bool
+	mcp_tokens         map[int]struct{}
+	removedmcp_tokens  map[int]struct{}
+	clearedmcp_tokens  bool
+	mcp_images         map[int]struct{}
+	removedmcp_images  map[int]struct{}
+	clearedmcp_images  bool
 	done               bool
 	oldValue           func(context.Context) (*User, error)
 	predicates         []predicate.User
@@ -6811,6 +8152,55 @@ func (m *UserMutation) ResetAvatar() {
 	delete(m.clearedFields, user.FieldAvatar)
 }
 
+// SetLazycatUID sets the "lazycat_uid" field.
+func (m *UserMutation) SetLazycatUID(s string) {
+	m.lazycat_uid = &s
+}
+
+// LazycatUID returns the value of the "lazycat_uid" field in the mutation.
+func (m *UserMutation) LazycatUID() (r string, exists bool) {
+	v := m.lazycat_uid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLazycatUID returns the old "lazycat_uid" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldLazycatUID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLazycatUID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLazycatUID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLazycatUID: %w", err)
+	}
+	return oldValue.LazycatUID, nil
+}
+
+// ClearLazycatUID clears the value of the "lazycat_uid" field.
+func (m *UserMutation) ClearLazycatUID() {
+	m.lazycat_uid = nil
+	m.clearedFields[user.FieldLazycatUID] = struct{}{}
+}
+
+// LazycatUIDCleared returns if the "lazycat_uid" field was cleared in this mutation.
+func (m *UserMutation) LazycatUIDCleared() bool {
+	_, ok := m.clearedFields[user.FieldLazycatUID]
+	return ok
+}
+
+// ResetLazycatUID resets all changes to the "lazycat_uid" field.
+func (m *UserMutation) ResetLazycatUID() {
+	m.lazycat_uid = nil
+	delete(m.clearedFields, user.FieldLazycatUID)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *UserMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -7153,6 +8543,114 @@ func (m *UserMutation) ResetImportJobs() {
 	m.removedimport_jobs = nil
 }
 
+// AddMcpTokenIDs adds the "mcp_tokens" edge to the MCPToken entity by ids.
+func (m *UserMutation) AddMcpTokenIDs(ids ...int) {
+	if m.mcp_tokens == nil {
+		m.mcp_tokens = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.mcp_tokens[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMcpTokens clears the "mcp_tokens" edge to the MCPToken entity.
+func (m *UserMutation) ClearMcpTokens() {
+	m.clearedmcp_tokens = true
+}
+
+// McpTokensCleared reports if the "mcp_tokens" edge to the MCPToken entity was cleared.
+func (m *UserMutation) McpTokensCleared() bool {
+	return m.clearedmcp_tokens
+}
+
+// RemoveMcpTokenIDs removes the "mcp_tokens" edge to the MCPToken entity by IDs.
+func (m *UserMutation) RemoveMcpTokenIDs(ids ...int) {
+	if m.removedmcp_tokens == nil {
+		m.removedmcp_tokens = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.mcp_tokens, ids[i])
+		m.removedmcp_tokens[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMcpTokens returns the removed IDs of the "mcp_tokens" edge to the MCPToken entity.
+func (m *UserMutation) RemovedMcpTokensIDs() (ids []int) {
+	for id := range m.removedmcp_tokens {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// McpTokensIDs returns the "mcp_tokens" edge IDs in the mutation.
+func (m *UserMutation) McpTokensIDs() (ids []int) {
+	for id := range m.mcp_tokens {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMcpTokens resets all changes to the "mcp_tokens" edge.
+func (m *UserMutation) ResetMcpTokens() {
+	m.mcp_tokens = nil
+	m.clearedmcp_tokens = false
+	m.removedmcp_tokens = nil
+}
+
+// AddMcpImageIDs adds the "mcp_images" edge to the MCPImage entity by ids.
+func (m *UserMutation) AddMcpImageIDs(ids ...int) {
+	if m.mcp_images == nil {
+		m.mcp_images = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.mcp_images[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMcpImages clears the "mcp_images" edge to the MCPImage entity.
+func (m *UserMutation) ClearMcpImages() {
+	m.clearedmcp_images = true
+}
+
+// McpImagesCleared reports if the "mcp_images" edge to the MCPImage entity was cleared.
+func (m *UserMutation) McpImagesCleared() bool {
+	return m.clearedmcp_images
+}
+
+// RemoveMcpImageIDs removes the "mcp_images" edge to the MCPImage entity by IDs.
+func (m *UserMutation) RemoveMcpImageIDs(ids ...int) {
+	if m.removedmcp_images == nil {
+		m.removedmcp_images = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.mcp_images, ids[i])
+		m.removedmcp_images[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMcpImages returns the removed IDs of the "mcp_images" edge to the MCPImage entity.
+func (m *UserMutation) RemovedMcpImagesIDs() (ids []int) {
+	for id := range m.removedmcp_images {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// McpImagesIDs returns the "mcp_images" edge IDs in the mutation.
+func (m *UserMutation) McpImagesIDs() (ids []int) {
+	for id := range m.mcp_images {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMcpImages resets all changes to the "mcp_images" edge.
+func (m *UserMutation) ResetMcpImages() {
+	m.mcp_images = nil
+	m.clearedmcp_images = false
+	m.removedmcp_images = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -7187,7 +8685,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
 	}
@@ -7205,6 +8703,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.avatar != nil {
 		fields = append(fields, user.FieldAvatar)
+	}
+	if m.lazycat_uid != nil {
+		fields = append(fields, user.FieldLazycatUID)
 	}
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
@@ -7232,6 +8733,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Role()
 	case user.FieldAvatar:
 		return m.Avatar()
+	case user.FieldLazycatUID:
+		return m.LazycatUID()
 	case user.FieldCreatedAt:
 		return m.CreatedAt()
 	case user.FieldUpdatedAt:
@@ -7257,6 +8760,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldRole(ctx)
 	case user.FieldAvatar:
 		return m.OldAvatar(ctx)
+	case user.FieldLazycatUID:
+		return m.OldLazycatUID(ctx)
 	case user.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case user.FieldUpdatedAt:
@@ -7312,6 +8817,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAvatar(v)
 		return nil
+	case user.FieldLazycatUID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLazycatUID(v)
+		return nil
 	case user.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -7365,6 +8877,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldAvatar) {
 		fields = append(fields, user.FieldAvatar)
 	}
+	if m.FieldCleared(user.FieldLazycatUID) {
+		fields = append(fields, user.FieldLazycatUID)
+	}
 	return fields
 }
 
@@ -7387,6 +8902,9 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldAvatar:
 		m.ClearAvatar()
+		return nil
+	case user.FieldLazycatUID:
+		m.ClearLazycatUID()
 		return nil
 	}
 	return fmt.Errorf("unknown User nullable field %s", name)
@@ -7414,6 +8932,9 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldAvatar:
 		m.ResetAvatar()
 		return nil
+	case user.FieldLazycatUID:
+		m.ResetLazycatUID()
+		return nil
 	case user.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
@@ -7426,7 +8947,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.notes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -7441,6 +8962,12 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.import_jobs != nil {
 		edges = append(edges, user.EdgeImportJobs)
+	}
+	if m.mcp_tokens != nil {
+		edges = append(edges, user.EdgeMcpTokens)
+	}
+	if m.mcp_images != nil {
+		edges = append(edges, user.EdgeMcpImages)
 	}
 	return edges
 }
@@ -7479,13 +9006,25 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeMcpTokens:
+		ids := make([]ent.Value, 0, len(m.mcp_tokens))
+		for id := range m.mcp_tokens {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeMcpImages:
+		ids := make([]ent.Value, 0, len(m.mcp_images))
+		for id := range m.mcp_images {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.removednotes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -7500,6 +9039,12 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedimport_jobs != nil {
 		edges = append(edges, user.EdgeImportJobs)
+	}
+	if m.removedmcp_tokens != nil {
+		edges = append(edges, user.EdgeMcpTokens)
+	}
+	if m.removedmcp_images != nil {
+		edges = append(edges, user.EdgeMcpImages)
 	}
 	return edges
 }
@@ -7538,13 +9083,25 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeMcpTokens:
+		ids := make([]ent.Value, 0, len(m.removedmcp_tokens))
+		for id := range m.removedmcp_tokens {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeMcpImages:
+		ids := make([]ent.Value, 0, len(m.removedmcp_images))
+		for id := range m.removedmcp_images {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.clearednotes {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -7559,6 +9116,12 @@ func (m *UserMutation) ClearedEdges() []string {
 	}
 	if m.clearedimport_jobs {
 		edges = append(edges, user.EdgeImportJobs)
+	}
+	if m.clearedmcp_tokens {
+		edges = append(edges, user.EdgeMcpTokens)
+	}
+	if m.clearedmcp_images {
+		edges = append(edges, user.EdgeMcpImages)
 	}
 	return edges
 }
@@ -7577,6 +9140,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedfonts
 	case user.EdgeImportJobs:
 		return m.clearedimport_jobs
+	case user.EdgeMcpTokens:
+		return m.clearedmcp_tokens
+	case user.EdgeMcpImages:
+		return m.clearedmcp_images
 	}
 	return false
 }
@@ -7607,6 +9174,12 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeImportJobs:
 		m.ResetImportJobs()
+		return nil
+	case user.EdgeMcpTokens:
+		m.ResetMcpTokens()
+		return nil
+	case user.EdgeMcpImages:
+		m.ResetMcpImages()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

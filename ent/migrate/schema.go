@@ -144,6 +144,55 @@ var (
 			},
 		},
 	}
+	// McpImagesColumns holds the columns for the "mcp_images" table.
+	McpImagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "filename", Type: field.TypeString},
+		{Name: "path", Type: field.TypeString},
+		{Name: "content_type", Type: field.TypeString, Default: "image/png"},
+		{Name: "size", Type: field.TypeInt64},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_mcp_images", Type: field.TypeInt},
+	}
+	// McpImagesTable holds the schema information for the "mcp_images" table.
+	McpImagesTable = &schema.Table{
+		Name:       "mcp_images",
+		Columns:    McpImagesColumns,
+		PrimaryKey: []*schema.Column{McpImagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "mcp_images_users_mcp_images",
+				Columns:    []*schema.Column{McpImagesColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// McpTokensColumns holds the columns for the "mcp_tokens" table.
+	McpTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Default: "MCP Token"},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "last_used_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_mcp_tokens", Type: field.TypeInt},
+	}
+	// McpTokensTable holds the schema information for the "mcp_tokens" table.
+	McpTokensTable = &schema.Table{
+		Name:       "mcp_tokens",
+		Columns:    McpTokensColumns,
+		PrimaryKey: []*schema.Column{McpTokensColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "mcp_tokens_users_mcp_tokens",
+				Columns:    []*schema.Column{McpTokensColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// NotesColumns holds the columns for the "notes" table.
 	NotesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -204,6 +253,7 @@ var (
 		{Name: "nickname", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "role", Type: field.TypeEnum, Enums: []string{"admin", "user"}, Default: "user"},
 		{Name: "avatar", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "lazycat_uid", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
@@ -245,6 +295,8 @@ var (
 		FontsTable,
 		ImportItemsTable,
 		ImportJobsTable,
+		McpImagesTable,
+		McpTokensTable,
 		NotesTable,
 		TagsTable,
 		UsersTable,
@@ -258,6 +310,8 @@ func init() {
 	FontsTable.ForeignKeys[0].RefTable = UsersTable
 	ImportItemsTable.ForeignKeys[0].RefTable = ImportJobsTable
 	ImportJobsTable.ForeignKeys[0].RefTable = UsersTable
+	McpImagesTable.ForeignKeys[0].RefTable = UsersTable
+	McpTokensTable.ForeignKeys[0].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
 	NoteTagsTable.ForeignKeys[0].RefTable = NotesTable
