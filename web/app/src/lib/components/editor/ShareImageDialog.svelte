@@ -9,6 +9,30 @@
   type ShareThemeID = "classic" | "paper" | "night";
   type ShareRatio = "story" | "square";
 
+  interface TextBlock {
+    lines: string[];
+  }
+
+  interface ShareLayout {
+    width: number;
+    height: number;
+    margin: number;
+    surfaceWidth: number;
+    surfaceHeight: number;
+    contentX: number;
+    contentWidth: number;
+    contentStartY: number;
+    footerY: number;
+    titleLines: string[];
+    bodyBlocks: TextBlock[];
+    titleFont: string;
+    bodyFont: string;
+    lineHeight: number;
+    titleLineHeight: number;
+    titleGap: number;
+    paragraphGap: number;
+  }
+
   interface ShareTheme {
     id: ShareThemeID;
     labelKey: MessageKey;
@@ -57,17 +81,27 @@
     { id: "story", labelKey: "wideImage", width: 1080, height: 1440 },
     { id: "square", labelKey: "squareImage", width: 1080, height: 1080 },
   ];
+  const exportScale = 2;
+  const maxCanvasDimension = 32760;
 
   let themeID: ShareThemeID = "classic";
   let ratioID: ShareRatio = "story";
 
   $: activeTheme = themes.find((theme) => theme.id === themeID) ?? themes[0];
   $: activeRatio = ratios.find((ratio) => ratio.id === ratioID) ?? ratios[0];
-  $: plainTitle = stripMarkdown(title).trim() || t("untitled", $preferencesStore.language);
+  $: plainTitle =
+    stripMarkdown(title).trim() || t("untitled", $preferencesStore.language);
   $: plainContent =
     stripMarkdown(content).trim() || t("contentEmpty", $preferencesStore.language);
-  $: paragraphs = plainContent.split(/\n{2,}/).slice(0, 4);
-  $: wordCount = plainContent === t("contentEmpty", $preferencesStore.language) ? 0 : plainContent.length;
+  $: contentParagraphs = plainContent
+    .split(/\n{2,}/)
+    .filter((paragraph) => paragraph.trim());
+  $: previewParagraphs =
+    ratioID === "story" ? contentParagraphs : contentParagraphs.slice(0, 4);
+  $: wordCount =
+    plainContent === t("contentEmpty", $preferencesStore.language)
+      ? 0
+      : plainContent.length;
   $: wordCountLabel = `${wordCount} ${t("wordUnit", $preferencesStore.language)}`;
 
   function stripMarkdown(value: string): string {
@@ -82,6 +116,12 @@
   function fileName(): string {
     const safeTitle = plainTitle.replace(/[\\/:*?"<>|]/g, "").slice(0, 24);
     return `${safeTitle || "smarticky"}-share.png`;
+  }
+
+  function canvasScaleFor(width: number, height: number): number {
+    const largestSide = Math.max(width, height);
+    if (largestSide <= 0) return exportScale;
+    return Math.min(exportScale, maxCanvasDimension / largestSide);
   }
 
   function wrapText(
@@ -106,64 +146,141 @@
     return lines;
   }
 
-  async function renderCanvas(): Promise<HTMLCanvasElement> {
-    const canvas = document.createElement("canvas");
-    const scale = 2;
+  function createLayout(ctx: CanvasRenderingContext2D): ShareLayout {
+    const isLongImage = ratioID === "story";
     const width = activeRatio.width;
-    const height = activeRatio.height;
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas unavailable");
-    ctx.scale(scale, scale);
-    ctx.fillStyle = activeTheme.background;
-    ctx.fillRect(0, 0, width, height);
-
-    const margin = ratioID === "story" ? 108 : 92;
+    const minHeight = activeRatio.height;
+    const margin = isLongImage ? 108 : 92;
     const surfaceWidth = width - margin * 2;
-    const surfaceHeight = height - margin * 2;
-    ctx.fillStyle = activeTheme.surface;
-    ctx.fillRect(margin, margin, surfaceWidth, surfaceHeight);
-
     const contentX = margin + 74;
     const contentWidth = surfaceWidth - 148;
-    let y = margin + 112;
+    const contentStartY = margin + 112;
     const titleFont =
       "600 52px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
     const bodyFont = activeTheme.serif
       ? "34px 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', serif"
       : "32px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
+    const titleLineHeight = 68;
+    const titleGap = 34;
+    const lineHeight = activeTheme.serif ? 62 : 58;
+    const paragraphGap = 28;
 
-    ctx.fillStyle = activeTheme.accent;
-    ctx.fillRect(contentX, y - 42, 56, 5);
-
-    ctx.fillStyle = activeTheme.text;
     ctx.font = titleFont;
-    for (const line of wrapText(ctx, plainTitle, contentWidth).slice(0, 3)) {
-      ctx.fillText(line, contentX, y);
-      y += 68;
-    }
-    y += 34;
+    const titleLines = wrapText(ctx, plainTitle, contentWidth).slice(
+      0,
+      isLongImage ? undefined : 3,
+    );
 
     ctx.font = bodyFont;
-    const lineHeight = activeTheme.serif ? 62 : 58;
-    const maxY = height - margin - 128;
-    for (const paragraph of plainContent.split(/\n+/)) {
-      for (const line of wrapText(ctx, paragraph, contentWidth)) {
-        if (y > maxY) break;
-        ctx.fillText(line, contentX, y);
+    const bodyBlocks = plainContent
+      .split(/\n+/)
+      .map((paragraph) => ({ lines: wrapText(ctx, paragraph, contentWidth) }))
+      .filter((block) => block.lines.length > 0);
+
+    let y = contentStartY + titleLines.length * titleLineHeight + titleGap;
+    const fixedMaxY = minHeight - margin - 128;
+
+    for (const block of bodyBlocks) {
+      for (const _line of block.lines) {
+        if (!isLongImage && y > fixedMaxY) break;
         y += lineHeight;
       }
-      y += 28;
+      y += paragraphGap;
+      if (!isLongImage && y > fixedMaxY) break;
+    }
+
+    const footerY = isLongImage
+      ? Math.max(y + 40, minHeight - margin - 54)
+      : minHeight - margin - 54;
+    const height = isLongImage ? Math.ceil(footerY + margin + 54) : minHeight;
+
+    return {
+      width,
+      height,
+      margin,
+      surfaceWidth,
+      surfaceHeight: height - margin * 2,
+      contentX,
+      contentWidth,
+      contentStartY,
+      footerY,
+      titleLines,
+      bodyBlocks,
+      titleFont,
+      bodyFont,
+      lineHeight,
+      titleLineHeight,
+      titleGap,
+      paragraphGap,
+    };
+  }
+
+  async function renderCanvas(): Promise<HTMLCanvasElement> {
+    const measureCanvas = document.createElement("canvas");
+    const measureCtx = measureCanvas.getContext("2d");
+    if (!measureCtx) throw new Error("Canvas unavailable");
+
+    const layout = createLayout(measureCtx);
+    const canvas = document.createElement("canvas");
+    const scale = canvasScaleFor(layout.width, layout.height);
+    canvas.width = Math.max(
+      1,
+      Math.min(maxCanvasDimension, Math.ceil(layout.width * scale)),
+    );
+    canvas.height = Math.max(
+      1,
+      Math.min(maxCanvasDimension, Math.ceil(layout.height * scale)),
+    );
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas unavailable");
+    ctx.scale(scale, scale);
+    ctx.fillStyle = activeTheme.background;
+    ctx.fillRect(0, 0, layout.width, layout.height);
+
+    ctx.fillStyle = activeTheme.surface;
+    ctx.fillRect(
+      layout.margin,
+      layout.margin,
+      layout.surfaceWidth,
+      layout.surfaceHeight,
+    );
+
+    ctx.fillStyle = activeTheme.accent;
+    ctx.fillRect(layout.contentX, layout.contentStartY - 42, 56, 5);
+
+    ctx.fillStyle = activeTheme.text;
+    ctx.font = layout.titleFont;
+    let y = layout.contentStartY;
+    for (const line of layout.titleLines) {
+      ctx.fillText(line, layout.contentX, y);
+      y += layout.titleLineHeight;
+    }
+    y += layout.titleGap;
+
+    ctx.font = layout.bodyFont;
+    const maxY =
+      ratioID === "story" ? Infinity : layout.height - layout.margin - 128;
+    for (const block of layout.bodyBlocks) {
+      for (const line of block.lines) {
+        if (y > maxY) break;
+        ctx.fillText(line, layout.contentX, y);
+        y += layout.lineHeight;
+      }
+      y += layout.paragraphGap;
       if (y > maxY) break;
     }
 
     ctx.fillStyle = activeTheme.muted;
     ctx.font = "24px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
-    ctx.fillText("Smarticky", contentX, height - margin - 54);
+    ctx.textAlign = "left";
+    ctx.fillText("Smarticky", layout.contentX, layout.footerY);
     ctx.textAlign = "right";
-    ctx.fillText(wordCountLabel, width - margin - 74, height - margin - 54);
+    ctx.fillText(
+      wordCountLabel,
+      layout.width - layout.margin - 74,
+      layout.footerY,
+    );
 
     return canvas;
   }
@@ -224,6 +341,7 @@
 
     <div class="share-dialog__body">
       <div
+        class:share-preview--long={ratioID === "story"}
         class:share-preview--square={ratioID === "square"}
         class="share-preview"
         style={`--share-bg: ${activeTheme.background}; --share-surface: ${activeTheme.surface}; --share-text: ${activeTheme.text}; --share-muted: ${activeTheme.muted}; --share-accent: ${activeTheme.accent};`}
@@ -231,7 +349,7 @@
         <article class:serif={activeTheme.serif} class="share-preview__paper">
           <div class="share-preview__mark"></div>
           <h3>{plainTitle}</h3>
-          {#each paragraphs as paragraph}
+          {#each previewParagraphs as paragraph}
             <p>{paragraph}</p>
           {/each}
           <footer>

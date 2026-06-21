@@ -1492,6 +1492,13 @@ h6 {
   padding: 28px;
 }
 
+.share-preview--long {
+  width: min(430px, 100%);
+  aspect-ratio: auto;
+  align-items: start;
+  overflow-y: auto;
+}
+
 .share-preview--square {
   aspect-ratio: 1;
 }
@@ -1505,6 +1512,12 @@ h6 {
   background: var(--share-surface);
   color: var(--share-text);
   padding: 54px 48px;
+}
+
+.share-preview--long .share-preview__paper {
+  height: auto;
+  min-height: 560px;
+  overflow: visible;
 }
 
 .share-preview__paper.serif {
@@ -2119,6 +2132,10 @@ h6 {
   .share-preview {
     width: 100%;
     max-height: none;
+  }
+
+  .share-preview--long {
+    max-height: 62vh;
   }
 
   .share-preview__paper {
