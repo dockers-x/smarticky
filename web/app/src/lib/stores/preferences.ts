@@ -5,6 +5,7 @@ export type Theme = "light" | "dark";
 
 interface PreferencesState {
   language: Language;
+  sidebarCompact: boolean;
   theme: Theme;
 }
 
@@ -64,6 +65,7 @@ const messages = {
     changePassword: "修改密码",
     closeSettings: "关闭设置面板",
     closeShareImage: "关闭生成图片",
+    collapseSidebar: "收起侧栏",
     confirmNewPassword: "确认新密码",
     confirmPassword: "确认密码",
     contentEmpty: "没有正文",
@@ -113,6 +115,7 @@ const messages = {
     enterOldPassword: "输入旧密码",
     enterPasswordMin: "输入密码（至少 6 个字符）",
     enterUsername: "输入用户名",
+    expandSidebar: "展开侧栏",
     exitFocus: "退出",
     failed: "失败",
     fontDeleteConfirm: "确认删除字体",
@@ -234,10 +237,15 @@ const messages = {
     shareDialogLabel: "生成分享图片",
     shareNight: "夜读",
     sharePaper: "暖纸长文",
+    shareSignature: "导出图片默认落款",
+    shareSignatureHint: "用于生成分享图片时底部的默认署名；每次导出前仍可临时修改。",
+    shareSignaturePlaceholder: "例如：Smarticky / 你的名字",
+    shareSignatureTemporary: "本次图片落款",
     shareSmartisanSubtitle: "Smartisan 风格排版",
     shareWithAllUsers: "与所有用户共享",
     showDetails: "信息",
     skipped: "已跳过",
+    sourceMode: "源码编辑",
     squareImage: "方图",
     starred: "收藏",
     star: "收藏",
@@ -285,6 +293,7 @@ const messages = {
     wideImage: "长图",
     wordUnit: "字",
     writingMode: "排版模式",
+    wysiwygMode: "所见即所得",
     yes: "是",
     yesterday: "昨天",
   },
@@ -343,6 +352,7 @@ const messages = {
     changePassword: "Change password",
     closeSettings: "Close settings panel",
     closeShareImage: "Close image generator",
+    collapseSidebar: "Collapse sidebar",
     confirmNewPassword: "Confirm new password",
     confirmPassword: "Confirm password",
     contentEmpty: "No body",
@@ -392,6 +402,7 @@ const messages = {
     enterOldPassword: "Enter old password",
     enterPasswordMin: "Enter password (min 6 characters)",
     enterUsername: "Enter username",
+    expandSidebar: "Expand sidebar",
     exitFocus: "Exit",
     failed: "Failed",
     fontDeleteConfirm: "Delete font",
@@ -513,10 +524,15 @@ const messages = {
     shareDialogLabel: "Generate share image",
     shareNight: "Night reading",
     sharePaper: "Warm paper",
+    shareSignature: "Default image export signature",
+    shareSignatureHint: "Used as the footer signature when generating share images. You can still override it before each export.",
+    shareSignaturePlaceholder: "Example: Smarticky / your name",
+    shareSignatureTemporary: "Signature for this image",
     shareSmartisanSubtitle: "Smartisan-style typography",
     shareWithAllUsers: "Share with all users",
     showDetails: "Info",
     skipped: "Skipped",
+    sourceMode: "Source mode",
     squareImage: "Square",
     starred: "Starred",
     star: "Star",
@@ -564,6 +580,7 @@ const messages = {
     wideImage: "Long image",
     wordUnit: "chars",
     writingMode: "Writing mode",
+    wysiwygMode: "WYSIWYG mode",
     yes: "Yes",
     yesterday: "Yesterday",
   },
@@ -596,15 +613,26 @@ function storedTheme(): Theme {
   return "light";
 }
 
+function storedSidebarCompact(): boolean {
+  if (typeof localStorage !== "undefined") {
+    return localStorage.getItem("sidebar-compact") === "true";
+  }
+  return false;
+}
+
 function applyPreferences(state: PreferencesState): void {
   if (typeof document === "undefined") return;
   document.documentElement.lang = state.language === "zh" ? "zh-CN" : "en";
+  document.documentElement.dataset.sidebar = state.sidebarCompact
+    ? "compact"
+    : "wide";
   document.documentElement.dataset.theme = state.theme;
 }
 
 function createPreferencesStore() {
   const initial = {
     language: storedLanguage(),
+    sidebarCompact: storedSidebarCompact(),
     theme: storedTheme(),
   };
   const { subscribe, set, update } = writable<PreferencesState>(initial);
@@ -613,6 +641,7 @@ function createPreferencesStore() {
   function commit(next: PreferencesState): PreferencesState {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("language", next.language);
+      localStorage.setItem("sidebar-compact", String(next.sidebarCompact));
       localStorage.setItem("theme", next.theme);
     }
     applyPreferences(next);
@@ -622,7 +651,13 @@ function createPreferencesStore() {
   return {
     subscribe,
     hydrate() {
-      set(commit({ language: storedLanguage(), theme: storedTheme() }));
+      set(
+        commit({
+          language: storedLanguage(),
+          sidebarCompact: storedSidebarCompact(),
+          theme: storedTheme(),
+        }),
+      );
     },
     setLanguage(language: Language) {
       update((state) => commit({ ...state, language }));
@@ -630,6 +665,11 @@ function createPreferencesStore() {
     toggleLanguage() {
       update((state) =>
         commit({ ...state, language: state.language === "zh" ? "en" : "zh" }),
+      );
+    },
+    toggleSidebarCompact() {
+      update((state) =>
+        commit({ ...state, sidebarCompact: !state.sidebarCompact }),
       );
     },
     setTheme(theme: Theme) {

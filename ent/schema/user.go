@@ -33,6 +33,8 @@ func (User) Fields() []ent.Field {
 		field.String("avatar").
 			Optional().
 			Default(""),
+		field.String("share_signature").
+			Default("Smarticky"),
 		field.String("lazycat_uid").
 			Optional().
 			Nillable().

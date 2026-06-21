@@ -10,12 +10,14 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@codemirror/commands": "^6.8.0",
-    "@codemirror/lang-markdown": "^6.3.4",
-    "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.38.0",
-    "@lezer/highlight": "^1.2.1",
     "@lucide/svelte": "^1.21.0",
+    "@milkdown/crepe": "^7.21.2",
+    "@milkdown/kit": "^7.21.2",
+    "dompurify": "^3.4.11",
+    "html-to-image": "^1.11.13",
+    "katex": "^0.17.0",
+    "marked": "^18.0.5",
+    "marked-katex-extension": "^5.1.10",
     "svelte": "^5.0.0"
   },
   "devDependencies": {

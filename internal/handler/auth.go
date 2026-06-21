@@ -62,10 +62,11 @@ func (h *Handler) generateAvatar(username string) (string, error) {
 // Setup checks if admin exists, if not creates first admin
 func (h *Handler) Setup(c echo.Context) error {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Email    string `json:"email"`
-		Nickname string `json:"nickname"`
+		Username       string `json:"username"`
+		Password       string `json:"password"`
+		Email          string `json:"email"`
+		Nickname       string `json:"nickname"`
+		ShareSignature string `json:"share_signature"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -107,6 +108,9 @@ func (h *Handler) Setup(c echo.Context) error {
 	if req.Nickname != "" {
 		createUser.SetNickname(req.Nickname)
 	}
+	if req.ShareSignature != "" {
+		createUser.SetShareSignature(normalizeShareSignature(req.ShareSignature))
+	}
 
 	newUser, err := createUser.Save(context.Background())
 
@@ -123,15 +127,7 @@ func (h *Handler) Setup(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Admin user created successfully",
-		"user": map[string]interface{}{
-			"id":          newUser.ID,
-			"username":    newUser.Username,
-			"email":       newUser.Email,
-			"nickname":    newUser.Nickname,
-			"role":        newUser.Role,
-			"avatar":      newUser.Avatar,
-			"lazycat_uid": newUser.LazycatUID,
-		},
+		"user":    userResponse(newUser, false),
 	})
 }
 
@@ -191,15 +187,7 @@ func (h *Handler) Login(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"token": tokenString,
-		"user": map[string]interface{}{
-			"id":          u.ID,
-			"username":    u.Username,
-			"email":       u.Email,
-			"nickname":    u.Nickname,
-			"role":        u.Role,
-			"avatar":      u.Avatar,
-			"lazycat_uid": u.LazycatUID,
-		},
+		"user":  userResponse(u, false),
 	})
 }
 
@@ -212,15 +200,7 @@ func (h *Handler) GetCurrentUser(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":          u.ID,
-		"username":    u.Username,
-		"email":       u.Email,
-		"nickname":    u.Nickname,
-		"role":        u.Role,
-		"avatar":      u.Avatar,
-		"lazycat_uid": u.LazycatUID,
-	})
+	return c.JSON(http.StatusOK, userResponse(u, false))
 }
 
 // Logout invalidates the current session

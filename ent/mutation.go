@@ -7769,6 +7769,7 @@ type UserMutation struct {
 	nickname           *string
 	role               *user.Role
 	avatar             *string
+	share_signature    *string
 	lazycat_uid        *string
 	created_at         *time.Time
 	updated_at         *time.Time
@@ -8150,6 +8151,42 @@ func (m *UserMutation) AvatarCleared() bool {
 func (m *UserMutation) ResetAvatar() {
 	m.avatar = nil
 	delete(m.clearedFields, user.FieldAvatar)
+}
+
+// SetShareSignature sets the "share_signature" field.
+func (m *UserMutation) SetShareSignature(s string) {
+	m.share_signature = &s
+}
+
+// ShareSignature returns the value of the "share_signature" field in the mutation.
+func (m *UserMutation) ShareSignature() (r string, exists bool) {
+	v := m.share_signature
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShareSignature returns the old "share_signature" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldShareSignature(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShareSignature is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShareSignature requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShareSignature: %w", err)
+	}
+	return oldValue.ShareSignature, nil
+}
+
+// ResetShareSignature resets all changes to the "share_signature" field.
+func (m *UserMutation) ResetShareSignature() {
+	m.share_signature = nil
 }
 
 // SetLazycatUID sets the "lazycat_uid" field.
@@ -8685,7 +8722,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
 	}
@@ -8703,6 +8740,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.avatar != nil {
 		fields = append(fields, user.FieldAvatar)
+	}
+	if m.share_signature != nil {
+		fields = append(fields, user.FieldShareSignature)
 	}
 	if m.lazycat_uid != nil {
 		fields = append(fields, user.FieldLazycatUID)
@@ -8733,6 +8773,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Role()
 	case user.FieldAvatar:
 		return m.Avatar()
+	case user.FieldShareSignature:
+		return m.ShareSignature()
 	case user.FieldLazycatUID:
 		return m.LazycatUID()
 	case user.FieldCreatedAt:
@@ -8760,6 +8802,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldRole(ctx)
 	case user.FieldAvatar:
 		return m.OldAvatar(ctx)
+	case user.FieldShareSignature:
+		return m.OldShareSignature(ctx)
 	case user.FieldLazycatUID:
 		return m.OldLazycatUID(ctx)
 	case user.FieldCreatedAt:
@@ -8816,6 +8860,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAvatar(v)
+		return nil
+	case user.FieldShareSignature:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShareSignature(v)
 		return nil
 	case user.FieldLazycatUID:
 		v, ok := value.(string)
@@ -8931,6 +8982,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldAvatar:
 		m.ResetAvatar()
+		return nil
+	case user.FieldShareSignature:
+		m.ResetShareSignature()
 		return nil
 	case user.FieldLazycatUID:
 		m.ResetLazycatUID()

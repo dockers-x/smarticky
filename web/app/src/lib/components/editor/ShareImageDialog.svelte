@@ -1,37 +1,17 @@
 <script lang="ts">
+  import { toBlob, toPng } from "html-to-image";
+  import { onMount, tick } from "svelte";
+  import { renderMarkdown, stripMarkdown } from "../../markdown/render";
   import { notify } from "../../stores/dialogs";
   import { preferencesStore, t, type MessageKey } from "../../stores/preferences";
 
   export let title = "";
   export let content = "";
+  export let defaultSignature = "Smarticky";
   export let onClose: () => void = () => {};
 
   type ShareThemeID = "classic" | "paper" | "night";
   type ShareRatio = "story" | "square";
-
-  interface TextBlock {
-    lines: string[];
-  }
-
-  interface ShareLayout {
-    width: number;
-    height: number;
-    margin: number;
-    surfaceWidth: number;
-    surfaceHeight: number;
-    contentX: number;
-    contentWidth: number;
-    contentStartY: number;
-    footerY: number;
-    titleLines: string[];
-    bodyBlocks: TextBlock[];
-    titleFont: string;
-    bodyFont: string;
-    lineHeight: number;
-    titleLineHeight: number;
-    titleGap: number;
-    paragraphGap: number;
-  }
 
   interface ShareTheme {
     id: ShareThemeID;
@@ -41,6 +21,10 @@
     text: string;
     muted: string;
     accent: string;
+    code: string;
+    codeText: string;
+    divider: string;
+    quote: string;
     serif: boolean;
   }
 
@@ -48,74 +32,111 @@
     {
       id: "classic",
       labelKey: "shareClassic",
-      background: "#f7f6f1",
-      surface: "#ffffff",
+      background: "#fafaf8",
+      surface: "#fffefa",
       text: "#1d1c19",
-      muted: "#8b877d",
-      accent: "#e8450a",
+      muted: "#5c5c54",
+      accent: "#e8531a",
+      code: "#f4f3ee",
+      codeText: "#3a3a34",
+      divider: "#e2e0d8",
+      quote: "#fef3ec",
       serif: true,
     },
     {
       id: "paper",
       labelKey: "sharePaper",
-      background: "#eee6d7",
-      surface: "#fffaf0",
-      text: "#221f19",
-      muted: "#8a7862",
-      accent: "#bd5c18",
+      background: "#f4f3ee",
+      surface: "#fff8ec",
+      text: "#1a1a18",
+      muted: "#5c5c54",
+      accent: "#c03b0d",
+      code: "#eceae2",
+      codeText: "#3a3a34",
+      divider: "#c8c6bc",
+      quote: "#fef3ec",
       serif: true,
     },
     {
       id: "night",
       labelKey: "shareNight",
-      background: "#171713",
+      background: "#141412",
       surface: "#20201b",
-      text: "#f5f1e7",
-      muted: "#9b968b",
-      accent: "#f4831f",
+      text: "#f0efe8",
+      muted: "#a8a59e",
+      accent: "#d45a20",
+      code: "#2a2a26",
+      codeText: "#d0ceca",
+      divider: "#3c3c38",
+      quote: "#3d1f0e",
       serif: false,
     },
   ];
 
-  const ratios: { id: ShareRatio; labelKey: MessageKey; width: number; height: number }[] = [
-    { id: "story", labelKey: "wideImage", width: 1080, height: 1440 },
-    { id: "square", labelKey: "squareImage", width: 1080, height: 1080 },
+  const ratios: {
+    id: ShareRatio;
+    labelKey: MessageKey;
+    width: number;
+    minHeight: number;
+  }[] = [
+    { id: "story", labelKey: "wideImage", width: 1080, minHeight: 1440 },
+    { id: "square", labelKey: "squareImage", width: 1080, minHeight: 1080 },
   ];
   const exportScale = 2;
   const maxCanvasDimension = 32760;
 
   let themeID: ShareThemeID = "classic";
   let ratioID: ShareRatio = "story";
+  let exportTarget: HTMLDivElement | null = null;
+  let imageBusy = false;
+  let signature = "";
 
   $: activeTheme = themes.find((theme) => theme.id === themeID) ?? themes[0];
   $: activeRatio = ratios.find((ratio) => ratio.id === ratioID) ?? ratios[0];
-  $: plainTitle =
-    stripMarkdown(title).trim() || t("untitled", $preferencesStore.language);
-  $: plainContent =
-    stripMarkdown(content).trim() || t("contentEmpty", $preferencesStore.language);
-  $: contentParagraphs = plainContent
-    .split(/\n{2,}/)
-    .filter((paragraph) => paragraph.trim());
-  $: previewParagraphs =
-    ratioID === "story" ? contentParagraphs : contentParagraphs.slice(0, 4);
-  $: wordCount =
-    plainContent === t("contentEmpty", $preferencesStore.language)
-      ? 0
-      : plainContent.length;
+  $: plainTitle = title.trim() || t("untitled", $preferencesStore.language);
+  $: bodyMarkdown =
+    removeDuplicateLeadingHeading(content, plainTitle).trim() ||
+    t("contentEmpty", $preferencesStore.language);
+  $: renderedContent = renderMarkdown(bodyMarkdown);
+  $: plainContent = stripMarkdown(content);
+  $: wordCount = plainContent.replace(/\s/g, "").length;
   $: wordCountLabel = `${wordCount} ${t("wordUnit", $preferencesStore.language)}`;
-
-  function stripMarkdown(value: string): string {
-    return value
-      .replace(/!\[[^\]]*]\([^)]*\)/g, "")
-      .replace(/\[([^\]]+)]\([^)]*\)/g, "$1")
-      .replace(/^[#>\s-]*\s*/gm, "")
-      .replace(/[*_`~]/g, "")
-      .replace(/\n{3,}/g, "\n\n");
-  }
+  $: shareSignature = signature.trim() || "Smarticky";
+  $: themeStyle = [
+    `--share-bg: ${activeTheme.background}`,
+    `--share-surface: ${activeTheme.surface}`,
+    `--share-text: ${activeTheme.text}`,
+    `--share-muted: ${activeTheme.muted}`,
+    `--share-accent: ${activeTheme.accent}`,
+    `--share-code: ${activeTheme.code}`,
+    `--share-code-text: ${activeTheme.codeText}`,
+    `--share-divider: ${activeTheme.divider}`,
+    `--share-quote: ${activeTheme.quote}`,
+    `--share-width: ${activeRatio.width}px`,
+    `--share-min-height: ${activeRatio.minHeight}px`,
+  ].join("; ");
 
   function fileName(): string {
     const safeTitle = plainTitle.replace(/[\\/:*?"<>|]/g, "").slice(0, 24);
     return `${safeTitle || "smarticky"}-share.png`;
+  }
+
+  function normalizeHeading(value: string): string {
+    return value
+      .replace(/[*_`~\[\]()#]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function removeDuplicateLeadingHeading(markdown: string, currentTitle: string): string {
+    const match = markdown.match(/^\s*#{1,6}\s+(.+?)\s*#*\s*(?:\n+|$)/);
+    if (!match) return markdown;
+
+    if (normalizeHeading(match[1]) !== normalizeHeading(currentTitle)) {
+      return markdown;
+    }
+
+    return markdown.slice(match[0].length).replace(/^\n+/, "");
   }
 
   function canvasScaleFor(width: number, height: number): number {
@@ -124,177 +145,38 @@
     return Math.min(exportScale, maxCanvasDimension / largestSide);
   }
 
-  function wrapText(
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    maxWidth: number,
-  ): string[] {
-    const lines: string[] = [];
-    let line = "";
+  async function exportOptions() {
+    await tick();
+    if (!exportTarget) throw new Error("Share image target unavailable");
 
-    for (const char of text) {
-      const next = `${line}${char}`;
-      if (ctx.measureText(next).width > maxWidth && line) {
-        lines.push(line);
-        line = char;
-      } else {
-        line = next;
-      }
-    }
-
-    if (line) lines.push(line);
-    return lines;
-  }
-
-  function createLayout(ctx: CanvasRenderingContext2D): ShareLayout {
-    const isLongImage = ratioID === "story";
-    const width = activeRatio.width;
-    const minHeight = activeRatio.height;
-    const margin = isLongImage ? 108 : 92;
-    const surfaceWidth = width - margin * 2;
-    const contentX = margin + 74;
-    const contentWidth = surfaceWidth - 148;
-    const contentStartY = margin + 112;
-    const titleFont =
-      "600 52px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
-    const bodyFont = activeTheme.serif
-      ? "34px 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', serif"
-      : "32px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
-    const titleLineHeight = 68;
-    const titleGap = 34;
-    const lineHeight = activeTheme.serif ? 62 : 58;
-    const paragraphGap = 28;
-
-    ctx.font = titleFont;
-    const titleLines = wrapText(ctx, plainTitle, contentWidth).slice(
-      0,
-      isLongImage ? undefined : 3,
-    );
-
-    ctx.font = bodyFont;
-    const bodyBlocks = plainContent
-      .split(/\n+/)
-      .map((paragraph) => ({ lines: wrapText(ctx, paragraph, contentWidth) }))
-      .filter((block) => block.lines.length > 0);
-
-    let y = contentStartY + titleLines.length * titleLineHeight + titleGap;
-    const fixedMaxY = minHeight - margin - 128;
-
-    for (const block of bodyBlocks) {
-      for (const _line of block.lines) {
-        if (!isLongImage && y > fixedMaxY) break;
-        y += lineHeight;
-      }
-      y += paragraphGap;
-      if (!isLongImage && y > fixedMaxY) break;
-    }
-
-    const footerY = isLongImage
-      ? Math.max(y + 40, minHeight - margin - 54)
-      : minHeight - margin - 54;
-    const height = isLongImage ? Math.ceil(footerY + margin + 54) : minHeight;
-
+    const width = exportTarget.scrollWidth;
+    const height = exportTarget.scrollHeight;
     return {
-      width,
+      backgroundColor: activeTheme.background,
+      cacheBust: true,
       height,
-      margin,
-      surfaceWidth,
-      surfaceHeight: height - margin * 2,
-      contentX,
-      contentWidth,
-      contentStartY,
-      footerY,
-      titleLines,
-      bodyBlocks,
-      titleFont,
-      bodyFont,
-      lineHeight,
-      titleLineHeight,
-      titleGap,
-      paragraphGap,
+      pixelRatio: canvasScaleFor(width, height),
+      width,
     };
   }
 
-  async function renderCanvas(): Promise<HTMLCanvasElement> {
-    const measureCanvas = document.createElement("canvas");
-    const measureCtx = measureCanvas.getContext("2d");
-    if (!measureCtx) throw new Error("Canvas unavailable");
-
-    const layout = createLayout(measureCtx);
-    const canvas = document.createElement("canvas");
-    const scale = canvasScaleFor(layout.width, layout.height);
-    canvas.width = Math.max(
-      1,
-      Math.min(maxCanvasDimension, Math.ceil(layout.width * scale)),
-    );
-    canvas.height = Math.max(
-      1,
-      Math.min(maxCanvasDimension, Math.ceil(layout.height * scale)),
-    );
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas unavailable");
-    ctx.scale(scale, scale);
-    ctx.fillStyle = activeTheme.background;
-    ctx.fillRect(0, 0, layout.width, layout.height);
-
-    ctx.fillStyle = activeTheme.surface;
-    ctx.fillRect(
-      layout.margin,
-      layout.margin,
-      layout.surfaceWidth,
-      layout.surfaceHeight,
-    );
-
-    ctx.fillStyle = activeTheme.accent;
-    ctx.fillRect(layout.contentX, layout.contentStartY - 42, 56, 5);
-
-    ctx.fillStyle = activeTheme.text;
-    ctx.font = layout.titleFont;
-    let y = layout.contentStartY;
-    for (const line of layout.titleLines) {
-      ctx.fillText(line, layout.contentX, y);
-      y += layout.titleLineHeight;
-    }
-    y += layout.titleGap;
-
-    ctx.font = layout.bodyFont;
-    const maxY =
-      ratioID === "story" ? Infinity : layout.height - layout.margin - 128;
-    for (const block of layout.bodyBlocks) {
-      for (const line of block.lines) {
-        if (y > maxY) break;
-        ctx.fillText(line, layout.contentX, y);
-        y += layout.lineHeight;
-      }
-      y += layout.paragraphGap;
-      if (y > maxY) break;
-    }
-
-    ctx.fillStyle = activeTheme.muted;
-    ctx.font = "24px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("Smarticky", layout.contentX, layout.footerY);
-    ctx.textAlign = "right";
-    ctx.fillText(
-      wordCountLabel,
-      layout.width - layout.margin - 74,
-      layout.footerY,
-    );
-
-    return canvas;
-  }
-
   async function downloadImage(): Promise<void> {
+    if (imageBusy) return;
+
+    imageBusy = true;
     try {
-      const canvas = await renderCanvas();
+      const options = await exportOptions();
+      if (!exportTarget) throw new Error("Share image target unavailable");
+      const href = await toPng(exportTarget, options);
       const link = document.createElement("a");
       link.download = fileName();
-      link.href = canvas.toDataURL("image/png");
+      link.href = href;
       link.click();
       notify(t("generatedImage", $preferencesStore.language), "success");
     } catch {
       notify(t("generateImageFailed", $preferencesStore.language), "error");
+    } finally {
+      imageBusy = false;
     }
   }
 
@@ -303,19 +185,26 @@
       notify(t("copyImageUnsupported", $preferencesStore.language), "info");
       return;
     }
+    if (imageBusy) return;
 
+    imageBusy = true;
     try {
-      const canvas = await renderCanvas();
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png"),
-      );
+      const options = await exportOptions();
+      if (!exportTarget) throw new Error("Share image target unavailable");
+      const blob = await toBlob(exportTarget, options);
       if (!blob) throw new Error("Canvas export failed");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       notify(t("copiedImage", $preferencesStore.language), "success");
     } catch {
       notify(t("copyImageFailed", $preferencesStore.language), "error");
+    } finally {
+      imageBusy = false;
     }
   }
+
+  onMount(() => {
+    signature = defaultSignature || "Smarticky";
+  });
 </script>
 
 <div
@@ -344,19 +233,21 @@
         class:share-preview--long={ratioID === "story"}
         class:share-preview--square={ratioID === "square"}
         class="share-preview"
-        style={`--share-bg: ${activeTheme.background}; --share-surface: ${activeTheme.surface}; --share-text: ${activeTheme.text}; --share-muted: ${activeTheme.muted}; --share-accent: ${activeTheme.accent};`}
+        style={themeStyle}
       >
-        <article class:serif={activeTheme.serif} class="share-preview__paper">
-          <div class="share-preview__mark"></div>
-          <h3>{plainTitle}</h3>
-          {#each previewParagraphs as paragraph}
-            <p>{paragraph}</p>
-          {/each}
-          <footer>
-            <span>Smarticky</span>
-            <span>{wordCountLabel}</span>
-          </footer>
-        </article>
+        <div class="share-preview__canvas">
+          <article class:serif={activeTheme.serif} class="share-preview__paper">
+            <div class="share-preview__mark"></div>
+            <h3>{plainTitle}</h3>
+            <div class="share-preview__markdown">
+              {@html renderedContent}
+            </div>
+            <footer>
+              <span>{shareSignature}</span>
+              <span>{wordCountLabel}</span>
+            </footer>
+          </article>
+        </div>
       </div>
 
       <aside class="share-dialog__controls">
@@ -396,15 +287,48 @@
           </div>
         </div>
 
+        <label class="share-control-group">
+          <span>{t("shareSignatureTemporary", $preferencesStore.language)}</span>
+          <input
+            class="share-signature-input"
+            bind:value={signature}
+            type="text"
+            maxlength="40"
+            placeholder={t("shareSignaturePlaceholder", $preferencesStore.language)}
+          />
+        </label>
+
         <div class="share-dialog__actions">
-          <button type="button" on:click={copyImage}>
+          <button type="button" disabled={imageBusy} on:click={copyImage}>
             {t("copyImage", $preferencesStore.language)}
           </button>
-          <button class="primary" type="button" on:click={downloadImage}>
+          <button class="primary" type="button" disabled={imageBusy} on:click={downloadImage}>
             {t("downloadPng", $preferencesStore.language)}
           </button>
         </div>
       </aside>
     </div>
+  </div>
+</div>
+
+<div class="share-export-stage" aria-hidden="true">
+  <div
+    bind:this={exportTarget}
+    class:share-export-canvas--long={ratioID === "story"}
+    class:share-export-canvas--square={ratioID === "square"}
+    class="share-export-canvas"
+    style={themeStyle}
+  >
+    <article class:serif={activeTheme.serif} class="share-preview__paper">
+      <div class="share-preview__mark"></div>
+      <h3>{plainTitle}</h3>
+      <div class="share-preview__markdown">
+        {@html renderedContent}
+      </div>
+      <footer>
+        <span>{shareSignature}</span>
+        <span>{wordCountLabel}</span>
+      </footer>
+    </article>
   </div>
 </div>

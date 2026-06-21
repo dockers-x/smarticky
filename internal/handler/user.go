@@ -23,16 +23,7 @@ func (h *Handler) ListUsers(c echo.Context) error {
 
 	var result []map[string]interface{}
 	for _, u := range users {
-		result = append(result, map[string]interface{}{
-			"id":          u.ID,
-			"username":    u.Username,
-			"email":       u.Email,
-			"nickname":    u.Nickname,
-			"role":        u.Role,
-			"avatar":      u.Avatar,
-			"lazycat_uid": u.LazycatUID,
-			"created_at":  u.CreatedAt,
-		})
+		result = append(result, userResponse(u, true))
 	}
 
 	return c.JSON(http.StatusOK, result)
@@ -41,12 +32,13 @@ func (h *Handler) ListUsers(c echo.Context) error {
 // CreateUser creates a new user (admin only)
 func (h *Handler) CreateUser(c echo.Context) error {
 	var req struct {
-		Username   string `json:"username"`
-		Password   string `json:"password"`
-		Email      string `json:"email"`
-		Nickname   string `json:"nickname"`
-		Role       string `json:"role"`
-		LazycatUID string `json:"lazycat_uid"`
+		Username       string `json:"username"`
+		Password       string `json:"password"`
+		Email          string `json:"email"`
+		Nickname       string `json:"nickname"`
+		Role           string `json:"role"`
+		ShareSignature string `json:"share_signature"`
+		LazycatUID     string `json:"lazycat_uid"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -78,7 +70,8 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		SetPasswordHash(string(hashedPassword)).
 		SetEmail(req.Email).
 		SetAvatar(avatarPath).
-		SetRole(user.Role(req.Role))
+		SetRole(user.Role(req.Role)).
+		SetShareSignature(normalizeShareSignature(req.ShareSignature))
 
 	if req.Nickname != "" {
 		createUser.SetNickname(req.Nickname)
@@ -103,15 +96,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":          newUser.ID,
-		"username":    newUser.Username,
-		"email":       newUser.Email,
-		"nickname":    newUser.Nickname,
-		"role":        newUser.Role,
-		"avatar":      newUser.Avatar,
-		"lazycat_uid": newUser.LazycatUID,
-	})
+	return c.JSON(http.StatusOK, userResponse(newUser, false))
 }
 
 // UpdateUser updates user information
@@ -130,11 +115,12 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	}
 
 	var req struct {
-		Email      *string `json:"email"`
-		Nickname   *string `json:"nickname"`
-		Avatar     *string `json:"avatar"`
-		Role       *string `json:"role"`
-		LazycatUID *string `json:"lazycat_uid"`
+		Email          *string `json:"email"`
+		Nickname       *string `json:"nickname"`
+		Avatar         *string `json:"avatar"`
+		Role           *string `json:"role"`
+		ShareSignature *string `json:"share_signature"`
+		LazycatUID     *string `json:"lazycat_uid"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -162,6 +148,10 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 		updateQuery = updateQuery.SetAvatar(strings.TrimSpace(*req.Avatar))
 	}
 
+	if req.ShareSignature != nil {
+		updateQuery = updateQuery.SetShareSignature(normalizeShareSignature(*req.ShareSignature))
+	}
+
 	if req.LazycatUID != nil {
 		lazycatUID := strings.TrimSpace(*req.LazycatUID)
 		if lazycatUID == "" {
@@ -187,15 +177,7 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":          updatedUser.ID,
-		"username":    updatedUser.Username,
-		"email":       updatedUser.Email,
-		"nickname":    updatedUser.Nickname,
-		"role":        updatedUser.Role,
-		"avatar":      updatedUser.Avatar,
-		"lazycat_uid": updatedUser.LazycatUID,
-	})
+	return c.JSON(http.StatusOK, userResponse(updatedUser, false))
 }
 
 // UpdatePassword updates user password

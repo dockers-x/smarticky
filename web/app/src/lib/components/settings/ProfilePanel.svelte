@@ -17,6 +17,7 @@
   let email = "";
   let nickname = "";
   let lazycatUID = "";
+  let shareSignature = "";
   let oldPassword = "";
   let newPassword = "";
   let confirmPassword = "";
@@ -34,6 +35,7 @@
     email = user.email ?? "";
     nickname = user.nickname ?? "";
     lazycatUID = user.lazycat_uid ?? "";
+    shareSignature = user.share_signature ?? "Smarticky";
     oldPassword = "";
     newPassword = "";
     confirmPassword = "";
@@ -102,6 +104,7 @@
         email: email.trim(),
         nickname: nickname.trim(),
         lazycat_uid: lazycatUID.trim(),
+        share_signature: shareSignature.trim() || "Smarticky",
       });
       authStore.setUser(updated);
       notify(t("profileSaved", $preferencesStore.language), "success");
@@ -293,6 +296,16 @@
             placeholder={t("lazycatUidPlaceholder", $preferencesStore.language)}
           />
           <small>{t("lazycatUidHint", $preferencesStore.language)}</small>
+        </label>
+        <label>
+          <span>{t("shareSignature", $preferencesStore.language)}</span>
+          <input
+            bind:value={shareSignature}
+            type="text"
+            maxlength="40"
+            placeholder={t("shareSignaturePlaceholder", $preferencesStore.language)}
+          />
+          <small>{t("shareSignatureHint", $preferencesStore.language)}</small>
         </label>
         <div class="settings-actions">
           <button class="primary" type="button" disabled={profileBusy} on:click={saveProfile}>

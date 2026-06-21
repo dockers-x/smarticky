@@ -96,6 +96,20 @@ func (_c *UserCreate) SetNillableAvatar(v *string) *UserCreate {
 	return _c
 }
 
+// SetShareSignature sets the "share_signature" field.
+func (_c *UserCreate) SetShareSignature(v string) *UserCreate {
+	_c.mutation.SetShareSignature(v)
+	return _c
+}
+
+// SetNillableShareSignature sets the "share_signature" field if the given value is not nil.
+func (_c *UserCreate) SetNillableShareSignature(v *string) *UserCreate {
+	if v != nil {
+		_c.SetShareSignature(*v)
+	}
+	return _c
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (_c *UserCreate) SetLazycatUID(v string) *UserCreate {
 	_c.mutation.SetLazycatUID(v)
@@ -290,6 +304,10 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultAvatar
 		_c.mutation.SetAvatar(v)
 	}
+	if _, ok := _c.mutation.ShareSignature(); !ok {
+		v := user.DefaultShareSignature
+		_c.mutation.SetShareSignature(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := user.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -325,6 +343,9 @@ func (_c *UserCreate) check() error {
 		if err := user.RoleValidator(v); err != nil {
 			return &ValidationError{Name: "role", err: fmt.Errorf(`ent: validator failed for field "User.role": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.ShareSignature(); !ok {
+		return &ValidationError{Name: "share_signature", err: errors.New(`ent: missing required field "User.share_signature"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "User.created_at"`)}
@@ -381,6 +402,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Avatar(); ok {
 		_spec.SetField(user.FieldAvatar, field.TypeString, value)
 		_node.Avatar = value
+	}
+	if value, ok := _c.mutation.ShareSignature(); ok {
+		_spec.SetField(user.FieldShareSignature, field.TypeString, value)
+		_node.ShareSignature = value
 	}
 	if value, ok := _c.mutation.LazycatUID(); ok {
 		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)

@@ -7,6 +7,7 @@ export interface User {
   nickname?: string;
   role: "admin" | "user";
   avatar?: string;
+  share_signature?: string;
   lazycat_uid?: string | null;
 }
 

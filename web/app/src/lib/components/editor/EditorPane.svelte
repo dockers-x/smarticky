@@ -1,44 +1,39 @@
 <script lang="ts">
-  import type { EditorView } from "@codemirror/view";
+  import { FileCode, Image as ImageIcon } from "@lucide/svelte";
   import { onDestroy, onMount, tick } from "svelte";
   import type { Note } from "../../api/types";
-  import { insertImage } from "../../editor/commands";
+  import type { MarkdownEditorHandle } from "../../editor/markdown";
+  import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
   import EditorInspector from "./EditorInspector.svelte";
-  import EditorToolbar from "./EditorToolbar.svelte";
   import MarkdownEditor from "./MarkdownEditor.svelte";
   import ShareImageDialog from "./ShareImageDialog.svelte";
 
   export let note: Note | null = null;
 
   type SaveStatus = "idle" | "saving" | "saved" | "error";
-  type WritingMode = "plain" | "markdown";
 
-  let editorView: EditorView | null = null;
+  let markdownEditor: MarkdownEditorHandle | null = null;
   let activeNoteID = "";
   let draftTitle = "";
   let draftContent = "";
   let titleInput: HTMLTextAreaElement | null = null;
+  let sourceTextarea: HTMLTextAreaElement | null = null;
   let titleTimer: ReturnType<typeof setTimeout> | null = null;
   let contentTimer: ReturnType<typeof setTimeout> | null = null;
   let saveStatus: SaveStatus = "idle";
   let saveSequence = 0;
+  let sourceMode = false;
   let focusMode = false;
   let detailsOpen = false;
   let shareOpen = false;
   let actionMenuOpen = false;
   let folderMenuOpen = false;
-  let formatMenuOpen = false;
   let quickTagName = "";
   let tagBusy = false;
-  let writingMode: WritingMode =
-    typeof localStorage !== "undefined" &&
-    localStorage.getItem("writing-mode") === "plain"
-      ? "plain"
-      : "markdown";
 
   $: statusText = {
     idle: "",
@@ -80,11 +75,11 @@
     draftTitle = nextNote?.title ?? "";
     draftContent = nextNote?.content ?? "";
     saveStatus = nextNote ? "saved" : "idle";
+    sourceMode = false;
     detailsOpen = false;
     shareOpen = false;
     actionMenuOpen = false;
     folderMenuOpen = false;
-    formatMenuOpen = false;
     quickTagName = "";
     void tick().then(resizeTitleInput);
   }
@@ -93,8 +88,8 @@
     resetDraft(note);
   }
 
-  function bindEditorView(view: EditorView): void {
-    editorView = view;
+  function bindMarkdownEditor(editor: MarkdownEditorHandle | null): void {
+    markdownEditor = editor;
   }
 
   function scheduleTitleSave(value: string): void {
@@ -113,8 +108,15 @@
     titleInput.style.height = `${titleInput.scrollHeight}px`;
   }
 
+  function resizeSourceInput(): void {
+    if (!sourceTextarea) return;
+    sourceTextarea.style.height = "auto";
+    sourceTextarea.style.height = `${sourceTextarea.scrollHeight}px`;
+  }
+
   function scheduleContentSave(value: string): void {
     draftContent = value;
+    void tick().then(resizeSourceInput);
     clearTimer(contentTimer);
     const noteID = activeNoteID;
     contentTimer = setTimeout(() => {
@@ -189,16 +191,53 @@
   }
 
   function runImageInsert(): void {
-    if (!editorView) return;
-    insertImage(editorView);
+    const markdown = `![${t("imageInsertAlt", $preferencesStore.language)}]()`;
+    if (sourceMode) {
+      insertIntoSource(markdown);
+      return;
+    }
+    if (!markdownEditor) return;
+    markdownEditor.insertMarkdown(markdown, true);
   }
 
-  function selectWritingMode(mode: WritingMode): void {
-    writingMode = mode;
-    formatMenuOpen = false;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("writing-mode", mode);
+  function insertIntoSource(markdown: string): void {
+    if (!sourceTextarea) {
+      scheduleContentSave(`${draftContent}${markdown}`);
+      return;
     }
+
+    const start = sourceTextarea.selectionStart ?? draftContent.length;
+    const end = sourceTextarea.selectionEnd ?? start;
+    const nextValue = `${draftContent.slice(0, start)}${markdown}${draftContent.slice(end)}`;
+    scheduleContentSave(nextValue);
+    void tick().then(() => {
+      const cursor = start + markdown.length;
+      sourceTextarea?.focus();
+      sourceTextarea?.setSelectionRange(cursor, cursor);
+      resizeSourceInput();
+    });
+  }
+
+  function toggleSourceMode(): void {
+    sourceMode = !sourceMode;
+    actionMenuOpen = false;
+    void tick().then(() => {
+      if (sourceMode) {
+        resizeSourceInput();
+        sourceTextarea?.focus();
+      } else {
+        markdownEditor?.focus();
+      }
+    });
+  }
+
+  function handleEditorKeydown(event: KeyboardEvent): void {
+    if (!note || shareOpen) return;
+    if (!(event.metaKey || event.ctrlKey) || event.shiftKey) return;
+    if (event.key !== "/" && event.code !== "Slash") return;
+
+    event.preventDefault();
+    toggleSourceMode();
   }
 
   async function addQuickTag(name = quickTagName): Promise<void> {
@@ -301,6 +340,8 @@
   });
 </script>
 
+<svelte:window on:keydown={handleEditorKeydown} />
+
 <section
   class:focus-mode={focusMode}
   class:has-note={Boolean(note)}
@@ -317,9 +358,6 @@
       >
         ‹
       </button>
-      {#if writingMode === "markdown"}
-        <EditorToolbar view={editorView} />
-      {/if}
       <div class="editor-header__right">
         <span class:visible={saveStatus !== "idle"} class="editor-save-status">
           {statusText[saveStatus]}
@@ -329,14 +367,24 @@
           type="button"
           title={t("insertImage", $preferencesStore.language)}
           aria-label={t("insertImage", $preferencesStore.language)}
-          disabled={!editorView}
+          disabled={!markdownEditor && !sourceMode}
           on:click={runImageInsert}
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M4 5h16v14H4z" />
-            <path d="m7 16 4-4 3 3 2-2 3 3" />
-            <path d="M8.5 8.5h.01" />
-          </svg>
+          <ImageIcon aria-hidden="true" size={19} strokeWidth={2} />
+        </button>
+        <button
+          class="editor-icon-button"
+          type="button"
+          title={sourceMode
+            ? t("wysiwygMode", $preferencesStore.language)
+            : t("sourceMode", $preferencesStore.language)}
+          aria-label={sourceMode
+            ? t("wysiwygMode", $preferencesStore.language)
+            : t("sourceMode", $preferencesStore.language)}
+          aria-pressed={sourceMode}
+          on:click={toggleSourceMode}
+        >
+          <FileCode aria-hidden="true" size={19} strokeWidth={2} />
         </button>
         {#if note.is_deleted}
           <button class="editor-action-button" type="button" on:click={toggleTrash}>
@@ -442,7 +490,6 @@
           aria-expanded={folderMenuOpen}
           on:click={() => {
             folderMenuOpen = !folderMenuOpen;
-            formatMenuOpen = false;
           }}
         >
           <span>{folderLabel}</span>
@@ -510,50 +557,6 @@
       >
         {note.is_starred ? "★" : "☆"}
       </button>
-      <div class="editor-meta-popover-anchor">
-        <button
-          class="editor-format-button"
-          type="button"
-          aria-label={`${t("writingMode", $preferencesStore.language)}: ${
-            writingMode === "markdown"
-              ? t("markdownMode", $preferencesStore.language)
-              : t("plainTextMode", $preferencesStore.language)
-          }`}
-          aria-expanded={formatMenuOpen}
-          on:click={() => {
-            formatMenuOpen = !formatMenuOpen;
-            folderMenuOpen = false;
-          }}
-        >
-          {writingMode === "markdown"
-            ? t("markdownModeShort", $preferencesStore.language)
-            : t("plainTextModeShort", $preferencesStore.language)}
-          <span aria-hidden="true">⌄</span>
-        </button>
-        {#if formatMenuOpen}
-          <div class="editor-popover editor-format-popover">
-            <p class="editor-popover-title">{t("chooseWritingMode", $preferencesStore.language)}</p>
-            <button
-              class="editor-popover-row"
-              class:active={writingMode === "plain"}
-              type="button"
-              on:click={() => selectWritingMode("plain")}
-            >
-              <span>{t("plainTextMode", $preferencesStore.language)}</span>
-              {#if writingMode === "plain"}<span aria-hidden="true">✓</span>{/if}
-            </button>
-            <button
-              class="editor-popover-row"
-              class:active={writingMode === "markdown"}
-              type="button"
-              on:click={() => selectWritingMode("markdown")}
-            >
-              <span>{t("markdownMode", $preferencesStore.language)}</span>
-              {#if writingMode === "markdown"}<span aria-hidden="true">✓</span>{/if}
-            </button>
-          </div>
-        {/if}
-      </div>
     </div>
     <div class:details-open={detailsOpen && !focusMode} class="editor-main">
       <div class="editor-surface">
@@ -566,11 +569,22 @@
           rows="1"
           on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
         ></textarea>
-        <MarkdownEditor
-          value={draftContent}
-          onChange={scheduleContentSave}
-          bindView={bindEditorView}
-        />
+        {#if sourceMode}
+          <textarea
+            bind:this={sourceTextarea}
+            class="editor-source-input"
+            value={draftContent}
+            spellcheck="false"
+            aria-label={t("sourceMode", $preferencesStore.language)}
+            on:input={(event) => scheduleContentSave(event.currentTarget.value)}
+          ></textarea>
+        {:else}
+          <MarkdownEditor
+            value={draftContent}
+            onChange={scheduleContentSave}
+            bindEditor={bindMarkdownEditor}
+          />
+        {/if}
       </div>
       {#if detailsOpen && !focusMode}
         <EditorInspector {note} />
@@ -580,6 +594,7 @@
       <ShareImageDialog
         title={draftTitle}
         content={draftContent}
+        defaultSignature={$authStore.user?.share_signature ?? "Smarticky"}
         onClose={() => (shareOpen = false)}
       />
     {/if}

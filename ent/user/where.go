@@ -80,6 +80,11 @@ func Avatar(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldAvatar, v))
 }
 
+// ShareSignature applies equality check predicate on the "share_signature" field. It's identical to ShareSignatureEQ.
+func ShareSignature(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldShareSignature, v))
+}
+
 // LazycatUID applies equality check predicate on the "lazycat_uid" field. It's identical to LazycatUIDEQ.
 func LazycatUID(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLazycatUID, v))
@@ -468,6 +473,71 @@ func AvatarEqualFold(v string) predicate.User {
 // AvatarContainsFold applies the ContainsFold predicate on the "avatar" field.
 func AvatarContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldAvatar, v))
+}
+
+// ShareSignatureEQ applies the EQ predicate on the "share_signature" field.
+func ShareSignatureEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldShareSignature, v))
+}
+
+// ShareSignatureNEQ applies the NEQ predicate on the "share_signature" field.
+func ShareSignatureNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldShareSignature, v))
+}
+
+// ShareSignatureIn applies the In predicate on the "share_signature" field.
+func ShareSignatureIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldShareSignature, vs...))
+}
+
+// ShareSignatureNotIn applies the NotIn predicate on the "share_signature" field.
+func ShareSignatureNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldShareSignature, vs...))
+}
+
+// ShareSignatureGT applies the GT predicate on the "share_signature" field.
+func ShareSignatureGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldShareSignature, v))
+}
+
+// ShareSignatureGTE applies the GTE predicate on the "share_signature" field.
+func ShareSignatureGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldShareSignature, v))
+}
+
+// ShareSignatureLT applies the LT predicate on the "share_signature" field.
+func ShareSignatureLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldShareSignature, v))
+}
+
+// ShareSignatureLTE applies the LTE predicate on the "share_signature" field.
+func ShareSignatureLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldShareSignature, v))
+}
+
+// ShareSignatureContains applies the Contains predicate on the "share_signature" field.
+func ShareSignatureContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldShareSignature, v))
+}
+
+// ShareSignatureHasPrefix applies the HasPrefix predicate on the "share_signature" field.
+func ShareSignatureHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldShareSignature, v))
+}
+
+// ShareSignatureHasSuffix applies the HasSuffix predicate on the "share_signature" field.
+func ShareSignatureHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldShareSignature, v))
+}
+
+// ShareSignatureEqualFold applies the EqualFold predicate on the "share_signature" field.
+func ShareSignatureEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldShareSignature, v))
+}
+
+// ShareSignatureContainsFold applies the ContainsFold predicate on the "share_signature" field.
+func ShareSignatureContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldShareSignature, v))
 }
 
 // LazycatUIDEQ applies the EQ predicate on the "lazycat_uid" field.

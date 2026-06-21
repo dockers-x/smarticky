@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { Languages, Moon, Settings, Sun } from "@lucide/svelte";
+  import {
+    BookOpenText,
+    Languages,
+    Moon,
+    PanelLeftClose,
+    PanelLeftOpen,
+    Settings,
+    Star,
+    Sun,
+    Trash2,
+  } from "@lucide/svelte";
   import ToolsPanel from "../settings/ToolsPanel.svelte";
   import { authStore } from "../../stores/auth";
   import { notesStore, type NoteFilter } from "../../stores/notes";
@@ -14,17 +24,52 @@
   ];
 </script>
 
-<aside class="sidebar" aria-label={t("noteList", $preferencesStore.language)}>
-  <div class="sidebar__brand">Smarticky</div>
+<aside
+  class:compact={$preferencesStore.sidebarCompact}
+  class="sidebar"
+  aria-label={t("noteList", $preferencesStore.language)}
+>
+  <div class="sidebar__brand-row">
+    <div class="sidebar__brand" aria-label="Smarticky">
+      <span class="sidebar__brand-short" aria-hidden="true">S</span>
+      <span class="sidebar__label">Smarticky</span>
+    </div>
+    <button
+      class="sidebar__collapse"
+      type="button"
+      aria-label={$preferencesStore.sidebarCompact
+        ? t("expandSidebar", $preferencesStore.language)
+        : t("collapseSidebar", $preferencesStore.language)}
+      title={$preferencesStore.sidebarCompact
+        ? t("expandSidebar", $preferencesStore.language)
+        : t("collapseSidebar", $preferencesStore.language)}
+      on:click={() => preferencesStore.toggleSidebarCompact()}
+    >
+      {#if $preferencesStore.sidebarCompact}
+        <PanelLeftOpen size={17} strokeWidth={1.8} aria-hidden="true" />
+      {:else}
+        <PanelLeftClose size={17} strokeWidth={1.8} aria-hidden="true" />
+      {/if}
+    </button>
+  </div>
   <nav class="sidebar__nav">
     {#each filters as filter}
       <button
         class:active={$notesStore.filter === filter.id}
         type="button"
+        aria-label={filter.label}
         aria-pressed={$notesStore.filter === filter.id}
+        title={$preferencesStore.sidebarCompact ? filter.label : undefined}
         on:click={() => notesStore.setFilter(filter.id)}
       >
-        {filter.label}
+        {#if filter.id === "all"}
+          <BookOpenText size={17} strokeWidth={1.8} aria-hidden="true" />
+        {:else if filter.id === "starred"}
+          <Star size={17} strokeWidth={1.8} aria-hidden="true" />
+        {:else}
+          <Trash2 size={17} strokeWidth={1.8} aria-hidden="true" />
+        {/if}
+        <span class="sidebar__label">{filter.label}</span>
       </button>
     {/each}
   </nav>
@@ -47,19 +92,26 @@
         <Moon size={17} strokeWidth={1.8} />
       {/if}
     </button>
-    <button type="button" on:click={() => preferencesStore.toggleLanguage()}>
+    <button
+      type="button"
+      aria-label={t("language", $preferencesStore.language)}
+      title={$preferencesStore.sidebarCompact ? t("language", $preferencesStore.language) : undefined}
+      on:click={() => preferencesStore.toggleLanguage()}
+    >
       <Languages size={15} strokeWidth={1.8} aria-hidden="true" />
-      {$preferencesStore.language === "zh" ? "EN" : "中文"}
+      <span class="sidebar__label">{$preferencesStore.language === "zh" ? "EN" : "中文"}</span>
     </button>
   </div>
   <button
     class="sidebar__tool"
     type="button"
+    aria-label={t("settings", $preferencesStore.language)}
     aria-expanded={settingsOpen}
+    title={$preferencesStore.sidebarCompact ? t("settings", $preferencesStore.language) : undefined}
     on:click={() => (settingsOpen = !settingsOpen)}
   >
     <Settings size={16} strokeWidth={1.8} aria-hidden="true" />
-    {t("settings", $preferencesStore.language)}
+    <span class="sidebar__label">{t("settings", $preferencesStore.language)}</span>
   </button>
   {#if settingsOpen}
     <ToolsPanel user={$authStore.user} onClose={() => (settingsOpen = false)} />

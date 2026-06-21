@@ -1,49 +1,78 @@
 <script lang="ts">
-  import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-  import { markdown } from "@codemirror/lang-markdown";
-  import { EditorState } from "@codemirror/state";
-  import { EditorView, keymap } from "@codemirror/view";
-  import { onDestroy, onMount } from "svelte";
+  import { Crepe } from "@milkdown/crepe";
+  import { insert, replaceAll } from "@milkdown/kit/utils";
+  import { onDestroy, onMount, tick } from "svelte";
+  import type { MarkdownEditorHandle } from "../../editor/markdown";
+  import { preferencesStore, t } from "../../stores/preferences";
 
   export let value = "";
   export let onChange: (value: string) => void = () => {};
-  export let bindView: (view: EditorView) => void = () => {};
+  export let bindEditor: (editor: MarkdownEditorHandle | null) => void = () => {};
 
   let host: HTMLDivElement;
-  let view: EditorView | null = null;
+  let crepe: Crepe | null = null;
   let applyingExternalValue = false;
+  let lastMarkdown = value;
 
-  onMount(() => {
-    view = new EditorView({
-      parent: host,
-      state: EditorState.create({
-        doc: value,
-        extensions: [
-          history(),
-          markdown(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged && !applyingExternalValue) {
-              onChange(update.state.doc.toString());
-            }
-          }),
-          EditorView.lineWrapping,
-        ],
-      }),
-    });
-    bindView(view);
-  });
+  const handle: MarkdownEditorHandle = {
+    insertMarkdown(markdown: string, inline = false): void {
+      if (!crepe) return;
+      crepe.editor.action(insert(markdown, inline));
+      focusEditor();
+    },
+    focus(): void {
+      focusEditor();
+    },
+  };
 
-  $: if (view && value !== view.state.doc.toString()) {
+  function focusEditor(): void {
+    host?.querySelector<HTMLElement>(".ProseMirror")?.focus();
+  }
+
+  async function setMarkdown(nextValue: string): Promise<void> {
+    if (!crepe || nextValue === lastMarkdown) return;
+
     applyingExternalValue = true;
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: value },
-    });
+    crepe.editor.action(replaceAll(nextValue, true));
+    lastMarkdown = nextValue;
+    await tick();
     applyingExternalValue = false;
   }
 
+  onMount(async () => {
+    crepe = new Crepe({
+      root: host,
+      defaultValue: value,
+      featureConfigs: {
+        [Crepe.Feature.Placeholder]: {
+          mode: "doc",
+          text: t("contentEmpty", $preferencesStore.language),
+        },
+      },
+    });
+
+    crepe.on((listener) => {
+      listener.markdownUpdated((_ctx, markdown) => {
+        lastMarkdown = markdown;
+        if (!applyingExternalValue) {
+          onChange(markdown);
+        }
+      });
+    });
+
+    await crepe.create();
+    lastMarkdown = value;
+    bindEditor(handle);
+  });
+
+  $: if (crepe && value !== lastMarkdown) {
+    void setMarkdown(value);
+  }
+
   onDestroy(() => {
-    view?.destroy();
+    bindEditor(null);
+    void crepe?.destroy();
+    crepe = null;
   });
 </script>
 

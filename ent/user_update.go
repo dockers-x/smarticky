@@ -138,6 +138,20 @@ func (_u *UserUpdate) ClearAvatar() *UserUpdate {
 	return _u
 }
 
+// SetShareSignature sets the "share_signature" field.
+func (_u *UserUpdate) SetShareSignature(v string) *UserUpdate {
+	_u.mutation.SetShareSignature(v)
+	return _u
+}
+
+// SetNillableShareSignature sets the "share_signature" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableShareSignature(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetShareSignature(*v)
+	}
+	return _u
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (_u *UserUpdate) SetLazycatUID(v string) *UserUpdate {
 	_u.mutation.SetLazycatUID(v)
@@ -515,6 +529,9 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.AvatarCleared() {
 		_spec.ClearField(user.FieldAvatar, field.TypeString)
+	}
+	if value, ok := _u.mutation.ShareSignature(); ok {
+		_spec.SetField(user.FieldShareSignature, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.LazycatUID(); ok {
 		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
@@ -962,6 +979,20 @@ func (_u *UserUpdateOne) ClearAvatar() *UserUpdateOne {
 	return _u
 }
 
+// SetShareSignature sets the "share_signature" field.
+func (_u *UserUpdateOne) SetShareSignature(v string) *UserUpdateOne {
+	_u.mutation.SetShareSignature(v)
+	return _u
+}
+
+// SetNillableShareSignature sets the "share_signature" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableShareSignature(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetShareSignature(*v)
+	}
+	return _u
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (_u *UserUpdateOne) SetLazycatUID(v string) *UserUpdateOne {
 	_u.mutation.SetLazycatUID(v)
@@ -1369,6 +1400,9 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.AvatarCleared() {
 		_spec.ClearField(user.FieldAvatar, field.TypeString)
+	}
+	if value, ok := _u.mutation.ShareSignature(); ok {
+		_spec.SetField(user.FieldShareSignature, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.LazycatUID(); ok {
 		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)

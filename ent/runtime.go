@@ -277,12 +277,16 @@ func init() {
 	userDescAvatar := userFields[5].Descriptor()
 	// user.DefaultAvatar holds the default value on creation for the avatar field.
 	user.DefaultAvatar = userDescAvatar.Default.(string)
+	// userDescShareSignature is the schema descriptor for share_signature field.
+	userDescShareSignature := userFields[6].Descriptor()
+	// user.DefaultShareSignature holds the default value on creation for the share_signature field.
+	user.DefaultShareSignature = userDescShareSignature.Default.(string)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[7].Descriptor()
+	userDescCreatedAt := userFields[8].Descriptor()
 	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
 	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[8].Descriptor()
+	userDescUpdatedAt := userFields[9].Descriptor()
 	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

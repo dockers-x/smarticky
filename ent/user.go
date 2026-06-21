@@ -29,6 +29,8 @@ type User struct {
 	Role user.Role `json:"role,omitempty"`
 	// Avatar holds the value of the "avatar" field.
 	Avatar string `json:"avatar,omitempty"`
+	// ShareSignature holds the value of the "share_signature" field.
+	ShareSignature string `json:"share_signature,omitempty"`
 	// LazycatUID holds the value of the "lazycat_uid" field.
 	LazycatUID *string `json:"lazycat_uid,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -132,7 +134,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldNickname, user.FieldRole, user.FieldAvatar, user.FieldLazycatUID:
+		case user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldNickname, user.FieldRole, user.FieldAvatar, user.FieldShareSignature, user.FieldLazycatUID:
 			values[i] = new(sql.NullString)
 		case user.FieldCreatedAt, user.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -192,6 +194,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field avatar", values[i])
 			} else if value.Valid {
 				_m.Avatar = value.String
+			}
+		case user.FieldShareSignature:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field share_signature", values[i])
+			} else if value.Valid {
+				_m.ShareSignature = value.String
 			}
 		case user.FieldLazycatUID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -299,6 +307,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("avatar=")
 	builder.WriteString(_m.Avatar)
+	builder.WriteString(", ")
+	builder.WriteString("share_signature=")
+	builder.WriteString(_m.ShareSignature)
 	builder.WriteString(", ")
 	if v := _m.LazycatUID; v != nil {
 		builder.WriteString("lazycat_uid=")

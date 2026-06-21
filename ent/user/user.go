@@ -27,6 +27,8 @@ const (
 	FieldRole = "role"
 	// FieldAvatar holds the string denoting the avatar field in the database.
 	FieldAvatar = "avatar"
+	// FieldShareSignature holds the string denoting the share_signature field in the database.
+	FieldShareSignature = "share_signature"
 	// FieldLazycatUID holds the string denoting the lazycat_uid field in the database.
 	FieldLazycatUID = "lazycat_uid"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -109,6 +111,7 @@ var Columns = []string{
 	FieldNickname,
 	FieldRole,
 	FieldAvatar,
+	FieldShareSignature,
 	FieldLazycatUID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -133,6 +136,8 @@ var (
 	DefaultNickname string
 	// DefaultAvatar holds the default value on creation for the "avatar" field.
 	DefaultAvatar string
+	// DefaultShareSignature holds the default value on creation for the "share_signature" field.
+	DefaultShareSignature string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -203,6 +208,11 @@ func ByRole(opts ...sql.OrderTermOption) OrderOption {
 // ByAvatar orders the results by the avatar field.
 func ByAvatar(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAvatar, opts...).ToFunc()
+}
+
+// ByShareSignature orders the results by the share_signature field.
+func ByShareSignature(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShareSignature, opts...).ToFunc()
 }
 
 // ByLazycatUID orders the results by the lazycat_uid field.
