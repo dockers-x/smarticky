@@ -175,6 +175,8 @@ Add a protection control in the editor details/actions area, not as a primary wr
 4. For Encrypt content, enter and confirm encryption password and see a short warning that password loss cannot be recovered.
 5. Save protection settings.
 
+Password entry must use a shared password-field component for access-password and encrypted-note flows. The component owns the password visibility toggle, so users can switch each password input between hidden and visible text. Do not duplicate password input/show-hide logic in each dialog.
+
 Protected display:
 
 - Password mode: show a locked body state until the access password is verified.

@@ -46,6 +46,7 @@
 - `web/app/src/lib/crypto/noteEncryption.ts`: implement Web Crypto encryption/decryption helpers.
 - `web/app/src/lib/crypto/noteEncryption.test.ts`: cover round-trip and wrong-password behavior.
 - `web/app/src/lib/stores/dialogs.ts` and `web/app/src/lib/components/common/DialogHost.svelte`: allow password input dialogs.
+- `web/app/src/lib/components/common/PasswordField.svelte`: shared password input with show/hide toggle.
 - `web/app/src/lib/components/editor/NoteProtectionDialog.svelte`: add protection-mode settings UI.
 - `web/app/src/lib/components/editor/EditorPane.svelte`: render protected states, unlock actions, encrypted autosave, and protection settings entry point.
 - `web/app/src/lib/stores/preferences.ts`: add localized labels and messages used by the new UI.
@@ -971,6 +972,7 @@ git commit -m "Add note protection backend"
 **Files:**
 - Modify: `web/app/src/lib/api/types.ts`
 - Create: `web/app/src/lib/api/notes.ts`
+- Create: `web/app/src/lib/components/common/PasswordField.svelte`
 - Modify: `web/app/src/lib/stores/notes.ts`
 - Modify: `web/app/src/lib/stores/dialogs.ts`
 - Modify: `web/app/src/lib/components/common/DialogHost.svelte`
@@ -980,6 +982,7 @@ git commit -m "Add note protection backend"
 - Produces:
   - `type NoteProtectionMode = "none" | "password" | "encrypted"`
   - `verifyNotePassword(noteID: string, password: string): Promise<Note>`
+  - `PasswordField.svelte` with `bind:value`, label, autocomplete, invalid/describedBy props, and internal show/hide toggle.
   - `inputDialog({ inputType: "text" | "password", ... })`
 
 - [ ] **Step 1: Update API types**
@@ -1068,7 +1071,94 @@ if (listed && !listed.content_redacted) return listed;
 return apiFetch<Note>(`/notes/${noteId}`);
 ```
 
-- [ ] **Step 4: Support password input dialogs**
+- [ ] **Step 4: Add shared password field component**
+
+Create `web/app/src/lib/components/common/PasswordField.svelte`:
+
+```svelte
+<script lang="ts">
+  import { Eye, EyeOff } from "@lucide/svelte";
+  import { preferencesStore, t } from "../../stores/preferences";
+
+  export let value = "";
+  export let label = "";
+  export let autocomplete = "current-password";
+  export let placeholder: string | undefined = undefined;
+  export let invalid = false;
+  export let describedBy: string | undefined = undefined;
+  export let disabled = false;
+
+  let visible = false;
+</script>
+
+<label class="password-field">
+  <span>{label}</span>
+  <span class="password-field__control">
+    <input
+      bind:value
+      type={visible ? "text" : "password"}
+      {autocomplete}
+      {placeholder}
+      aria-invalid={invalid ? "true" : "false"}
+      aria-describedby={describedBy}
+      {disabled}
+    />
+    <button
+      type="button"
+      aria-label={visible
+        ? t("hidePassword", $preferencesStore.language)
+        : t("showPassword", $preferencesStore.language)}
+      title={visible
+        ? t("hidePassword", $preferencesStore.language)
+        : t("showPassword", $preferencesStore.language)}
+      on:click={() => (visible = !visible)}
+      disabled={disabled}
+    >
+      {#if visible}
+        <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
+      {:else}
+        <Eye size={16} strokeWidth={2} aria-hidden="true" />
+      {/if}
+    </button>
+  </span>
+</label>
+```
+
+Add CSS to `web/app/src/lib/styles/global.css`:
+
+```css
+.password-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.password-field__control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.14));
+  background: var(--color-surface, #fff);
+}
+
+.password-field__control input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.password-field__control button {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted, #5f6772);
+}
+```
+
+- [ ] **Step 5: Support password input dialogs**
 
 Modify `web/app/src/lib/stores/dialogs.ts`:
 
@@ -1090,6 +1180,43 @@ interface InputRequest {
 Modify `web/app/src/lib/components/common/DialogHost.svelte` input:
 
 ```svelte
+<script lang="ts">
+  import PasswordField from "./PasswordField.svelte";
+  ...
+</script>
+```
+
+Render `PasswordField` when `$inputRequest.inputType === "password"`:
+
+```svelte
+{#if $inputRequest.inputType === "password"}
+  <PasswordField
+    bind:value={inputValue}
+    label={$inputRequest.label}
+    autocomplete="current-password"
+    placeholder={$inputRequest.placeholder}
+    invalid={Boolean(inputError)}
+    describedBy={inputError ? "input-dialog-error" : undefined}
+  />
+{:else}
+  <label class="input-dialog__field">
+    <span>{$inputRequest.label}</span>
+    <input
+      bind:this={inputElement}
+      bind:value={inputValue}
+      type="text"
+      autocomplete="off"
+      placeholder={$inputRequest.placeholder}
+      aria-invalid={inputError ? "true" : "false"}
+      aria-describedby={inputError ? "input-dialog-error" : undefined}
+    />
+  </label>
+{/if}
+```
+
+Remove the old single unconditional input block:
+
+```svelte
 <input
   bind:this={inputElement}
   bind:value={inputValue}
@@ -1101,7 +1228,7 @@ Modify `web/app/src/lib/components/common/DialogHost.svelte` input:
 />
 ```
 
-- [ ] **Step 5: Add preference strings**
+- [ ] **Step 6: Add preference strings**
 
 Add Chinese and English keys in `web/app/src/lib/stores/preferences.ts`:
 
@@ -1115,6 +1242,8 @@ noteProtected: "笔记已保护",
 noteUnlocked: "笔记已解锁",
 noteUnlockFailed: "解锁失败",
 encryptionPasswordWarning: "加密密码无法找回，请妥善保存。",
+showPassword: "显示密码",
+hidePassword: "隐藏密码",
 ```
 
 English:
@@ -1129,9 +1258,11 @@ noteProtected: "Note protected",
 noteUnlocked: "Note unlocked",
 noteUnlockFailed: "Unlock failed",
 encryptionPasswordWarning: "Encryption passwords cannot be recovered.",
+showPassword: "Show password",
+hidePassword: "Hide password",
 ```
 
-- [ ] **Step 6: Run frontend check**
+- [ ] **Step 7: Run frontend check**
 
 Run:
 
@@ -1142,10 +1273,10 @@ npm run check
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add web/app/src/lib/api/types.ts web/app/src/lib/api/notes.ts web/app/src/lib/stores/notes.ts web/app/src/lib/stores/dialogs.ts web/app/src/lib/components/common/DialogHost.svelte web/app/src/lib/stores/preferences.ts
+git add web/app/src/lib/api/types.ts web/app/src/lib/api/notes.ts web/app/src/lib/components/common/PasswordField.svelte web/app/src/lib/stores/notes.ts web/app/src/lib/stores/dialogs.ts web/app/src/lib/components/common/DialogHost.svelte web/app/src/lib/stores/preferences.ts web/app/src/lib/styles/global.css
 git commit -m "Add note protection frontend types"
 ```
 
@@ -1330,6 +1461,7 @@ git commit -m "Add client note encryption helpers"
 
 **Files:**
 - Create: `web/app/src/lib/components/editor/NoteProtectionDialog.svelte`
+- Modify: `web/app/src/lib/components/common/PasswordField.svelte` only if Task 4 left an integration defect
 - Modify: `web/app/src/lib/components/editor/EditorPane.svelte`
 - Modify: `web/app/src/lib/styles/global.css`
 - Modify: `web/app/src/lib/stores/preferences.ts`
@@ -1351,6 +1483,7 @@ Create `web/app/src/lib/components/editor/NoteProtectionDialog.svelte`:
 ```svelte
 <script lang="ts">
   import type { NoteProtectionMode } from "../../api/types";
+  import PasswordField from "../common/PasswordField.svelte";
   import { preferencesStore, t } from "../../stores/preferences";
 
   export let currentMode: NoteProtectionMode = "none";
@@ -1389,17 +1522,23 @@ Create `web/app/src/lib/components/editor/NoteProtectionDialog.svelte`:
       <p>{t("encryptionPasswordWarning", $preferencesStore.language)}</p>
     {/if}
     {#if mode !== "none"}
-      <label class="input-dialog__field">
-        <span>{t("password", $preferencesStore.language)}</span>
-        <input bind:value={password} type="password" autocomplete="new-password" />
-      </label>
-      <label class="input-dialog__field">
-        <span>{t("confirmPassword", $preferencesStore.language)}</span>
-        <input bind:value={confirmPassword} type="password" autocomplete="new-password" />
-      </label>
+      <PasswordField
+        bind:value={password}
+        label={t("password", $preferencesStore.language)}
+        autocomplete="new-password"
+        invalid={Boolean(error)}
+        describedBy={error ? "note-protection-error" : undefined}
+      />
+      <PasswordField
+        bind:value={confirmPassword}
+        label={t("confirmPassword", $preferencesStore.language)}
+        autocomplete="new-password"
+        invalid={Boolean(error)}
+        describedBy={error ? "note-protection-error" : undefined}
+      />
     {/if}
     {#if error}
-      <p class="input-dialog__error">{error}</p>
+      <p class="input-dialog__error" id="note-protection-error">{error}</p>
     {/if}
     <div class="confirm-dialog__actions">
       <button type="button" on:click={onClose}>{t("cancel", $preferencesStore.language)}</button>
