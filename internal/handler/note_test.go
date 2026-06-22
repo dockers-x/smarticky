@@ -3,12 +3,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"smarticky/ent"
 	"smarticky/ent/enttest"
 	"smarticky/ent/note"
 	searchsvc "smarticky/internal/search"
@@ -282,6 +284,127 @@ func TestListNotesWithSearchIndexFindsCreatedAndUpdatedBody(t *testing.T) {
 	titles = listNoteTitlesForTest(t, h, u.ID, "/api/notes?q=alphaunique")
 	if len(titles) != 0 {
 		t.Fatalf("expected old indexed body to be replaced, got %v", titles)
+	}
+}
+
+func TestListNotesIndexedSearchValidatesDatesWhenFullTextHasNoHits(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListNotesIndexedSearchValidatesDatesWhenFullTextHasNoHits?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	index, err := searchsvc.NewMemory()
+	if err != nil {
+		t.Fatalf("NewMemory: %v", err)
+	}
+	h := NewHandlerWithSearch(client, nil, index)
+
+	for _, target := range []string{
+		"/api/notes?q=does-not-match&created_from=not-a-date",
+		"/api/notes?q=does-not-match&updated_from=not-a-date",
+	} {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user_id", u.ID)
+
+		if err := h.ListNotes(c); err != nil {
+			t.Fatalf("ListNotes returned error: %v", err)
+		}
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected status %d for %s, got %d: %s", http.StatusBadRequest, target, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestListNotesIndexedSearchCombinesStructuredFiltersWithoutCandidateCutoff(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListNotesIndexedSearchCombinesStructuredFiltersWithoutCandidateCutoff?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	targetFolder := client.Folder.Create().
+		SetName("Archive").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	workTag := client.Tag.Create().
+		SetName("work").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	urgentTag := client.Tag.Create().
+		SetName("urgent").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	index, err := searchsvc.NewMemory()
+	if err != nil {
+		t.Fatalf("NewMemory: %v", err)
+	}
+
+	const distractorCount = 10001
+	distractorTime := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
+	for start := 0; start < distractorCount; start += 250 {
+		end := start + 250
+		if end > distractorCount {
+			end = distractorCount
+		}
+		builders := make([]*ent.NoteCreate, 0, end-start)
+		for i := start; i < end; i++ {
+			builders = append(builders, client.Note.Create().
+				SetTitle(fmt.Sprintf("broadneedle distractor %05d", i)).
+				SetContent("broadneedle broadneedle broadneedle broadneedle broadneedle").
+				SetCreatedAt(distractorTime).
+				SetUpdatedAt(distractorTime).
+				SetUserID(u.ID))
+		}
+		rows := client.Note.CreateBulk(builders...).SaveX(ctx)
+		for _, row := range rows {
+			if err := index.IndexDocument(searchsvc.Document{
+				ID:             row.ID.String(),
+				UserID:         u.ID,
+				Title:          row.Title,
+				Content:        row.Content,
+				ProtectionMode: string(row.ProtectionMode),
+				IsDeleted:      row.IsDeleted,
+				CreatedAt:      row.CreatedAt,
+				UpdatedAt:      row.UpdatedAt,
+			}); err != nil {
+				t.Fatalf("IndexDocument distractor: %v", err)
+			}
+		}
+	}
+
+	targetTime := time.Date(2026, 6, 22, 9, 30, 0, 0, time.UTC)
+	target := client.Note.Create().
+		SetTitle("specialtitle target").
+		SetContent("broadneedle").
+		SetIsStarred(true).
+		SetIsDeleted(true).
+		SetCreatedAt(targetTime).
+		SetUpdatedAt(targetTime).
+		SetUserID(u.ID).
+		SetFolderID(targetFolder.ID).
+		SaveX(ctx)
+	target = target.Update().AddTags(workTag, urgentTag).SaveX(ctx)
+	if err := index.IndexNote(ctx, target); err != nil {
+		t.Fatalf("IndexNote target: %v", err)
+	}
+
+	h := NewHandlerWithSearch(client, nil, index)
+	titles := listNoteTitlesForTest(t, h, u.ID,
+		"/api/notes?q=broadneedle&trash=true&starred=true&folder_id="+targetFolder.ID.String()+
+			"&tags=work,urgent&title=specialtitle"+
+			"&created_from=2026-06-22&created_to=2026-06-22"+
+			"&updated_from=2026-06-22&updated_to=2026-06-22&timezone=UTC")
+	if len(titles) != 1 || titles[0] != "specialtitle target" {
+		t.Fatalf("expected target note after full-text and structured filters, got %v", titles)
 	}
 }
 

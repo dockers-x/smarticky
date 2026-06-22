@@ -50,6 +50,8 @@ type SearchOptions struct {
 	IncludeTrash bool
 	Limit        int
 	Offset       int
+	// CandidateIDs restricts search to IDs already vetted by the caller.
+	CandidateIDs []uuid.UUID
 }
 
 func Open(path string) (*Service, error) {
@@ -126,7 +128,10 @@ func (s *Service) IndexNote(ctx context.Context, row *ent.Note) error {
 	if err != nil {
 		return err
 	}
+	return s.IndexDocument(doc)
+}
 
+func (s *Service) IndexDocument(doc Document) error {
 	s.mu.RLock()
 	idx := s.index
 	s.mu.RUnlock()
@@ -276,8 +281,13 @@ func documentFromNote(ctx context.Context, row *ent.Note) (Document, error) {
 }
 
 func searchQuery(opts SearchOptions) query.Query {
-	parts := []query.Query{userIDQuery(opts.UserID)}
-	if !opts.IncludeTrash {
+	var parts []query.Query
+	if len(opts.CandidateIDs) > 0 {
+		parts = append(parts, candidateIDsQuery(opts.CandidateIDs))
+	} else {
+		parts = append(parts, userIDQuery(opts.UserID))
+	}
+	if len(opts.CandidateIDs) == 0 && !opts.IncludeTrash {
 		deleted := bleve.NewBoolFieldQuery(false)
 		deleted.SetField("is_deleted")
 		parts = append(parts, deleted)
@@ -291,6 +301,14 @@ func searchQuery(opts SearchOptions) query.Query {
 		parts = append(parts, bleve.NewDisjunctionQuery(title, content))
 	}
 	return bleve.NewConjunctionQuery(parts...)
+}
+
+func candidateIDsQuery(ids []uuid.UUID) query.Query {
+	docIDs := make([]string, 0, len(ids))
+	for _, id := range ids {
+		docIDs = append(docIDs, id.String())
+	}
+	return bleve.NewDocIDQuery(docIDs)
 }
 
 func userIDQuery(userID int) query.Query {

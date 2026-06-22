@@ -272,35 +272,6 @@ func (h *Handler) ListNotes(c echo.Context) error {
 	}
 
 	searchText := strings.TrimSpace(c.QueryParam("q"))
-	if searchText != "" && h.search != nil {
-		ids, err := h.search.Search(ctx, searchsvc.SearchOptions{
-			UserID:       userID,
-			Query:        searchText,
-			IncludeTrash: c.QueryParam("trash") == "true",
-			Limit:        10000,
-		})
-		if err != nil {
-			zap.L().Warn("Failed to search note index", zap.Error(err))
-		} else {
-			if len(ids) == 0 {
-				return c.JSON(http.StatusOK, []NoteWithTagsResponse{})
-			}
-			searchIDs = ids
-			useIndexSearch = true
-			query.Where(note.IDIn(ids...))
-		}
-	}
-	if searchText != "" && !useIndexSearch {
-		query.Where(
-			note.Or(
-				note.TitleContainsFold(searchText),
-				note.And(
-					note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
-					note.ContentContainsFold(searchText),
-				),
-			),
-		)
-	}
 	if titleSearch := strings.TrimSpace(c.QueryParam("title")); titleSearch != "" {
 		query.Where(note.TitleContainsFold(titleSearch))
 	}
@@ -323,6 +294,45 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		query.Where(note.UpdatedAtLTE(value))
 	}); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid updated_to"})
+	}
+
+	if searchText != "" && h.search != nil {
+		candidateIDs, err := query.Clone().IDs(ctx)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		if len(candidateIDs) == 0 {
+			return c.JSON(http.StatusOK, []NoteWithTagsResponse{})
+		}
+
+		ids, err := h.search.Search(ctx, searchsvc.SearchOptions{
+			UserID:       userID,
+			Query:        searchText,
+			IncludeTrash: c.QueryParam("trash") == "true",
+			Limit:        len(candidateIDs),
+			CandidateIDs: candidateIDs,
+		})
+		if err != nil {
+			zap.L().Warn("Failed to search note index", zap.Error(err))
+		} else {
+			if len(ids) == 0 {
+				return c.JSON(http.StatusOK, []NoteWithTagsResponse{})
+			}
+			searchIDs = ids
+			useIndexSearch = true
+			query.Where(note.IDIn(ids...))
+		}
+	}
+	if searchText != "" && !useIndexSearch {
+		query.Where(
+			note.Or(
+				note.TitleContainsFold(searchText),
+				note.And(
+					note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
+					note.ContentContainsFold(searchText),
+				),
+			),
+		)
 	}
 
 	if !useIndexSearch {
