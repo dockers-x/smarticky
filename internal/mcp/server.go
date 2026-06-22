@@ -47,7 +47,7 @@ type generateNoteImageInput struct {
 	Ratio   string `json:"ratio,omitempty" jsonschema:"image ratio: story or square, defaults to story long image"`
 }
 
-const generateNoteImageDescription = "Generate a PNG share image from an owned note or explicit title/content. Locked notes cannot be rendered. Markdown diagrams are not rendered in MCP images yet."
+const generateNoteImageDescription = "Generate a PNG share image from an owned note or explicit title/content. Protected notes cannot be rendered. Markdown diagrams are not rendered in MCP images yet."
 
 type notesOutput struct {
 	Notes []mcpNote `json:"notes"`
@@ -63,7 +63,7 @@ type mcpNote struct {
 	Title           string    `json:"title"`
 	Content         string    `json:"content,omitempty"`
 	Color           string    `json:"color"`
-	IsLocked        bool      `json:"is_locked"`
+	ProtectionMode  string    `json:"protection_mode"`
 	IsStarred       bool      `json:"is_starred"`
 	IsDeleted       bool      `json:"is_deleted"`
 	ContentRedacted bool      `json:"content_redacted"`
@@ -101,7 +101,7 @@ func registerTools(server *mcpsdk.Server, noteService *notes.Service, imageServi
 	mcpsdk.AddTool(server, &mcpsdk.Tool{
 		Name:        "smarticky_list_notes",
 		Title:       "List Smarticky Notes",
-		Description: "List the current Smarticky user's non-deleted notes. Locked note content is redacted.",
+		Description: "List the current Smarticky user's non-deleted notes. Protected note content is redacted.",
 	}, func(ctx context.Context, _ *mcpsdk.CallToolRequest, input listNotesInput) (*mcpsdk.CallToolResult, notesOutput, error) {
 		principal, err := requirePrincipal(ctx)
 		if err != nil {
@@ -118,7 +118,7 @@ func registerTools(server *mcpsdk.Server, noteService *notes.Service, imageServi
 	mcpsdk.AddTool(server, &mcpsdk.Tool{
 		Name:        "smarticky_search_notes",
 		Title:       "Search Smarticky Notes",
-		Description: "Search the current Smarticky user's non-deleted notes by title or content. Locked note content is redacted.",
+		Description: "Search the current Smarticky user's non-deleted notes by title or searchable content. Protected note content is redacted.",
 	}, func(ctx context.Context, _ *mcpsdk.CallToolRequest, input searchNotesInput) (*mcpsdk.CallToolResult, notesOutput, error) {
 		principal, err := requirePrincipal(ctx)
 		if err != nil {
@@ -136,7 +136,7 @@ func registerTools(server *mcpsdk.Server, noteService *notes.Service, imageServi
 	mcpsdk.AddTool(server, &mcpsdk.Tool{
 		Name:        "smarticky_get_note",
 		Title:       "Get Smarticky Note",
-		Description: "Get one note owned by the current Smarticky user. Locked note content is redacted.",
+		Description: "Get one note owned by the current Smarticky user. Protected note content is redacted.",
 	}, func(ctx context.Context, _ *mcpsdk.CallToolRequest, input getNoteInput) (*mcpsdk.CallToolResult, noteOutput, error) {
 		principal, err := requirePrincipal(ctx)
 		if err != nil {
@@ -188,8 +188,8 @@ func registerTools(server *mcpsdk.Server, noteService *notes.Service, imageServi
 			if err != nil {
 				return nil, imageOutput{}, err
 			}
-			if row.IsLocked {
-				return nil, imageOutput{}, errors.New("locked notes cannot be rendered through MCP")
+			if row.ProtectionMode != "none" {
+				return nil, imageOutput{}, errors.New("protected notes cannot be rendered through MCP")
 			}
 			title = row.Title
 			content = row.Content
@@ -279,7 +279,7 @@ func mcpNoteFrom(row notes.NoteView) mcpNote {
 		Title:           row.Title,
 		Content:         row.Content,
 		Color:           row.Color,
-		IsLocked:        row.IsLocked,
+		ProtectionMode:  row.ProtectionMode,
 		IsStarred:       row.IsStarred,
 		IsDeleted:       row.IsDeleted,
 		ContentRedacted: row.ContentRedacted,

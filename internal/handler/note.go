@@ -76,34 +76,60 @@ func verifyPassword(password, storedHash string) (bool, error) {
 }
 
 type NoteResponse struct {
-	ID        uuid.UUID  `json:"id"`
-	Title     string     `json:"title"`
-	Content   string     `json:"content"`
-	Color     string     `json:"color"`
-	IsLocked  bool       `json:"is_locked"`
-	IsStarred bool       `json:"is_starred"`
-	IsDeleted bool       `json:"is_deleted"`
-	FolderID  *uuid.UUID `json:"folder_id"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID               uuid.UUID  `json:"id"`
+	Title            string     `json:"title"`
+	Content          string     `json:"content"`
+	Color            string     `json:"color"`
+	ProtectionMode   string     `json:"protection_mode"`
+	ContentRedacted  bool       `json:"content_redacted"`
+	EncryptedContent string     `json:"encrypted_content,omitempty"`
+	EncryptionAlg    string     `json:"encryption_alg,omitempty"`
+	EncryptionKDF    string     `json:"encryption_kdf,omitempty"`
+	EncryptionSalt   string     `json:"encryption_salt,omitempty"`
+	EncryptionNonce  string     `json:"encryption_nonce,omitempty"`
+	IsStarred        bool       `json:"is_starred"`
+	IsDeleted        bool       `json:"is_deleted"`
+	FolderID         *uuid.UUID `json:"folder_id"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
-func noteToResponse(ctx context.Context, n *ent.Note) (NoteResponse, error) {
+func noteToResponse(ctx context.Context, n *ent.Note, revealContent bool) (NoteResponse, error) {
 	folderID, err := noteFolderID(ctx, n)
 	if err != nil {
 		return NoteResponse{}, err
 	}
+
+	content := n.Content
+	redacted := false
+	if !revealContent {
+		switch n.ProtectionMode {
+		case note.ProtectionModePassword:
+			content = ""
+			redacted = true
+		case note.ProtectionModeEncrypted:
+			content = ""
+			redacted = true
+		}
+	}
+
 	return NoteResponse{
-		ID:        n.ID,
-		Title:     n.Title,
-		Content:   n.Content,
-		Color:     n.Color,
-		IsLocked:  n.IsLocked,
-		IsStarred: n.IsStarred,
-		IsDeleted: n.IsDeleted,
-		FolderID:  folderID,
-		CreatedAt: n.CreatedAt,
-		UpdatedAt: n.UpdatedAt,
+		ID:               n.ID,
+		Title:            n.Title,
+		Content:          content,
+		Color:            n.Color,
+		ProtectionMode:   string(n.ProtectionMode),
+		ContentRedacted:  redacted,
+		EncryptedContent: n.EncryptedContent,
+		EncryptionAlg:    n.EncryptionAlg,
+		EncryptionKDF:    n.EncryptionKdf,
+		EncryptionSalt:   n.EncryptionSalt,
+		EncryptionNonce:  n.EncryptionNonce,
+		IsStarred:        n.IsStarred,
+		IsDeleted:        n.IsDeleted,
+		FolderID:         folderID,
+		CreatedAt:        n.CreatedAt,
+		UpdatedAt:        n.UpdatedAt,
 	}, nil
 }
 
@@ -127,14 +153,19 @@ type CreateNoteRequest struct {
 }
 
 type UpdateNoteRequest struct {
-	Title     *string      `json:"title"`
-	Content   *string      `json:"content"`
-	Color     *string      `json:"color"`
-	Password  *string      `json:"password"`
-	IsLocked  *bool        `json:"is_locked"`
-	IsStarred *bool        `json:"is_starred"`
-	IsDeleted *bool        `json:"is_deleted"`
-	FolderID  OptionalUUID `json:"folder_id"`
+	Title              *string      `json:"title"`
+	Content            *string      `json:"content"`
+	Color              *string      `json:"color"`
+	ProtectionMode     *string      `json:"protection_mode"`
+	ProtectionPassword *string      `json:"protection_password"`
+	EncryptedContent   *string      `json:"encrypted_content"`
+	EncryptionAlg      *string      `json:"encryption_alg"`
+	EncryptionKDF      *string      `json:"encryption_kdf"`
+	EncryptionSalt     *string      `json:"encryption_salt"`
+	EncryptionNonce    *string      `json:"encryption_nonce"`
+	IsStarred          *bool        `json:"is_starred"`
+	IsDeleted          *bool        `json:"is_deleted"`
+	FolderID           OptionalUUID `json:"folder_id"`
 }
 
 func parseNoteTimeParam(value string, endOfDay bool, location *time.Location) (time.Time, error) {
@@ -235,7 +266,10 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		query.Where(
 			note.Or(
 				note.TitleContainsFold(search),
-				note.ContentContainsFold(search),
+				note.And(
+					note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
+					note.ContentContainsFold(search),
+				),
 			),
 		)
 	}
@@ -285,7 +319,7 @@ func (h *Handler) ListNotes(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 
-		noteResponse, err := noteToResponse(ctx, n)
+		noteResponse, err := noteToResponse(ctx, n, false)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
@@ -329,7 +363,7 @@ func (h *Handler) CreateNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	response, err := noteToResponse(ctx, n)
+	response, err := noteToResponse(ctx, n, false)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -373,7 +407,7 @@ func (h *Handler) GetNote(c echo.Context) error {
 		Tags []*ent.Tag `json:"tags"`
 	}
 
-	noteResponse, err := noteToResponse(ctx, n)
+	noteResponse, err := noteToResponse(ctx, n, false)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -395,7 +429,7 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 	userID := c.Get("user_id").(int)
 
 	var req UpdateNoteRequest
-	if err := c.Bind(&req); err != nil {
+	if err := bindStrictJSON(c, &req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
@@ -423,26 +457,64 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		update.SetTitle(*req.Title)
 	}
 	if req.Content != nil {
+		requestedMode := ""
+		if req.ProtectionMode != nil {
+			requestedMode = *req.ProtectionMode
+		}
+		if n.ProtectionMode == note.ProtectionModeEncrypted || requestedMode == "encrypted" {
+			if requestedMode != "none" && requestedMode != "password" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "content cannot be updated while note is encrypted"})
+			}
+		}
 		update.SetContent(*req.Content)
 	}
 	if req.Color != nil {
 		update.SetColor(*req.Color)
 	}
-	if req.Password != nil {
-		// Hash the password before storing
-		if *req.Password == "" {
-			// Empty password means remove password protection
-			update.SetPassword("")
-		} else {
-			hashedPassword, err := hashPassword(*req.Password)
+	if req.ProtectionMode != nil {
+		switch *req.ProtectionMode {
+		case "none":
+			update.SetProtectionMode(note.ProtectionModeNone)
+			update.ClearProtectionPasswordHash()
+			update.ClearEncryptedContent()
+			update.ClearEncryptionAlg()
+			update.ClearEncryptionKdf()
+			update.ClearEncryptionSalt()
+			update.ClearEncryptionNonce()
+		case "password":
+			if req.ProtectionPassword == nil || strings.TrimSpace(*req.ProtectionPassword) == "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "protection_password is required"})
+			}
+			hashedPassword, err := hashPassword(*req.ProtectionPassword)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
 			}
-			update.SetPassword(hashedPassword)
+			update.SetProtectionMode(note.ProtectionModePassword)
+			update.SetProtectionPasswordHash(hashedPassword)
+			update.ClearEncryptedContent()
+			update.ClearEncryptionAlg()
+			update.ClearEncryptionKdf()
+			update.ClearEncryptionSalt()
+			update.ClearEncryptionNonce()
+		case "encrypted":
+			if req.EncryptedContent == nil || *req.EncryptedContent == "" ||
+				req.EncryptionAlg == nil || *req.EncryptionAlg == "" ||
+				req.EncryptionKDF == nil || *req.EncryptionKDF == "" ||
+				req.EncryptionSalt == nil || *req.EncryptionSalt == "" ||
+				req.EncryptionNonce == nil || *req.EncryptionNonce == "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "encrypted payload is required"})
+			}
+			update.SetProtectionMode(note.ProtectionModeEncrypted)
+			update.SetContent("")
+			update.ClearProtectionPasswordHash()
+			update.SetEncryptedContent(*req.EncryptedContent)
+			update.SetEncryptionAlg(*req.EncryptionAlg)
+			update.SetEncryptionKdf(*req.EncryptionKDF)
+			update.SetEncryptionSalt(*req.EncryptionSalt)
+			update.SetEncryptionNonce(*req.EncryptionNonce)
+		default:
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid protection_mode"})
 		}
-	}
-	if req.IsLocked != nil {
-		update.SetIsLocked(*req.IsLocked)
 	}
 	if req.IsStarred != nil {
 		update.SetIsStarred(*req.IsStarred)
@@ -469,7 +541,7 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	response, err := noteToResponse(ctx, n)
+	response, err := noteToResponse(ctx, n, false)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -556,13 +628,12 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// Check if note is locked
-	if !n.IsLocked || n.Password == "" {
+	if n.ProtectionMode != note.ProtectionModePassword || n.ProtectionPasswordHash == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "note is not password protected"})
 	}
 
 	// Verify password
-	valid, err := verifyPassword(req.Password, n.Password)
+	valid, err := verifyPassword(req.Password, n.ProtectionPasswordHash)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to verify password"})
 	}
@@ -572,7 +643,7 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 	}
 
 	// Return success with note content
-	response, err := noteToResponse(ctx, n)
+	response, err := noteToResponse(ctx, n, true)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

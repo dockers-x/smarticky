@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/labstack/echo/v4"
 )
 
 // GetDataDir returns the data directory path from environment or default
@@ -30,4 +33,13 @@ func GetUploadsDir(subdir string) string {
 // GetUploadsURL returns the URL path for uploaded files
 func GetUploadsURL(subdir, filename string) string {
 	return "/uploads/" + subdir + "/" + filename
+}
+
+func bindStrictJSON(c echo.Context, dst any) error {
+	decoder := json.NewDecoder(c.Request().Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+	return nil
 }

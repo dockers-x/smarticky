@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"smarticky/ent/enttest"
+	"smarticky/ent/note"
 
 	_ "github.com/lib-x/entsqlite"
 )
@@ -18,7 +19,7 @@ func TestServiceRedactsLockedNoteContent(t *testing.T) {
 	n := client.Note.Create().
 		SetTitle("Secret").
 		SetContent("hidden").
-		SetIsLocked(true).
+		SetProtectionMode(note.ProtectionModePassword).
 		SetUserID(u.ID).
 		SaveX(ctx)
 
@@ -60,7 +61,12 @@ func TestServiceSearchDoesNotMatchLockedContentWhenRedacting(t *testing.T) {
 	client.Note.Create().
 		SetTitle("Private").
 		SetContent("needle").
-		SetIsLocked(true).
+		SetProtectionMode(note.ProtectionModeEncrypted).
+		SetEncryptedContent("ciphertext").
+		SetEncryptionAlg("aes-gcm").
+		SetEncryptionKdf("argon2id").
+		SetEncryptionSalt("salt").
+		SetEncryptionNonce("nonce").
 		SetUserID(u.ID).
 		SaveX(ctx)
 	client.Note.Create().

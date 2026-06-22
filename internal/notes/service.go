@@ -43,7 +43,7 @@ type NoteView struct {
 	Title           string     `json:"title"`
 	Content         string     `json:"content,omitempty"`
 	Color           string     `json:"color"`
-	IsLocked        bool       `json:"is_locked"`
+	ProtectionMode  string     `json:"protection_mode"`
 	IsStarred       bool       `json:"is_starred"`
 	IsDeleted       bool       `json:"is_deleted"`
 	ContentRedacted bool       `json:"content_redacted"`
@@ -75,14 +75,13 @@ func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]Not
 	}
 
 	if q := strings.TrimSpace(opts.Query); q != "" {
-		if opts.RedactLocked {
-			query.Where(note.Or(
-				note.TitleContainsFold(q),
-				note.And(note.IsLocked(false), note.ContentContainsFold(q)),
-			))
-		} else {
-			query.Where(note.Or(note.TitleContainsFold(q), note.ContentContainsFold(q)))
-		}
+		query.Where(note.Or(
+			note.TitleContainsFold(q),
+			note.And(
+				note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
+				note.ContentContainsFold(q),
+			),
+		))
 	}
 
 	rows, err := query.All(ctx)
@@ -150,7 +149,7 @@ func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bo
 
 	content := row.Content
 	redacted := false
-	if redactLocked && row.IsLocked {
+	if redactLocked && row.ProtectionMode != note.ProtectionModeNone {
 		content = ""
 		redacted = true
 	}
@@ -164,7 +163,7 @@ func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bo
 		Title:           row.Title,
 		Content:         content,
 		Color:           row.Color,
-		IsLocked:        row.IsLocked,
+		ProtectionMode:  string(row.ProtectionMode),
 		IsStarred:       row.IsStarred,
 		IsDeleted:       row.IsDeleted,
 		ContentRedacted: redacted,

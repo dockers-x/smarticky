@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"smarticky/ent/enttest"
+	"smarticky/ent/note"
 
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib-x/entsqlite"
@@ -62,6 +63,126 @@ func TestNoteProtectionModeDefaultsToNone(t *testing.T) {
 
 	if string(n.ProtectionMode) != "none" {
 		t.Fatalf("expected protection_mode none, got %q", n.ProtectionMode)
+	}
+}
+
+func TestUpdateNoteRejectsLegacyIsLockedField(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestUpdateNoteRejectsLegacyIsLockedField?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+	u := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	n := client.Note.Create().SetTitle("Note").SetUserID(u.ID).SaveX(ctx)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/notes/"+n.ID.String(), strings.NewReader(`{"is_locked":true}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.SetParamNames("id")
+	c.SetParamValues(n.ID.String())
+
+	if err := NewHandler(client, nil).UpdateNote(c); err != nil {
+		t.Fatalf("UpdateNote returned error: %v", err)
+	}
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestPasswordProtectedNoteRedactsUntilVerified(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestPasswordProtectedNoteRedactsUntilVerified?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+	u := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	hash, err := hashPassword("secret")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	n := client.Note.Create().
+		SetTitle("Protected").
+		SetContent("private body").
+		SetProtectionMode(note.ProtectionModePassword).
+		SetProtectionPasswordHash(hash).
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	h := NewHandler(client, nil)
+	e := echo.New()
+	getReq := httptest.NewRequest(http.MethodGet, "/api/notes/"+n.ID.String(), nil)
+	getRec := httptest.NewRecorder()
+	getCtx := e.NewContext(getReq, getRec)
+	getCtx.Set("user_id", u.ID)
+	getCtx.SetParamNames("id")
+	getCtx.SetParamValues(n.ID.String())
+	if err := h.GetNote(getCtx); err != nil {
+		t.Fatalf("GetNote returned error: %v", err)
+	}
+	var redacted NoteResponse
+	if err := json.NewDecoder(getRec.Body).Decode(&redacted); err != nil {
+		t.Fatalf("decode redacted response: %v", err)
+	}
+	if redacted.Content != "" || !redacted.ContentRedacted || redacted.ProtectionMode != "password" {
+		t.Fatalf("expected redacted password note, got %+v", redacted)
+	}
+
+	verifyReq := httptest.NewRequest(http.MethodPost, "/api/notes/"+n.ID.String()+"/verify-password", strings.NewReader(`{"password":"secret"}`))
+	verifyReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	verifyRec := httptest.NewRecorder()
+	verifyCtx := e.NewContext(verifyReq, verifyRec)
+	verifyCtx.Set("user_id", u.ID)
+	verifyCtx.SetParamNames("id")
+	verifyCtx.SetParamValues(n.ID.String())
+	if err := h.VerifyNotePassword(verifyCtx); err != nil {
+		t.Fatalf("VerifyNotePassword returned error: %v", err)
+	}
+	if verifyRec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", verifyRec.Code, verifyRec.Body.String())
+	}
+	if !strings.Contains(verifyRec.Body.String(), "private body") {
+		t.Fatalf("expected verified response to include content, got %s", verifyRec.Body.String())
+	}
+}
+
+func TestUpdateNoteStoresEncryptedPayloadAndRedactsContent(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestUpdateNoteStoresEncryptedPayloadAndRedactsContent?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+	u := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	n := client.Note.Create().
+		SetTitle("Note").
+		SetContent("plaintext").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	body := `{"protection_mode":"encrypted","encrypted_content":"ciphertext","encryption_alg":"aes-gcm","encryption_kdf":"argon2id","encryption_salt":"salt","encryption_nonce":"nonce"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/notes/"+n.ID.String(), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := echo.New().NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.SetParamNames("id")
+	c.SetParamValues(n.ID.String())
+
+	if err := NewHandler(client, nil).UpdateNote(c); err != nil {
+		t.Fatalf("UpdateNote returned error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var got NoteResponse
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.ProtectionMode != "encrypted" || got.Content != "" || !got.ContentRedacted {
+		t.Fatalf("expected encrypted redacted response, got %+v", got)
+	}
+	if got.EncryptedContent != "ciphertext" || got.EncryptionAlg != "aes-gcm" || got.EncryptionKDF != "argon2id" || got.EncryptionSalt != "salt" || got.EncryptionNonce != "nonce" {
+		t.Fatalf("expected encrypted payload metadata in response, got %+v", got)
+	}
+
+	stored := client.Note.GetX(ctx, n.ID)
+	if stored.Content != "" || stored.ProtectionMode != note.ProtectionModeEncrypted || stored.ProtectionPasswordHash != "" {
+		t.Fatalf("expected encrypted note to store ciphertext only, got content=%q mode=%q password_hash=%q", stored.Content, stored.ProtectionMode, stored.ProtectionPasswordHash)
 	}
 }
 
@@ -298,8 +419,8 @@ func TestVerifyNotePasswordRejectsOtherUsersNote(t *testing.T) {
 	n := client.Note.Create().
 		SetTitle("Owner note").
 		SetContent("private").
-		SetIsLocked(true).
-		SetPassword(passwordHash).
+		SetProtectionMode(note.ProtectionModePassword).
+		SetProtectionPasswordHash(passwordHash).
 		SetUserID(owner.ID).
 		SaveX(ctx)
 

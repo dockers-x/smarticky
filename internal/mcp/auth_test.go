@@ -14,6 +14,7 @@ import (
 	"smarticky/internal/notes"
 	"smarticky/internal/shareimage"
 
+	"github.com/google/uuid"
 	_ "github.com/lib-x/entsqlite"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -269,6 +270,98 @@ func TestHTTPHandlerGenerateImageReturnsTokenDownloadURL(t *testing.T) {
 	}
 	if got := resp.Header.Get("Content-Type"); got != shareimage.ContentTypePNG {
 		t.Fatalf("expected %s content type, got %q", shareimage.ContentTypePNG, got)
+	}
+}
+
+func TestHTTPHandlerRejectsProtectedNoteImage(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestHTTPHandlerRejectsProtectedNoteImage?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("alice").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	n := client.Note.Create().
+		SetTitle("Encrypted").
+		SetContent("").
+		SetProtectionMode(note.ProtectionModeEncrypted).
+		SetEncryptedContent("ciphertext").
+		SetEncryptionAlg("aes-gcm").
+		SetEncryptionKdf("argon2id").
+		SetEncryptionSalt("salt").
+		SetEncryptionNonce("nonce").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	token, err := GenerateToken()
+	if err != nil {
+		t.Fatalf("GenerateToken returned error: %v", err)
+	}
+	client.MCPToken.Create().
+		SetName("test").
+		SetTokenHash(HashToken(token)).
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	httpServer := httptest.NewServer(NewHTTPHandler(
+		client,
+		notes.NewService(client),
+		shareimage.NewService(client, t.TempDir()),
+		false,
+	))
+	defer httpServer.Close()
+
+	mcpClient := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "test-client", Version: "0.0.0"}, nil)
+	session, err := mcpClient.Connect(ctx, &mcpsdk.StreamableClientTransport{
+		Endpoint:             httpServer.URL,
+		HTTPClient:           &http.Client{Transport: bearerTransport{token: token}},
+		DisableStandaloneSSE: true,
+	}, nil)
+	if err != nil {
+		t.Fatalf("Connect returned error: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name: "smarticky_generate_note_image",
+		Arguments: map[string]any{
+			"note_id": n.ID.String(),
+		},
+	})
+	if err != nil {
+		if !strings.Contains(err.Error(), "protected notes cannot be rendered through MCP") {
+			t.Fatalf("expected protected-note error, got %v", err)
+		}
+		return
+	}
+	if !result.IsError {
+		t.Fatalf("expected protected note image generation to fail, got %+v", result.StructuredContent)
+	}
+	rawContent, err := json.Marshal(result.Content)
+	if err != nil {
+		t.Fatalf("marshal tool error content: %v", err)
+	}
+	if !strings.Contains(string(rawContent), "protected notes cannot be rendered through MCP") {
+		t.Fatalf("expected protected-note error content, got %s", rawContent)
+	}
+}
+
+func TestMCPNoteJSONUsesProtectionMode(t *testing.T) {
+	encoded, err := json.Marshal(mcpNoteFrom(notes.NoteView{
+		ID:              uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+		Title:           "Encrypted",
+		ProtectionMode:  "encrypted",
+		ContentRedacted: true,
+	}))
+	if err != nil {
+		t.Fatalf("marshal MCP note: %v", err)
+	}
+	body := string(encoded)
+	if strings.Contains(body, "is_locked") {
+		t.Fatalf("expected MCP note JSON to omit legacy is_locked, got %s", body)
+	}
+	if !strings.Contains(body, `"protection_mode":"encrypted"`) {
+		t.Fatalf("expected MCP note JSON to include protection_mode, got %s", body)
 	}
 }
 
