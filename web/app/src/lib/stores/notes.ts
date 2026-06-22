@@ -4,6 +4,7 @@ import type { Note } from "../api/types";
 import { preferencesStore, t } from "./preferences";
 
 export type NoteFilter = "all" | "starred" | "trash";
+export type WorkspaceView = "notes" | "index";
 
 export interface NoteSearchFilters {
   title: string;
@@ -17,6 +18,7 @@ export interface NoteSearchFilters {
 interface NotesState {
   notes: Note[];
   selected: Note | null;
+  workspaceView: WorkspaceView;
   filter: NoteFilter;
   folderID: string | null;
   folderBrowserOpen: boolean;
@@ -78,6 +80,7 @@ function createNotesStore() {
   const { subscribe, update } = writable<NotesState>({
     notes: [],
     selected: null,
+    workspaceView: "notes",
     filter: "all",
     folderID: null,
     folderBrowserOpen: false,
@@ -169,6 +172,7 @@ function createNotesStore() {
       });
       update((state) => ({
         ...state,
+        workspaceView: "notes",
         filter: "all",
         folderID: targetFolderID,
         folderBrowserOpen: false,
@@ -188,6 +192,7 @@ function createNotesStore() {
     async setFilter(filter: NoteFilter) {
       update((state) => ({
         ...state,
+        workspaceView: "notes",
         filter,
         folderID: null,
         folderBrowserOpen: false,
@@ -198,6 +203,7 @@ function createNotesStore() {
     async setFolder(folderID: string | null) {
       update((state) => ({
         ...state,
+        workspaceView: "notes",
         filter: "all",
         folderID,
         folderBrowserOpen: false,
@@ -208,9 +214,18 @@ function createNotesStore() {
     showFolderBrowser() {
       update((state) => ({
         ...state,
+        workspaceView: "notes",
         filter: "all",
         folderBrowserOpen: true,
       }));
+    },
+    async setWorkspaceView(view: WorkspaceView) {
+      update((state) => ({
+        ...state,
+        workspaceView: view,
+        folderBrowserOpen: false,
+      }));
+      if (view === "index") await load();
     },
     async setSearch(search: string) {
       update((state) => ({ ...state, search, folderBrowserOpen: false }));

@@ -46,12 +46,20 @@ export interface ExcalidrawLibrary {
   updated_at: string;
 }
 
+export type ProtectionMode = "none" | "password" | "encrypted";
+
 export interface Note {
   id: UUID;
   title: string;
   content: string;
   color: string;
-  is_locked: boolean;
+  protection_mode: ProtectionMode;
+  content_redacted: boolean;
+  encrypted_content?: string;
+  encryption_alg?: string;
+  encryption_kdf?: string;
+  encryption_salt?: string;
+  encryption_nonce?: string;
   is_starred: boolean;
   is_deleted: boolean;
   folder_id?: UUID | null;

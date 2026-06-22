@@ -4,6 +4,7 @@
     Folder,
     Languages,
     Moon,
+    Network,
     PanelLeftClose,
     PanelLeftOpen,
     Settings,
@@ -32,6 +33,11 @@
 
   function openFolderBrowser(): void {
     notesStore.showFolderBrowser();
+  }
+
+  async function selectIndex(): Promise<void> {
+    foldersStore.select(null);
+    await notesStore.setWorkspaceView("index");
   }
 
   function handleFolderTabDragOver(event: DragEvent): void {
@@ -73,12 +79,14 @@
   <nav class="sidebar__nav">
     {#each filters as filter}
       <button
-        class:active={$notesStore.filter === filter.id &&
+        class:active={$notesStore.workspaceView === "notes" &&
+          $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
           !$notesStore.folderBrowserOpen}
         type="button"
         aria-label={filter.label}
-        aria-pressed={$notesStore.filter === filter.id &&
+        aria-pressed={$notesStore.workspaceView === "notes" &&
+          $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
           !$notesStore.folderBrowserOpen}
         title={$preferencesStore.sidebarCompact ? filter.label : undefined}
@@ -95,12 +103,27 @@
       </button>
       {#if filter.id === "all"}
         <button
-          class:active={$notesStore.folderBrowserOpen ||
-            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
+          class:active={$notesStore.workspaceView === "index"}
+          type="button"
+          aria-label={t("index", $preferencesStore.language)}
+          aria-pressed={$notesStore.workspaceView === "index"}
+          title={$preferencesStore.sidebarCompact
+            ? t("index", $preferencesStore.language)
+            : undefined}
+          on:click={() => void selectIndex()}
+        >
+          <Network size={17} strokeWidth={1.8} aria-hidden="true" />
+          <span class="sidebar__label">{t("index", $preferencesStore.language)}</span>
+        </button>
+        <button
+          class:active={$notesStore.workspaceView === "notes" &&
+            ($notesStore.folderBrowserOpen ||
+              ($notesStore.filter === "all" && Boolean($notesStore.folderID)))}
           type="button"
           aria-label={t("notebookGroups", $preferencesStore.language)}
-          aria-pressed={$notesStore.folderBrowserOpen ||
-            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
+          aria-pressed={$notesStore.workspaceView === "notes" &&
+            ($notesStore.folderBrowserOpen ||
+              ($notesStore.filter === "all" && Boolean($notesStore.folderID)))}
           title={$preferencesStore.sidebarCompact
             ? t("notebookGroups", $preferencesStore.language)
             : undefined}

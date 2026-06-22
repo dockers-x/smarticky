@@ -5,6 +5,7 @@
   import { foldersStore } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
   import { whiteboardStore } from "../../stores/whiteboard";
+  import IndexView from "./IndexView.svelte";
   import NoteList from "./NoteList.svelte";
   import Sidebar from "./Sidebar.svelte";
 
@@ -14,9 +15,13 @@
   });
 </script>
 
-<div class="workspace">
+<div class:index-open={$notesStore.workspaceView === "index"} class="workspace">
   <Sidebar />
-  <NoteList />
+  {#if $notesStore.workspaceView === "index"}
+    <IndexView />
+  {:else}
+    <NoteList />
+  {/if}
   <EditorPane note={$notesStore.selected} />
   {#if $whiteboardStore.openID}
     <ExcalidrawWhiteboardDialog
