@@ -17,7 +17,6 @@ interface TopLevelBlock {
 
 const codeGroupPluginKey = new PluginKey("smarticky-code-groups");
 const previewCleanup = new WeakMap<HTMLElement, () => void>();
-const openSourceGroups = new Set<string>();
 
 function hashString(value: string): string {
   let hash = 0;
@@ -62,23 +61,11 @@ function codeGroupSourceID(group: CodeGroupBlock): string {
   return `smarticky-code-group-source-${group.startLine}-${group.endLine}-${hashString(JSON.stringify(group.items))}`;
 }
 
-function updateSourceToggleButton(button: HTMLButtonElement, open: boolean): void {
-  button.textContent = open ? "Hide source" : "Source";
-  button.setAttribute("aria-expanded", String(open));
-  button.setAttribute("aria-pressed", String(open));
-}
-
-function setSourceVisibility(preview: HTMLElement, sourceID: string, open: boolean): void {
-  const editor = preview.closest<HTMLElement>(".ProseMirror");
-  if (!editor) return;
-
-  for (const node of editor.querySelectorAll<HTMLElement>(`[data-code-group-source="${sourceID}"]`)) {
-    node.classList.toggle("editor-code-group-source-open", open);
-    node.setAttribute("aria-hidden", String(!open));
-  }
-}
-
-function createCodeGroupPreview(group: CodeGroupBlock, sourceID: string): HTMLElement {
+function createCodeGroupPreview(
+  group: CodeGroupBlock,
+  sourceID: string,
+  requestSourceMode: () => void,
+): HTMLElement {
   const preview = document.createElement("div");
   preview.className = "editor-code-group-preview";
   preview.contentEditable = "false";
@@ -86,35 +73,27 @@ function createCodeGroupPreview(group: CodeGroupBlock, sourceID: string): HTMLEl
   preview.dataset.codeGroupStartLine = String(group.startLine);
   preview.dataset.codeGroupSource = sourceID;
 
-  const sourceToggle = document.createElement("button");
-  sourceToggle.type = "button";
-  sourceToggle.className = "editor-code-group-source-toggle";
-  sourceToggle.title = "Show or hide the original Markdown source";
-  updateSourceToggleButton(sourceToggle, openSourceGroups.has(sourceID));
+  const sourceModeButton = document.createElement("button");
+  sourceModeButton.type = "button";
+  sourceModeButton.className = "editor-code-group-source-toggle";
+  sourceModeButton.textContent = "Source mode";
+  sourceModeButton.title = "Open the full Markdown source editor";
 
   const content = document.createElement("div");
   content.className = "editor-code-group-preview__content";
   content.innerHTML = renderCodeGroup(group.items);
 
-  preview.append(sourceToggle, content);
+  preview.append(sourceModeButton, content);
   const detach = attachCodeGroupTabs(preview);
-  const handleSourceToggle = (event: MouseEvent): void => {
+  const handleSourceModeRequest = (event: MouseEvent): void => {
     event.preventDefault();
     event.stopPropagation();
-
-    const open = !openSourceGroups.has(sourceID);
-    if (open) {
-      openSourceGroups.add(sourceID);
-    } else {
-      openSourceGroups.delete(sourceID);
-    }
-    updateSourceToggleButton(sourceToggle, open);
-    setSourceVisibility(preview, sourceID, open);
+    requestSourceMode();
   };
-  sourceToggle.addEventListener("click", handleSourceToggle);
+  sourceModeButton.addEventListener("click", handleSourceModeRequest);
   previewCleanup.set(preview, () => {
     detach();
-    sourceToggle.removeEventListener("click", handleSourceToggle);
+    sourceModeButton.removeEventListener("click", handleSourceModeRequest);
   });
   return preview;
 }
@@ -122,6 +101,7 @@ function createCodeGroupPreview(group: CodeGroupBlock, sourceID: string): HTMLEl
 function createCodeGroupDecorations(
   state: EditorState,
   markdown: string,
+  requestSourceMode: () => void,
 ): DecorationSet {
   const groups = extractCodeGroups(markdown);
   if (groups.length === 0) return DecorationSet.empty;
@@ -148,9 +128,8 @@ function createCodeGroupDecorations(
 
     const opener = blocks[openerIndex];
     const sourceID = codeGroupSourceID(group);
-    const sourceOpen = openSourceGroups.has(sourceID);
     decorations.push(
-      Decoration.widget(opener.pos, () => createCodeGroupPreview(group, sourceID), {
+      Decoration.widget(opener.pos, () => createCodeGroupPreview(group, sourceID, requestSourceMode), {
         key: `smarticky-code-group-${group.startLine}-${group.endLine}-${hashString(JSON.stringify(group.items))}`,
         side: -1,
         ignoreSelection: true,
@@ -174,8 +153,8 @@ function createCodeGroupDecorations(
       const block = blocks[index];
       decorations.push(
         Decoration.node(block.pos, block.pos + block.node.nodeSize, {
-          class: `editor-code-group-source-hidden${sourceOpen ? " editor-code-group-source-open" : ""}`,
-          "aria-hidden": String(!sourceOpen),
+          class: "editor-code-group-source-hidden",
+          "aria-hidden": "true",
           "data-code-group-source": sourceID,
         }),
       );
@@ -187,14 +166,17 @@ function createCodeGroupDecorations(
   return DecorationSet.create(state.doc, decorations);
 }
 
-export function createCodeGroupEditorPlugin(getMarkdown: () => string) {
+export function createCodeGroupEditorPlugin(
+  getMarkdown: () => string,
+  requestSourceMode: () => void = () => {},
+) {
   return $prose(
     () =>
       new Plugin({
         key: codeGroupPluginKey,
         props: {
           decorations(state) {
-            return createCodeGroupDecorations(state, getMarkdown());
+            return createCodeGroupDecorations(state, getMarkdown(), requestSourceMode);
           },
         },
       }),

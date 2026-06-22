@@ -50,6 +50,7 @@
     noteId: string;
     onChange: (value: string) => void;
     bindEditor: (editor: MarkdownEditorHandle | null) => void;
+    requestSourceMode: () => void;
   }>;
 
   let markdownEditor: MarkdownEditorHandle | null = null;
@@ -474,6 +475,17 @@
       } else {
         markdownEditor?.focus();
       }
+    });
+  }
+
+  function openSourceMode(): void {
+    sourceMode = true;
+    actionMenuOpen = false;
+    diagramMenuOpen = false;
+    diagramMenuView = "root";
+    void tick().then(() => {
+      resizeSourceInput();
+      sourceTextarea?.focus();
     });
   }
 
@@ -1073,6 +1085,7 @@
               noteId={note.id}
               onChange={scheduleContentSave}
               bindEditor={bindMarkdownEditor}
+              requestSourceMode={openSourceMode}
             />
           {:else}
             <div class="markdown-editor-host markdown-editor-host--loading"></div>

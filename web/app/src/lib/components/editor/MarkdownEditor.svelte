@@ -28,6 +28,7 @@
   export let noteId: UUID = "";
   export let onChange: (value: string) => void = () => {};
   export let bindEditor: (editor: MarkdownEditorHandle | null) => void = () => {};
+  export let requestSourceMode: () => void = () => {};
 
   let host: HTMLDivElement;
   let crepe: CrepeBuilder | null = null;
@@ -160,7 +161,7 @@
       .addFeature(table)
       .addFeature(latex);
 
-    crepe.editor.use(createCodeGroupEditorPlugin(() => lastMarkdown));
+    crepe.editor.use(createCodeGroupEditorPlugin(() => lastMarkdown, requestSourceMode));
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {

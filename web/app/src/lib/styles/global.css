@@ -2661,10 +2661,6 @@ h6 {
   display: none !important;
 }
 
-.markdown-editor-host .editor-code-group-source-hidden.editor-code-group-source-open {
-  display: block !important;
-}
-
 .markdown-editor-host .editor-code-group-preview {
   display: block;
   position: relative;
@@ -2677,7 +2673,7 @@ h6 {
   right: 8px;
   z-index: 2;
   min-height: 24px;
-  max-width: 96px;
+  max-width: 112px;
   border: 1px solid color-mix(in srgb, var(--color-divider) 80%, transparent);
   border-radius: 6px;
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
@@ -2689,8 +2685,7 @@ h6 {
   cursor: pointer;
 }
 
-.markdown-editor-host .editor-code-group-source-toggle:hover,
-.markdown-editor-host .editor-code-group-source-toggle[aria-pressed="true"] {
+.markdown-editor-host .editor-code-group-source-toggle:hover {
   border-color: color-mix(in srgb, var(--color-brand) 42%, var(--color-divider));
   color: var(--color-text);
 }
