@@ -11,6 +11,7 @@ import (
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -202,6 +203,21 @@ func (_u *NoteUpdate) AddAttachments(v ...*Attachment) *NoteUpdate {
 	return _u.AddAttachmentIDs(ids...)
 }
 
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by IDs.
+func (_u *NoteUpdate) AddWhiteboardIDs(ids ...uuid.UUID) *NoteUpdate {
+	_u.mutation.AddWhiteboardIDs(ids...)
+	return _u
+}
+
+// AddWhiteboards adds the "whiteboards" edges to the Whiteboard entity.
+func (_u *NoteUpdate) AddWhiteboards(v ...*Whiteboard) *NoteUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWhiteboardIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *NoteUpdate) AddTagIDs(ids ...uuid.UUID) *NoteUpdate {
 	_u.mutation.AddTagIDs(ids...)
@@ -247,6 +263,27 @@ func (_u *NoteUpdate) RemoveAttachments(v ...*Attachment) *NoteUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAttachmentIDs(ids...)
+}
+
+// ClearWhiteboards clears all "whiteboards" edges to the Whiteboard entity.
+func (_u *NoteUpdate) ClearWhiteboards() *NoteUpdate {
+	_u.mutation.ClearWhiteboards()
+	return _u
+}
+
+// RemoveWhiteboardIDs removes the "whiteboards" edge to Whiteboard entities by IDs.
+func (_u *NoteUpdate) RemoveWhiteboardIDs(ids ...uuid.UUID) *NoteUpdate {
+	_u.mutation.RemoveWhiteboardIDs(ids...)
+	return _u
+}
+
+// RemoveWhiteboards removes "whiteboards" edges to Whiteboard entities.
+func (_u *NoteUpdate) RemoveWhiteboards(v ...*Whiteboard) *NoteUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWhiteboardIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -418,6 +455,51 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(attachment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWhiteboardsIDs(); len(nodes) > 0 && !_u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WhiteboardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -660,6 +742,21 @@ func (_u *NoteUpdateOne) AddAttachments(v ...*Attachment) *NoteUpdateOne {
 	return _u.AddAttachmentIDs(ids...)
 }
 
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by IDs.
+func (_u *NoteUpdateOne) AddWhiteboardIDs(ids ...uuid.UUID) *NoteUpdateOne {
+	_u.mutation.AddWhiteboardIDs(ids...)
+	return _u
+}
+
+// AddWhiteboards adds the "whiteboards" edges to the Whiteboard entity.
+func (_u *NoteUpdateOne) AddWhiteboards(v ...*Whiteboard) *NoteUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWhiteboardIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *NoteUpdateOne) AddTagIDs(ids ...uuid.UUID) *NoteUpdateOne {
 	_u.mutation.AddTagIDs(ids...)
@@ -705,6 +802,27 @@ func (_u *NoteUpdateOne) RemoveAttachments(v ...*Attachment) *NoteUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAttachmentIDs(ids...)
+}
+
+// ClearWhiteboards clears all "whiteboards" edges to the Whiteboard entity.
+func (_u *NoteUpdateOne) ClearWhiteboards() *NoteUpdateOne {
+	_u.mutation.ClearWhiteboards()
+	return _u
+}
+
+// RemoveWhiteboardIDs removes the "whiteboards" edge to Whiteboard entities by IDs.
+func (_u *NoteUpdateOne) RemoveWhiteboardIDs(ids ...uuid.UUID) *NoteUpdateOne {
+	_u.mutation.RemoveWhiteboardIDs(ids...)
+	return _u
+}
+
+// RemoveWhiteboards removes "whiteboards" edges to Whiteboard entities.
+func (_u *NoteUpdateOne) RemoveWhiteboards(v ...*Whiteboard) *NoteUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWhiteboardIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -906,6 +1024,51 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(attachment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWhiteboardsIDs(); len(nodes) > 0 && !_u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WhiteboardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

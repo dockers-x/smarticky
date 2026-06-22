@@ -547,6 +547,29 @@ func HasAttachmentsWith(preds ...predicate.Attachment) predicate.Note {
 	})
 }
 
+// HasWhiteboards applies the HasEdge predicate on the "whiteboards" edge.
+func HasWhiteboards() predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, WhiteboardsTable, WhiteboardsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasWhiteboardsWith applies the HasEdge predicate on the "whiteboards" edge with a given conditions (other predicates).
+func HasWhiteboardsWith(preds ...predicate.Whiteboard) predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := newWhiteboardsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTags applies the HasEdge predicate on the "tags" edge.
 func HasTags() predicate.Note {
 	return predicate.Note(func(s *sql.Selector) {

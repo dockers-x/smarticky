@@ -12,6 +12,7 @@ import (
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -29,6 +30,7 @@ type NoteQuery struct {
 	predicates      []predicate.Note
 	withUser        *UserQuery
 	withAttachments *AttachmentQuery
+	withWhiteboards *WhiteboardQuery
 	withTags        *TagQuery
 	withFKs         bool
 	// intermediate query (i.e. traversal path).
@@ -104,6 +106,28 @@ func (_q *NoteQuery) QueryAttachments() *AttachmentQuery {
 			sqlgraph.From(note.Table, note.FieldID, selector),
 			sqlgraph.To(attachment.Table, attachment.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, note.AttachmentsTable, note.AttachmentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryWhiteboards chains the current query on the "whiteboards" edge.
+func (_q *NoteQuery) QueryWhiteboards() *WhiteboardQuery {
+	query := (&WhiteboardClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, selector),
+			sqlgraph.To(whiteboard.Table, whiteboard.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.WhiteboardsTable, note.WhiteboardsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -327,6 +351,7 @@ func (_q *NoteQuery) Clone() *NoteQuery {
 		predicates:      append([]predicate.Note{}, _q.predicates...),
 		withUser:        _q.withUser.Clone(),
 		withAttachments: _q.withAttachments.Clone(),
+		withWhiteboards: _q.withWhiteboards.Clone(),
 		withTags:        _q.withTags.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
@@ -353,6 +378,17 @@ func (_q *NoteQuery) WithAttachments(opts ...func(*AttachmentQuery)) *NoteQuery 
 		opt(query)
 	}
 	_q.withAttachments = query
+	return _q
+}
+
+// WithWhiteboards tells the query-builder to eager-load the nodes that are connected to
+// the "whiteboards" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NoteQuery) WithWhiteboards(opts ...func(*WhiteboardQuery)) *NoteQuery {
+	query := (&WhiteboardClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withWhiteboards = query
 	return _q
 }
 
@@ -446,9 +482,10 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		nodes       = []*Note{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withUser != nil,
 			_q.withAttachments != nil,
+			_q.withWhiteboards != nil,
 			_q.withTags != nil,
 		}
 	)
@@ -486,6 +523,13 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		if err := _q.loadAttachments(ctx, query, nodes,
 			func(n *Note) { n.Edges.Attachments = []*Attachment{} },
 			func(n *Note, e *Attachment) { n.Edges.Attachments = append(n.Edges.Attachments, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withWhiteboards; query != nil {
+		if err := _q.loadWhiteboards(ctx, query, nodes,
+			func(n *Note) { n.Edges.Whiteboards = []*Whiteboard{} },
+			func(n *Note, e *Whiteboard) { n.Edges.Whiteboards = append(n.Edges.Whiteboards, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -557,6 +601,37 @@ func (_q *NoteQuery) loadAttachments(ctx context.Context, query *AttachmentQuery
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "note_attachments" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *NoteQuery) loadWhiteboards(ctx context.Context, query *WhiteboardQuery, nodes []*Note, init func(*Note), assign func(*Note, *Whiteboard)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Note)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Whiteboard(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(note.WhiteboardsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.note_whiteboards
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "note_whiteboards" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "note_whiteboards" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

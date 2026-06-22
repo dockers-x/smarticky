@@ -14,6 +14,10 @@ interface NotesState {
   error: string;
 }
 
+type NoteUpdateFields = Partial<
+  Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted">
+>;
+
 function queryFor(state: NotesState): string {
   const params = new URLSearchParams();
   if (state.filter === "starred") params.set("starred", "true");
@@ -32,6 +36,25 @@ function createNotesStore() {
     loading: false,
     error: "",
   });
+
+  function applyUpdatedNote(updated: Note): void {
+    update((current) => ({
+      ...current,
+      selected: current.selected?.id === updated.id ? updated : current.selected,
+      notes: current.notes.map((note) =>
+        note.id === updated.id ? { ...note, ...updated } : note,
+      ),
+    }));
+  }
+
+  async function updateNote(noteId: string, fields: NoteUpdateFields): Promise<Note> {
+    const updated = await apiFetch<Note>(`/notes/${noteId}`, {
+      method: "PUT",
+      body: JSON.stringify(fields),
+    });
+    applyUpdatedNote(updated);
+    return updated;
+  }
 
   async function load() {
     const sequence = ++loadSequence;
@@ -98,27 +121,27 @@ function createNotesStore() {
       update((state) => ({ ...state, search }));
       await load();
     },
-    async updateSelected(
-      fields: Partial<
-        Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted">
-      >,
-    ) {
+    async updateSelected(fields: NoteUpdateFields) {
       const state = get({ subscribe });
       if (!state.selected) return;
 
       const selectedID = state.selected.id;
       update((current) => ({ ...current, error: "" }));
-      const updated = await apiFetch<Note>(`/notes/${selectedID}`, {
-        method: "PUT",
-        body: JSON.stringify(fields),
-      });
-
-      update((current) => ({
-        ...current,
-        selected: current.selected?.id === updated.id ? updated : current.selected,
-        notes: current.notes.map((note) =>
-          note.id === updated.id ? { ...note, ...updated } : note,
-        ),
+      await updateNote(selectedID, fields);
+    },
+    async getByID(noteId: string): Promise<Note> {
+      const state = get({ subscribe });
+      if (state.selected?.id === noteId) return state.selected;
+      const listed = state.notes.find((note) => note.id === noteId);
+      if (listed) return listed;
+      return apiFetch<Note>(`/notes/${noteId}`);
+    },
+    updateNote,
+    replaceSelected(note: Note) {
+      update((state) => ({
+        ...state,
+        selected: note,
+        notes: state.notes.map((item) => (item.id === note.id ? note : item)),
       }));
     },
     async deletePermanent(noteId: string) {
@@ -150,13 +173,6 @@ function createNotesStore() {
           current.filter === "trash"
             ? []
             : current.notes.filter((note) => !note.is_deleted),
-      }));
-    },
-    replaceSelected(note: Note) {
-      update((state) => ({
-        ...state,
-        selected: note,
-        notes: state.notes.map((item) => (item.id === note.id ? note : item)),
       }));
     },
   };

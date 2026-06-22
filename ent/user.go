@@ -4,6 +4,7 @@ package ent
 
 import (
 	"fmt"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/user"
 	"strings"
 	"time"
@@ -49,6 +50,10 @@ type UserEdges struct {
 	Notes []*Note `json:"notes,omitempty"`
 	// Attachments holds the value of the attachments edge.
 	Attachments []*Attachment `json:"attachments,omitempty"`
+	// ExcalidrawLibrary holds the value of the excalidraw_library edge.
+	ExcalidrawLibrary *ExcalidrawLibrary `json:"excalidraw_library,omitempty"`
+	// Whiteboards holds the value of the whiteboards edge.
+	Whiteboards []*Whiteboard `json:"whiteboards,omitempty"`
 	// Tags holds the value of the tags edge.
 	Tags []*Tag `json:"tags,omitempty"`
 	// Fonts holds the value of the fonts edge.
@@ -61,7 +66,7 @@ type UserEdges struct {
 	McpImages []*MCPImage `json:"mcp_images,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [9]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -82,10 +87,30 @@ func (e UserEdges) AttachmentsOrErr() ([]*Attachment, error) {
 	return nil, &NotLoadedError{edge: "attachments"}
 }
 
+// ExcalidrawLibraryOrErr returns the ExcalidrawLibrary value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) ExcalidrawLibraryOrErr() (*ExcalidrawLibrary, error) {
+	if e.ExcalidrawLibrary != nil {
+		return e.ExcalidrawLibrary, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: excalidrawlibrary.Label}
+	}
+	return nil, &NotLoadedError{edge: "excalidraw_library"}
+}
+
+// WhiteboardsOrErr returns the Whiteboards value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
+	if e.loadedTypes[3] {
+		return e.Whiteboards, nil
+	}
+	return nil, &NotLoadedError{edge: "whiteboards"}
+}
+
 // TagsOrErr returns the Tags value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[4] {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
@@ -94,7 +119,7 @@ func (e UserEdges) TagsOrErr() ([]*Tag, error) {
 // FontsOrErr returns the Fonts value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) FontsOrErr() ([]*Font, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[5] {
 		return e.Fonts, nil
 	}
 	return nil, &NotLoadedError{edge: "fonts"}
@@ -103,7 +128,7 @@ func (e UserEdges) FontsOrErr() ([]*Font, error) {
 // ImportJobsOrErr returns the ImportJobs value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ImportJobsOrErr() ([]*ImportJob, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[6] {
 		return e.ImportJobs, nil
 	}
 	return nil, &NotLoadedError{edge: "import_jobs"}
@@ -112,7 +137,7 @@ func (e UserEdges) ImportJobsOrErr() ([]*ImportJob, error) {
 // McpTokensOrErr returns the McpTokens value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) McpTokensOrErr() ([]*MCPToken, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[7] {
 		return e.McpTokens, nil
 	}
 	return nil, &NotLoadedError{edge: "mcp_tokens"}
@@ -121,7 +146,7 @@ func (e UserEdges) McpTokensOrErr() ([]*MCPToken, error) {
 // McpImagesOrErr returns the McpImages value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) McpImagesOrErr() ([]*MCPImage, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[8] {
 		return e.McpImages, nil
 	}
 	return nil, &NotLoadedError{edge: "mcp_images"}
@@ -241,6 +266,16 @@ func (_m *User) QueryNotes() *NoteQuery {
 // QueryAttachments queries the "attachments" edge of the User entity.
 func (_m *User) QueryAttachments() *AttachmentQuery {
 	return NewUserClient(_m.config).QueryAttachments(_m)
+}
+
+// QueryExcalidrawLibrary queries the "excalidraw_library" edge of the User entity.
+func (_m *User) QueryExcalidrawLibrary() *ExcalidrawLibraryQuery {
+	return NewUserClient(_m.config).QueryExcalidrawLibrary(_m)
+}
+
+// QueryWhiteboards queries the "whiteboards" edge of the User entity.
+func (_m *User) QueryWhiteboards() *WhiteboardQuery {
+	return NewUserClient(_m.config).QueryWhiteboards(_m)
 }
 
 // QueryTags queries the "tags" edge of the User entity.

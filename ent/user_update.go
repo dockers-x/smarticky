@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"smarticky/ent/attachment"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
 	"smarticky/ent/mcpimage"
@@ -15,6 +16,7 @@ import (
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -208,6 +210,40 @@ func (_u *UserUpdate) AddAttachments(v ...*Attachment) *UserUpdate {
 	return _u.AddAttachmentIDs(ids...)
 }
 
+// SetExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by ID.
+func (_u *UserUpdate) SetExcalidrawLibraryID(id uuid.UUID) *UserUpdate {
+	_u.mutation.SetExcalidrawLibraryID(id)
+	return _u
+}
+
+// SetNillableExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by ID if the given value is not nil.
+func (_u *UserUpdate) SetNillableExcalidrawLibraryID(id *uuid.UUID) *UserUpdate {
+	if id != nil {
+		_u = _u.SetExcalidrawLibraryID(*id)
+	}
+	return _u
+}
+
+// SetExcalidrawLibrary sets the "excalidraw_library" edge to the ExcalidrawLibrary entity.
+func (_u *UserUpdate) SetExcalidrawLibrary(v *ExcalidrawLibrary) *UserUpdate {
+	return _u.SetExcalidrawLibraryID(v.ID)
+}
+
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by IDs.
+func (_u *UserUpdate) AddWhiteboardIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.AddWhiteboardIDs(ids...)
+	return _u
+}
+
+// AddWhiteboards adds the "whiteboards" edges to the Whiteboard entity.
+func (_u *UserUpdate) AddWhiteboards(v ...*Whiteboard) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWhiteboardIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *UserUpdate) AddTagIDs(ids ...uuid.UUID) *UserUpdate {
 	_u.mutation.AddTagIDs(ids...)
@@ -328,6 +364,33 @@ func (_u *UserUpdate) RemoveAttachments(v ...*Attachment) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAttachmentIDs(ids...)
+}
+
+// ClearExcalidrawLibrary clears the "excalidraw_library" edge to the ExcalidrawLibrary entity.
+func (_u *UserUpdate) ClearExcalidrawLibrary() *UserUpdate {
+	_u.mutation.ClearExcalidrawLibrary()
+	return _u
+}
+
+// ClearWhiteboards clears all "whiteboards" edges to the Whiteboard entity.
+func (_u *UserUpdate) ClearWhiteboards() *UserUpdate {
+	_u.mutation.ClearWhiteboards()
+	return _u
+}
+
+// RemoveWhiteboardIDs removes the "whiteboards" edge to Whiteboard entities by IDs.
+func (_u *UserUpdate) RemoveWhiteboardIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.RemoveWhiteboardIDs(ids...)
+	return _u
+}
+
+// RemoveWhiteboards removes "whiteboards" edges to Whiteboard entities.
+func (_u *UserUpdate) RemoveWhiteboards(v ...*Whiteboard) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWhiteboardIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -625,6 +688,80 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(attachment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExcalidrawLibraryCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.ExcalidrawLibraryTable,
+			Columns: []string{user.ExcalidrawLibraryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(excalidrawlibrary.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExcalidrawLibraryIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.ExcalidrawLibraryTable,
+			Columns: []string{user.ExcalidrawLibraryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(excalidrawlibrary.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWhiteboardsIDs(); len(nodes) > 0 && !_u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WhiteboardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1049,6 +1186,40 @@ func (_u *UserUpdateOne) AddAttachments(v ...*Attachment) *UserUpdateOne {
 	return _u.AddAttachmentIDs(ids...)
 }
 
+// SetExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by ID.
+func (_u *UserUpdateOne) SetExcalidrawLibraryID(id uuid.UUID) *UserUpdateOne {
+	_u.mutation.SetExcalidrawLibraryID(id)
+	return _u
+}
+
+// SetNillableExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by ID if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableExcalidrawLibraryID(id *uuid.UUID) *UserUpdateOne {
+	if id != nil {
+		_u = _u.SetExcalidrawLibraryID(*id)
+	}
+	return _u
+}
+
+// SetExcalidrawLibrary sets the "excalidraw_library" edge to the ExcalidrawLibrary entity.
+func (_u *UserUpdateOne) SetExcalidrawLibrary(v *ExcalidrawLibrary) *UserUpdateOne {
+	return _u.SetExcalidrawLibraryID(v.ID)
+}
+
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by IDs.
+func (_u *UserUpdateOne) AddWhiteboardIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.AddWhiteboardIDs(ids...)
+	return _u
+}
+
+// AddWhiteboards adds the "whiteboards" edges to the Whiteboard entity.
+func (_u *UserUpdateOne) AddWhiteboards(v ...*Whiteboard) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWhiteboardIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *UserUpdateOne) AddTagIDs(ids ...uuid.UUID) *UserUpdateOne {
 	_u.mutation.AddTagIDs(ids...)
@@ -1169,6 +1340,33 @@ func (_u *UserUpdateOne) RemoveAttachments(v ...*Attachment) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAttachmentIDs(ids...)
+}
+
+// ClearExcalidrawLibrary clears the "excalidraw_library" edge to the ExcalidrawLibrary entity.
+func (_u *UserUpdateOne) ClearExcalidrawLibrary() *UserUpdateOne {
+	_u.mutation.ClearExcalidrawLibrary()
+	return _u
+}
+
+// ClearWhiteboards clears all "whiteboards" edges to the Whiteboard entity.
+func (_u *UserUpdateOne) ClearWhiteboards() *UserUpdateOne {
+	_u.mutation.ClearWhiteboards()
+	return _u
+}
+
+// RemoveWhiteboardIDs removes the "whiteboards" edge to Whiteboard entities by IDs.
+func (_u *UserUpdateOne) RemoveWhiteboardIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.RemoveWhiteboardIDs(ids...)
+	return _u
+}
+
+// RemoveWhiteboards removes "whiteboards" edges to Whiteboard entities.
+func (_u *UserUpdateOne) RemoveWhiteboards(v ...*Whiteboard) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWhiteboardIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -1496,6 +1694,80 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(attachment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExcalidrawLibraryCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.ExcalidrawLibraryTable,
+			Columns: []string{user.ExcalidrawLibraryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(excalidrawlibrary.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExcalidrawLibraryIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.ExcalidrawLibraryTable,
+			Columns: []string{user.ExcalidrawLibraryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(excalidrawlibrary.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWhiteboardsIDs(); len(nodes) > 0 && !_u.mutation.WhiteboardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WhiteboardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

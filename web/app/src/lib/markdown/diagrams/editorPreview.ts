@@ -10,6 +10,10 @@ import {
   findMermaidDiagramVariant,
   mermaidDiagramVariants,
 } from "./mermaidSyntax";
+import {
+  createWhiteboardPreviewMarkup,
+  isWhiteboardFenceLanguage,
+} from "../whiteboards";
 import { renderDiagram } from "./registry";
 import type {
   DiagramRenderRequest,
@@ -36,22 +40,31 @@ const diagramLanguageSupport = new LanguageSupport(
   }),
 );
 
+function languageAliases(name: string, aliases: string[] = []): string[] {
+  return Array.from(new Set([name, ...aliases]));
+}
+
 export const diagramCodeLanguages = [
   LanguageDescription.of({
     name: "mermaid",
-    alias: ["mmd"],
+    alias: languageAliases("mermaid", ["mmd"]),
     support: diagramLanguageSupport,
   }),
   ...mermaidDiagramVariants.map((variant) =>
     LanguageDescription.of({
       name: variant.name,
-      alias: variant.aliases,
+      alias: languageAliases(variant.name, variant.aliases),
       support: diagramLanguageSupport,
     }),
   ),
   LanguageDescription.of({
     name: "drawio",
-    alias: ["draw.io"],
+    alias: languageAliases("drawio", ["draw.io"]),
+    support: diagramLanguageSupport,
+  }),
+  LanguageDescription.of({
+    name: "excalidraw",
+    alias: languageAliases("excalidraw"),
     support: diagramLanguageSupport,
   }),
 ];
@@ -91,10 +104,15 @@ export function createEditorDiagramCodeBlockConfig({
     renderLanguage(language) {
       const mermaidVariant = findMermaidDiagramVariant(language);
       if (mermaidVariant) return mermaidVariant.label;
+      if (isWhiteboardFenceLanguage(language)) return "Excalidraw";
       const type = normalizeDiagramType(language);
       return type ? diagramLanguageLabels[type] : language;
     },
     renderPreview(language: string, content: string, applyPreview: ApplyPreview) {
+      if (isWhiteboardFenceLanguage(language)) {
+        return createWhiteboardPreviewMarkup(content);
+      }
+
       const type = normalizeDiagramType(language);
       const source = prepareDiagramSource(language, content);
       if (!type || !source) return null;

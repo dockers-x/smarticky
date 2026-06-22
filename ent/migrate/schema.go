@@ -64,6 +64,28 @@ var (
 		Columns:    BackupConfigsColumns,
 		PrimaryKey: []*schema.Column{BackupConfigsColumns[0]},
 	}
+	// ExcalidrawLibrariesColumns holds the columns for the "excalidraw_libraries" table.
+	ExcalidrawLibrariesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "library_json", Type: field.TypeString, Size: 2147483647, Default: "[]"},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_excalidraw_library", Type: field.TypeInt, Unique: true},
+	}
+	// ExcalidrawLibrariesTable holds the schema information for the "excalidraw_libraries" table.
+	ExcalidrawLibrariesTable = &schema.Table{
+		Name:       "excalidraw_libraries",
+		Columns:    ExcalidrawLibrariesColumns,
+		PrimaryKey: []*schema.Column{ExcalidrawLibrariesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "excalidraw_libraries_users_excalidraw_library",
+				Columns:    []*schema.Column{ExcalidrawLibrariesColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// FontsColumns holds the columns for the "fonts" table.
 	FontsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -264,6 +286,37 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// WhiteboardsColumns holds the columns for the "whiteboards" table.
+	WhiteboardsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "title", Type: field.TypeString, Default: "Whiteboard"},
+		{Name: "scene_json", Type: field.TypeString, Size: 2147483647, Default: "{}"},
+		{Name: "thumbnail", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "note_whiteboards", Type: field.TypeUUID},
+		{Name: "user_whiteboards", Type: field.TypeInt},
+	}
+	// WhiteboardsTable holds the schema information for the "whiteboards" table.
+	WhiteboardsTable = &schema.Table{
+		Name:       "whiteboards",
+		Columns:    WhiteboardsColumns,
+		PrimaryKey: []*schema.Column{WhiteboardsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "whiteboards_notes_whiteboards",
+				Columns:    []*schema.Column{WhiteboardsColumns[6]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "whiteboards_users_whiteboards",
+				Columns:    []*schema.Column{WhiteboardsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// NoteTagsColumns holds the columns for the "note_tags" table.
 	NoteTagsColumns = []*schema.Column{
 		{Name: "note_id", Type: field.TypeUUID},
@@ -293,6 +346,7 @@ var (
 	Tables = []*schema.Table{
 		AttachmentsTable,
 		BackupConfigsTable,
+		ExcalidrawLibrariesTable,
 		FontsTable,
 		ImportItemsTable,
 		ImportJobsTable,
@@ -301,6 +355,7 @@ var (
 		NotesTable,
 		TagsTable,
 		UsersTable,
+		WhiteboardsTable,
 		NoteTagsTable,
 	}
 )
@@ -308,6 +363,7 @@ var (
 func init() {
 	AttachmentsTable.ForeignKeys[0].RefTable = NotesTable
 	AttachmentsTable.ForeignKeys[1].RefTable = UsersTable
+	ExcalidrawLibrariesTable.ForeignKeys[0].RefTable = UsersTable
 	FontsTable.ForeignKeys[0].RefTable = UsersTable
 	ImportItemsTable.ForeignKeys[0].RefTable = ImportJobsTable
 	ImportJobsTable.ForeignKeys[0].RefTable = UsersTable
@@ -315,6 +371,8 @@ func init() {
 	McpTokensTable.ForeignKeys[0].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
+	WhiteboardsTable.ForeignKeys[0].RefTable = NotesTable
+	WhiteboardsTable.ForeignKeys[1].RefTable = UsersTable
 	NoteTagsTable.ForeignKeys[0].RefTable = NotesTable
 	NoteTagsTable.ForeignKeys[1].RefTable = TagsTable
 }

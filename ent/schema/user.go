@@ -53,6 +53,8 @@ func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("notes", Note.Type),
 		edge.To("attachments", Attachment.Type),
+		edge.To("excalidraw_library", ExcalidrawLibrary.Type).Unique(),
+		edge.To("whiteboards", Whiteboard.Type),
 		edge.To("tags", Tag.Type),   // User can have many tags
 		edge.To("fonts", Font.Type), // User can upload many fonts
 		edge.To("import_jobs", ImportJob.Type),

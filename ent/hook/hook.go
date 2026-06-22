@@ -32,6 +32,18 @@ func (f BackupConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BackupConfigMutation", m)
 }
 
+// The ExcalidrawLibraryFunc type is an adapter to allow the use of ordinary
+// function as ExcalidrawLibrary mutator.
+type ExcalidrawLibraryFunc func(context.Context, *ent.ExcalidrawLibraryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ExcalidrawLibraryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ExcalidrawLibraryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExcalidrawLibraryMutation", m)
+}
+
 // The FontFunc type is an adapter to allow the use of ordinary
 // function as Font mutator.
 type FontFunc func(context.Context, *ent.FontMutation) (ent.Value, error)
@@ -126,6 +138,18 @@ func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
+}
+
+// The WhiteboardFunc type is an adapter to allow the use of ordinary
+// function as Whiteboard mutator.
+type WhiteboardFunc func(context.Context, *ent.WhiteboardMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WhiteboardFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WhiteboardMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WhiteboardMutation", m)
 }
 
 // Condition is a hook condition function.

@@ -27,6 +27,23 @@ export interface Attachment {
   created_at: string;
 }
 
+export interface Whiteboard {
+  id: UUID;
+  note_id: UUID;
+  title: string;
+  scene_json: string;
+  thumbnail?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExcalidrawLibrary {
+  id: UUID;
+  library_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Note {
   id: UUID;
   title: string;

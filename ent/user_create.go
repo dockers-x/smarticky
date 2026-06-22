@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"smarticky/ent/attachment"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
 	"smarticky/ent/mcpimage"
@@ -14,6 +15,7 @@ import (
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -180,6 +182,40 @@ func (_c *UserCreate) AddAttachments(v ...*Attachment) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddAttachmentIDs(ids...)
+}
+
+// SetExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by ID.
+func (_c *UserCreate) SetExcalidrawLibraryID(id uuid.UUID) *UserCreate {
+	_c.mutation.SetExcalidrawLibraryID(id)
+	return _c
+}
+
+// SetNillableExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by ID if the given value is not nil.
+func (_c *UserCreate) SetNillableExcalidrawLibraryID(id *uuid.UUID) *UserCreate {
+	if id != nil {
+		_c = _c.SetExcalidrawLibraryID(*id)
+	}
+	return _c
+}
+
+// SetExcalidrawLibrary sets the "excalidraw_library" edge to the ExcalidrawLibrary entity.
+func (_c *UserCreate) SetExcalidrawLibrary(v *ExcalidrawLibrary) *UserCreate {
+	return _c.SetExcalidrawLibraryID(v.ID)
+}
+
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by IDs.
+func (_c *UserCreate) AddWhiteboardIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddWhiteboardIDs(ids...)
+	return _c
+}
+
+// AddWhiteboards adds the "whiteboards" edges to the Whiteboard entity.
+func (_c *UserCreate) AddWhiteboards(v ...*Whiteboard) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddWhiteboardIDs(ids...)
 }
 
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
@@ -444,6 +480,38 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(attachment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ExcalidrawLibraryIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.ExcalidrawLibraryTable,
+			Columns: []string{user.ExcalidrawLibraryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(excalidrawlibrary.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WhiteboardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WhiteboardsTable,
+			Columns: []string{user.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

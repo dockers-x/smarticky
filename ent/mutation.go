@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -17,6 +18,7 @@ import (
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"sync"
 	"time"
 
@@ -34,16 +36,18 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAttachment   = "Attachment"
-	TypeBackupConfig = "BackupConfig"
-	TypeFont         = "Font"
-	TypeImportItem   = "ImportItem"
-	TypeImportJob    = "ImportJob"
-	TypeMCPImage     = "MCPImage"
-	TypeMCPToken     = "MCPToken"
-	TypeNote         = "Note"
-	TypeTag          = "Tag"
-	TypeUser         = "User"
+	TypeAttachment        = "Attachment"
+	TypeBackupConfig      = "BackupConfig"
+	TypeExcalidrawLibrary = "ExcalidrawLibrary"
+	TypeFont              = "Font"
+	TypeImportItem        = "ImportItem"
+	TypeImportJob         = "ImportJob"
+	TypeMCPImage          = "MCPImage"
+	TypeMCPToken          = "MCPToken"
+	TypeNote              = "Note"
+	TypeTag               = "Tag"
+	TypeUser              = "User"
+	TypeWhiteboard        = "Whiteboard"
 )
 
 // AttachmentMutation represents an operation that mutates the Attachment nodes in the graph.
@@ -2095,6 +2099,513 @@ func (m *BackupConfigMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *BackupConfigMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown BackupConfig edge %s", name)
+}
+
+// ExcalidrawLibraryMutation represents an operation that mutates the ExcalidrawLibrary nodes in the graph.
+type ExcalidrawLibraryMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	library_json  *string
+	created_at    *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	user          *int
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*ExcalidrawLibrary, error)
+	predicates    []predicate.ExcalidrawLibrary
+}
+
+var _ ent.Mutation = (*ExcalidrawLibraryMutation)(nil)
+
+// excalidrawlibraryOption allows management of the mutation configuration using functional options.
+type excalidrawlibraryOption func(*ExcalidrawLibraryMutation)
+
+// newExcalidrawLibraryMutation creates new mutation for the ExcalidrawLibrary entity.
+func newExcalidrawLibraryMutation(c config, op Op, opts ...excalidrawlibraryOption) *ExcalidrawLibraryMutation {
+	m := &ExcalidrawLibraryMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeExcalidrawLibrary,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withExcalidrawLibraryID sets the ID field of the mutation.
+func withExcalidrawLibraryID(id uuid.UUID) excalidrawlibraryOption {
+	return func(m *ExcalidrawLibraryMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ExcalidrawLibrary
+		)
+		m.oldValue = func(ctx context.Context) (*ExcalidrawLibrary, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ExcalidrawLibrary.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withExcalidrawLibrary sets the old ExcalidrawLibrary of the mutation.
+func withExcalidrawLibrary(node *ExcalidrawLibrary) excalidrawlibraryOption {
+	return func(m *ExcalidrawLibraryMutation) {
+		m.oldValue = func(context.Context) (*ExcalidrawLibrary, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ExcalidrawLibraryMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ExcalidrawLibraryMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ExcalidrawLibrary entities.
+func (m *ExcalidrawLibraryMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ExcalidrawLibraryMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ExcalidrawLibraryMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ExcalidrawLibrary.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetLibraryJSON sets the "library_json" field.
+func (m *ExcalidrawLibraryMutation) SetLibraryJSON(s string) {
+	m.library_json = &s
+}
+
+// LibraryJSON returns the value of the "library_json" field in the mutation.
+func (m *ExcalidrawLibraryMutation) LibraryJSON() (r string, exists bool) {
+	v := m.library_json
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLibraryJSON returns the old "library_json" field's value of the ExcalidrawLibrary entity.
+// If the ExcalidrawLibrary object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExcalidrawLibraryMutation) OldLibraryJSON(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLibraryJSON is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLibraryJSON requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLibraryJSON: %w", err)
+	}
+	return oldValue.LibraryJSON, nil
+}
+
+// ResetLibraryJSON resets all changes to the "library_json" field.
+func (m *ExcalidrawLibraryMutation) ResetLibraryJSON() {
+	m.library_json = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ExcalidrawLibraryMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ExcalidrawLibraryMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ExcalidrawLibrary entity.
+// If the ExcalidrawLibrary object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExcalidrawLibraryMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ExcalidrawLibraryMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ExcalidrawLibraryMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ExcalidrawLibraryMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ExcalidrawLibrary entity.
+// If the ExcalidrawLibrary object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExcalidrawLibraryMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ExcalidrawLibraryMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *ExcalidrawLibraryMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *ExcalidrawLibraryMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *ExcalidrawLibraryMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *ExcalidrawLibraryMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *ExcalidrawLibraryMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *ExcalidrawLibraryMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the ExcalidrawLibraryMutation builder.
+func (m *ExcalidrawLibraryMutation) Where(ps ...predicate.ExcalidrawLibrary) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ExcalidrawLibraryMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ExcalidrawLibraryMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ExcalidrawLibrary, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ExcalidrawLibraryMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ExcalidrawLibraryMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ExcalidrawLibrary).
+func (m *ExcalidrawLibraryMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ExcalidrawLibraryMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.library_json != nil {
+		fields = append(fields, excalidrawlibrary.FieldLibraryJSON)
+	}
+	if m.created_at != nil {
+		fields = append(fields, excalidrawlibrary.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, excalidrawlibrary.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ExcalidrawLibraryMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case excalidrawlibrary.FieldLibraryJSON:
+		return m.LibraryJSON()
+	case excalidrawlibrary.FieldCreatedAt:
+		return m.CreatedAt()
+	case excalidrawlibrary.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ExcalidrawLibraryMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case excalidrawlibrary.FieldLibraryJSON:
+		return m.OldLibraryJSON(ctx)
+	case excalidrawlibrary.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case excalidrawlibrary.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ExcalidrawLibrary field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExcalidrawLibraryMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case excalidrawlibrary.FieldLibraryJSON:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLibraryJSON(v)
+		return nil
+	case excalidrawlibrary.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case excalidrawlibrary.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ExcalidrawLibrary field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ExcalidrawLibraryMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ExcalidrawLibraryMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExcalidrawLibraryMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ExcalidrawLibrary numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ExcalidrawLibraryMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ExcalidrawLibraryMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ExcalidrawLibraryMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ExcalidrawLibrary nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ExcalidrawLibraryMutation) ResetField(name string) error {
+	switch name {
+	case excalidrawlibrary.FieldLibraryJSON:
+		m.ResetLibraryJSON()
+		return nil
+	case excalidrawlibrary.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case excalidrawlibrary.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ExcalidrawLibrary field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ExcalidrawLibraryMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, excalidrawlibrary.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ExcalidrawLibraryMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case excalidrawlibrary.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ExcalidrawLibraryMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ExcalidrawLibraryMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ExcalidrawLibraryMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, excalidrawlibrary.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ExcalidrawLibraryMutation) EdgeCleared(name string) bool {
+	switch name {
+	case excalidrawlibrary.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ExcalidrawLibraryMutation) ClearEdge(name string) error {
+	switch name {
+	case excalidrawlibrary.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown ExcalidrawLibrary unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ExcalidrawLibraryMutation) ResetEdge(name string) error {
+	switch name {
+	case excalidrawlibrary.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown ExcalidrawLibrary edge %s", name)
 }
 
 // FontMutation represents an operation that mutates the Font nodes in the graph.
@@ -6051,6 +6562,9 @@ type NoteMutation struct {
 	attachments        map[int]struct{}
 	removedattachments map[int]struct{}
 	clearedattachments bool
+	whiteboards        map[uuid.UUID]struct{}
+	removedwhiteboards map[uuid.UUID]struct{}
+	clearedwhiteboards bool
 	tags               map[uuid.UUID]struct{}
 	removedtags        map[uuid.UUID]struct{}
 	clearedtags        bool
@@ -6619,6 +7133,60 @@ func (m *NoteMutation) ResetAttachments() {
 	m.removedattachments = nil
 }
 
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by ids.
+func (m *NoteMutation) AddWhiteboardIDs(ids ...uuid.UUID) {
+	if m.whiteboards == nil {
+		m.whiteboards = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.whiteboards[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWhiteboards clears the "whiteboards" edge to the Whiteboard entity.
+func (m *NoteMutation) ClearWhiteboards() {
+	m.clearedwhiteboards = true
+}
+
+// WhiteboardsCleared reports if the "whiteboards" edge to the Whiteboard entity was cleared.
+func (m *NoteMutation) WhiteboardsCleared() bool {
+	return m.clearedwhiteboards
+}
+
+// RemoveWhiteboardIDs removes the "whiteboards" edge to the Whiteboard entity by IDs.
+func (m *NoteMutation) RemoveWhiteboardIDs(ids ...uuid.UUID) {
+	if m.removedwhiteboards == nil {
+		m.removedwhiteboards = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.whiteboards, ids[i])
+		m.removedwhiteboards[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWhiteboards returns the removed IDs of the "whiteboards" edge to the Whiteboard entity.
+func (m *NoteMutation) RemovedWhiteboardsIDs() (ids []uuid.UUID) {
+	for id := range m.removedwhiteboards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WhiteboardsIDs returns the "whiteboards" edge IDs in the mutation.
+func (m *NoteMutation) WhiteboardsIDs() (ids []uuid.UUID) {
+	for id := range m.whiteboards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWhiteboards resets all changes to the "whiteboards" edge.
+func (m *NoteMutation) ResetWhiteboards() {
+	m.whiteboards = nil
+	m.clearedwhiteboards = false
+	m.removedwhiteboards = nil
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by ids.
 func (m *NoteMutation) AddTagIDs(ids ...uuid.UUID) {
 	if m.tags == nil {
@@ -6963,12 +7531,15 @@ func (m *NoteMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NoteMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.user != nil {
 		edges = append(edges, note.EdgeUser)
 	}
 	if m.attachments != nil {
 		edges = append(edges, note.EdgeAttachments)
+	}
+	if m.whiteboards != nil {
+		edges = append(edges, note.EdgeWhiteboards)
 	}
 	if m.tags != nil {
 		edges = append(edges, note.EdgeTags)
@@ -6990,6 +7561,12 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case note.EdgeWhiteboards:
+		ids := make([]ent.Value, 0, len(m.whiteboards))
+		for id := range m.whiteboards {
+			ids = append(ids, id)
+		}
+		return ids
 	case note.EdgeTags:
 		ids := make([]ent.Value, 0, len(m.tags))
 		for id := range m.tags {
@@ -7002,9 +7579,12 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *NoteMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedattachments != nil {
 		edges = append(edges, note.EdgeAttachments)
+	}
+	if m.removedwhiteboards != nil {
+		edges = append(edges, note.EdgeWhiteboards)
 	}
 	if m.removedtags != nil {
 		edges = append(edges, note.EdgeTags)
@@ -7022,6 +7602,12 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case note.EdgeWhiteboards:
+		ids := make([]ent.Value, 0, len(m.removedwhiteboards))
+		for id := range m.removedwhiteboards {
+			ids = append(ids, id)
+		}
+		return ids
 	case note.EdgeTags:
 		ids := make([]ent.Value, 0, len(m.removedtags))
 		for id := range m.removedtags {
@@ -7034,12 +7620,15 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NoteMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.cleareduser {
 		edges = append(edges, note.EdgeUser)
 	}
 	if m.clearedattachments {
 		edges = append(edges, note.EdgeAttachments)
+	}
+	if m.clearedwhiteboards {
+		edges = append(edges, note.EdgeWhiteboards)
 	}
 	if m.clearedtags {
 		edges = append(edges, note.EdgeTags)
@@ -7055,6 +7644,8 @@ func (m *NoteMutation) EdgeCleared(name string) bool {
 		return m.cleareduser
 	case note.EdgeAttachments:
 		return m.clearedattachments
+	case note.EdgeWhiteboards:
+		return m.clearedwhiteboards
 	case note.EdgeTags:
 		return m.clearedtags
 	}
@@ -7081,6 +7672,9 @@ func (m *NoteMutation) ResetEdge(name string) error {
 		return nil
 	case note.EdgeAttachments:
 		m.ResetAttachments()
+		return nil
+	case note.EdgeWhiteboards:
+		m.ResetWhiteboards()
 		return nil
 	case note.EdgeTags:
 		m.ResetTags()
@@ -7760,44 +8354,49 @@ func (m *TagMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int
-	username           *string
-	password_hash      *string
-	email              *string
-	nickname           *string
-	role               *user.Role
-	avatar             *string
-	share_signature    *string
-	lazycat_uid        *string
-	created_at         *time.Time
-	updated_at         *time.Time
-	clearedFields      map[string]struct{}
-	notes              map[uuid.UUID]struct{}
-	removednotes       map[uuid.UUID]struct{}
-	clearednotes       bool
-	attachments        map[int]struct{}
-	removedattachments map[int]struct{}
-	clearedattachments bool
-	tags               map[uuid.UUID]struct{}
-	removedtags        map[uuid.UUID]struct{}
-	clearedtags        bool
-	fonts              map[uuid.UUID]struct{}
-	removedfonts       map[uuid.UUID]struct{}
-	clearedfonts       bool
-	import_jobs        map[int]struct{}
-	removedimport_jobs map[int]struct{}
-	clearedimport_jobs bool
-	mcp_tokens         map[int]struct{}
-	removedmcp_tokens  map[int]struct{}
-	clearedmcp_tokens  bool
-	mcp_images         map[int]struct{}
-	removedmcp_images  map[int]struct{}
-	clearedmcp_images  bool
-	done               bool
-	oldValue           func(context.Context) (*User, error)
-	predicates         []predicate.User
+	op                        Op
+	typ                       string
+	id                        *int
+	username                  *string
+	password_hash             *string
+	email                     *string
+	nickname                  *string
+	role                      *user.Role
+	avatar                    *string
+	share_signature           *string
+	lazycat_uid               *string
+	created_at                *time.Time
+	updated_at                *time.Time
+	clearedFields             map[string]struct{}
+	notes                     map[uuid.UUID]struct{}
+	removednotes              map[uuid.UUID]struct{}
+	clearednotes              bool
+	attachments               map[int]struct{}
+	removedattachments        map[int]struct{}
+	clearedattachments        bool
+	excalidraw_library        *uuid.UUID
+	clearedexcalidraw_library bool
+	whiteboards               map[uuid.UUID]struct{}
+	removedwhiteboards        map[uuid.UUID]struct{}
+	clearedwhiteboards        bool
+	tags                      map[uuid.UUID]struct{}
+	removedtags               map[uuid.UUID]struct{}
+	clearedtags               bool
+	fonts                     map[uuid.UUID]struct{}
+	removedfonts              map[uuid.UUID]struct{}
+	clearedfonts              bool
+	import_jobs               map[int]struct{}
+	removedimport_jobs        map[int]struct{}
+	clearedimport_jobs        bool
+	mcp_tokens                map[int]struct{}
+	removedmcp_tokens         map[int]struct{}
+	clearedmcp_tokens         bool
+	mcp_images                map[int]struct{}
+	removedmcp_images         map[int]struct{}
+	clearedmcp_images         bool
+	done                      bool
+	oldValue                  func(context.Context) (*User, error)
+	predicates                []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -8418,6 +9017,99 @@ func (m *UserMutation) ResetAttachments() {
 	m.removedattachments = nil
 }
 
+// SetExcalidrawLibraryID sets the "excalidraw_library" edge to the ExcalidrawLibrary entity by id.
+func (m *UserMutation) SetExcalidrawLibraryID(id uuid.UUID) {
+	m.excalidraw_library = &id
+}
+
+// ClearExcalidrawLibrary clears the "excalidraw_library" edge to the ExcalidrawLibrary entity.
+func (m *UserMutation) ClearExcalidrawLibrary() {
+	m.clearedexcalidraw_library = true
+}
+
+// ExcalidrawLibraryCleared reports if the "excalidraw_library" edge to the ExcalidrawLibrary entity was cleared.
+func (m *UserMutation) ExcalidrawLibraryCleared() bool {
+	return m.clearedexcalidraw_library
+}
+
+// ExcalidrawLibraryID returns the "excalidraw_library" edge ID in the mutation.
+func (m *UserMutation) ExcalidrawLibraryID() (id uuid.UUID, exists bool) {
+	if m.excalidraw_library != nil {
+		return *m.excalidraw_library, true
+	}
+	return
+}
+
+// ExcalidrawLibraryIDs returns the "excalidraw_library" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ExcalidrawLibraryID instead. It exists only for internal usage by the builders.
+func (m *UserMutation) ExcalidrawLibraryIDs() (ids []uuid.UUID) {
+	if id := m.excalidraw_library; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetExcalidrawLibrary resets all changes to the "excalidraw_library" edge.
+func (m *UserMutation) ResetExcalidrawLibrary() {
+	m.excalidraw_library = nil
+	m.clearedexcalidraw_library = false
+}
+
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by ids.
+func (m *UserMutation) AddWhiteboardIDs(ids ...uuid.UUID) {
+	if m.whiteboards == nil {
+		m.whiteboards = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.whiteboards[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWhiteboards clears the "whiteboards" edge to the Whiteboard entity.
+func (m *UserMutation) ClearWhiteboards() {
+	m.clearedwhiteboards = true
+}
+
+// WhiteboardsCleared reports if the "whiteboards" edge to the Whiteboard entity was cleared.
+func (m *UserMutation) WhiteboardsCleared() bool {
+	return m.clearedwhiteboards
+}
+
+// RemoveWhiteboardIDs removes the "whiteboards" edge to the Whiteboard entity by IDs.
+func (m *UserMutation) RemoveWhiteboardIDs(ids ...uuid.UUID) {
+	if m.removedwhiteboards == nil {
+		m.removedwhiteboards = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.whiteboards, ids[i])
+		m.removedwhiteboards[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWhiteboards returns the removed IDs of the "whiteboards" edge to the Whiteboard entity.
+func (m *UserMutation) RemovedWhiteboardsIDs() (ids []uuid.UUID) {
+	for id := range m.removedwhiteboards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WhiteboardsIDs returns the "whiteboards" edge IDs in the mutation.
+func (m *UserMutation) WhiteboardsIDs() (ids []uuid.UUID) {
+	for id := range m.whiteboards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWhiteboards resets all changes to the "whiteboards" edge.
+func (m *UserMutation) ResetWhiteboards() {
+	m.whiteboards = nil
+	m.clearedwhiteboards = false
+	m.removedwhiteboards = nil
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by ids.
 func (m *UserMutation) AddTagIDs(ids ...uuid.UUID) {
 	if m.tags == nil {
@@ -9001,12 +9693,18 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.notes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
 	if m.attachments != nil {
 		edges = append(edges, user.EdgeAttachments)
+	}
+	if m.excalidraw_library != nil {
+		edges = append(edges, user.EdgeExcalidrawLibrary)
+	}
+	if m.whiteboards != nil {
+		edges = append(edges, user.EdgeWhiteboards)
 	}
 	if m.tags != nil {
 		edges = append(edges, user.EdgeTags)
@@ -9039,6 +9737,16 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 	case user.EdgeAttachments:
 		ids := make([]ent.Value, 0, len(m.attachments))
 		for id := range m.attachments {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeExcalidrawLibrary:
+		if id := m.excalidraw_library; id != nil {
+			return []ent.Value{*id}
+		}
+	case user.EdgeWhiteboards:
+		ids := make([]ent.Value, 0, len(m.whiteboards))
+		for id := range m.whiteboards {
 			ids = append(ids, id)
 		}
 		return ids
@@ -9078,12 +9786,15 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.removednotes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
 	if m.removedattachments != nil {
 		edges = append(edges, user.EdgeAttachments)
+	}
+	if m.removedwhiteboards != nil {
+		edges = append(edges, user.EdgeWhiteboards)
 	}
 	if m.removedtags != nil {
 		edges = append(edges, user.EdgeTags)
@@ -9116,6 +9827,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 	case user.EdgeAttachments:
 		ids := make([]ent.Value, 0, len(m.removedattachments))
 		for id := range m.removedattachments {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeWhiteboards:
+		ids := make([]ent.Value, 0, len(m.removedwhiteboards))
+		for id := range m.removedwhiteboards {
 			ids = append(ids, id)
 		}
 		return ids
@@ -9155,12 +9872,18 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.clearednotes {
 		edges = append(edges, user.EdgeNotes)
 	}
 	if m.clearedattachments {
 		edges = append(edges, user.EdgeAttachments)
+	}
+	if m.clearedexcalidraw_library {
+		edges = append(edges, user.EdgeExcalidrawLibrary)
+	}
+	if m.clearedwhiteboards {
+		edges = append(edges, user.EdgeWhiteboards)
 	}
 	if m.clearedtags {
 		edges = append(edges, user.EdgeTags)
@@ -9188,6 +9911,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearednotes
 	case user.EdgeAttachments:
 		return m.clearedattachments
+	case user.EdgeExcalidrawLibrary:
+		return m.clearedexcalidraw_library
+	case user.EdgeWhiteboards:
+		return m.clearedwhiteboards
 	case user.EdgeTags:
 		return m.clearedtags
 	case user.EdgeFonts:
@@ -9206,6 +9933,9 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
 	switch name {
+	case user.EdgeExcalidrawLibrary:
+		m.ClearExcalidrawLibrary()
+		return nil
 	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
@@ -9219,6 +9949,12 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeAttachments:
 		m.ResetAttachments()
+		return nil
+	case user.EdgeExcalidrawLibrary:
+		m.ResetExcalidrawLibrary()
+		return nil
+	case user.EdgeWhiteboards:
+		m.ResetWhiteboards()
 		return nil
 	case user.EdgeTags:
 		m.ResetTags()
@@ -9237,4 +9973,700 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)
+}
+
+// WhiteboardMutation represents an operation that mutates the Whiteboard nodes in the graph.
+type WhiteboardMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	title         *string
+	scene_json    *string
+	thumbnail     *string
+	created_at    *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	note          *uuid.UUID
+	clearednote   bool
+	user          *int
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*Whiteboard, error)
+	predicates    []predicate.Whiteboard
+}
+
+var _ ent.Mutation = (*WhiteboardMutation)(nil)
+
+// whiteboardOption allows management of the mutation configuration using functional options.
+type whiteboardOption func(*WhiteboardMutation)
+
+// newWhiteboardMutation creates new mutation for the Whiteboard entity.
+func newWhiteboardMutation(c config, op Op, opts ...whiteboardOption) *WhiteboardMutation {
+	m := &WhiteboardMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWhiteboard,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWhiteboardID sets the ID field of the mutation.
+func withWhiteboardID(id uuid.UUID) whiteboardOption {
+	return func(m *WhiteboardMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Whiteboard
+		)
+		m.oldValue = func(ctx context.Context) (*Whiteboard, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Whiteboard.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWhiteboard sets the old Whiteboard of the mutation.
+func withWhiteboard(node *Whiteboard) whiteboardOption {
+	return func(m *WhiteboardMutation) {
+		m.oldValue = func(context.Context) (*Whiteboard, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WhiteboardMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WhiteboardMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Whiteboard entities.
+func (m *WhiteboardMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WhiteboardMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WhiteboardMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Whiteboard.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetTitle sets the "title" field.
+func (m *WhiteboardMutation) SetTitle(s string) {
+	m.title = &s
+}
+
+// Title returns the value of the "title" field in the mutation.
+func (m *WhiteboardMutation) Title() (r string, exists bool) {
+	v := m.title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitle returns the old "title" field's value of the Whiteboard entity.
+// If the Whiteboard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WhiteboardMutation) OldTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitle: %w", err)
+	}
+	return oldValue.Title, nil
+}
+
+// ResetTitle resets all changes to the "title" field.
+func (m *WhiteboardMutation) ResetTitle() {
+	m.title = nil
+}
+
+// SetSceneJSON sets the "scene_json" field.
+func (m *WhiteboardMutation) SetSceneJSON(s string) {
+	m.scene_json = &s
+}
+
+// SceneJSON returns the value of the "scene_json" field in the mutation.
+func (m *WhiteboardMutation) SceneJSON() (r string, exists bool) {
+	v := m.scene_json
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSceneJSON returns the old "scene_json" field's value of the Whiteboard entity.
+// If the Whiteboard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WhiteboardMutation) OldSceneJSON(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSceneJSON is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSceneJSON requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSceneJSON: %w", err)
+	}
+	return oldValue.SceneJSON, nil
+}
+
+// ResetSceneJSON resets all changes to the "scene_json" field.
+func (m *WhiteboardMutation) ResetSceneJSON() {
+	m.scene_json = nil
+}
+
+// SetThumbnail sets the "thumbnail" field.
+func (m *WhiteboardMutation) SetThumbnail(s string) {
+	m.thumbnail = &s
+}
+
+// Thumbnail returns the value of the "thumbnail" field in the mutation.
+func (m *WhiteboardMutation) Thumbnail() (r string, exists bool) {
+	v := m.thumbnail
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnail returns the old "thumbnail" field's value of the Whiteboard entity.
+// If the Whiteboard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WhiteboardMutation) OldThumbnail(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnail: %w", err)
+	}
+	return oldValue.Thumbnail, nil
+}
+
+// ClearThumbnail clears the value of the "thumbnail" field.
+func (m *WhiteboardMutation) ClearThumbnail() {
+	m.thumbnail = nil
+	m.clearedFields[whiteboard.FieldThumbnail] = struct{}{}
+}
+
+// ThumbnailCleared returns if the "thumbnail" field was cleared in this mutation.
+func (m *WhiteboardMutation) ThumbnailCleared() bool {
+	_, ok := m.clearedFields[whiteboard.FieldThumbnail]
+	return ok
+}
+
+// ResetThumbnail resets all changes to the "thumbnail" field.
+func (m *WhiteboardMutation) ResetThumbnail() {
+	m.thumbnail = nil
+	delete(m.clearedFields, whiteboard.FieldThumbnail)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WhiteboardMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WhiteboardMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Whiteboard entity.
+// If the Whiteboard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WhiteboardMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WhiteboardMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WhiteboardMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WhiteboardMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Whiteboard entity.
+// If the Whiteboard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WhiteboardMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WhiteboardMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetNoteID sets the "note" edge to the Note entity by id.
+func (m *WhiteboardMutation) SetNoteID(id uuid.UUID) {
+	m.note = &id
+}
+
+// ClearNote clears the "note" edge to the Note entity.
+func (m *WhiteboardMutation) ClearNote() {
+	m.clearednote = true
+}
+
+// NoteCleared reports if the "note" edge to the Note entity was cleared.
+func (m *WhiteboardMutation) NoteCleared() bool {
+	return m.clearednote
+}
+
+// NoteID returns the "note" edge ID in the mutation.
+func (m *WhiteboardMutation) NoteID() (id uuid.UUID, exists bool) {
+	if m.note != nil {
+		return *m.note, true
+	}
+	return
+}
+
+// NoteIDs returns the "note" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// NoteID instead. It exists only for internal usage by the builders.
+func (m *WhiteboardMutation) NoteIDs() (ids []uuid.UUID) {
+	if id := m.note; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetNote resets all changes to the "note" edge.
+func (m *WhiteboardMutation) ResetNote() {
+	m.note = nil
+	m.clearednote = false
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *WhiteboardMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *WhiteboardMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *WhiteboardMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *WhiteboardMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *WhiteboardMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *WhiteboardMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the WhiteboardMutation builder.
+func (m *WhiteboardMutation) Where(ps ...predicate.Whiteboard) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WhiteboardMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WhiteboardMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Whiteboard, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WhiteboardMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WhiteboardMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Whiteboard).
+func (m *WhiteboardMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WhiteboardMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.title != nil {
+		fields = append(fields, whiteboard.FieldTitle)
+	}
+	if m.scene_json != nil {
+		fields = append(fields, whiteboard.FieldSceneJSON)
+	}
+	if m.thumbnail != nil {
+		fields = append(fields, whiteboard.FieldThumbnail)
+	}
+	if m.created_at != nil {
+		fields = append(fields, whiteboard.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, whiteboard.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WhiteboardMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case whiteboard.FieldTitle:
+		return m.Title()
+	case whiteboard.FieldSceneJSON:
+		return m.SceneJSON()
+	case whiteboard.FieldThumbnail:
+		return m.Thumbnail()
+	case whiteboard.FieldCreatedAt:
+		return m.CreatedAt()
+	case whiteboard.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WhiteboardMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case whiteboard.FieldTitle:
+		return m.OldTitle(ctx)
+	case whiteboard.FieldSceneJSON:
+		return m.OldSceneJSON(ctx)
+	case whiteboard.FieldThumbnail:
+		return m.OldThumbnail(ctx)
+	case whiteboard.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case whiteboard.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Whiteboard field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WhiteboardMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case whiteboard.FieldTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitle(v)
+		return nil
+	case whiteboard.FieldSceneJSON:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSceneJSON(v)
+		return nil
+	case whiteboard.FieldThumbnail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnail(v)
+		return nil
+	case whiteboard.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case whiteboard.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Whiteboard field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WhiteboardMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WhiteboardMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WhiteboardMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Whiteboard numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WhiteboardMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(whiteboard.FieldThumbnail) {
+		fields = append(fields, whiteboard.FieldThumbnail)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WhiteboardMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WhiteboardMutation) ClearField(name string) error {
+	switch name {
+	case whiteboard.FieldThumbnail:
+		m.ClearThumbnail()
+		return nil
+	}
+	return fmt.Errorf("unknown Whiteboard nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WhiteboardMutation) ResetField(name string) error {
+	switch name {
+	case whiteboard.FieldTitle:
+		m.ResetTitle()
+		return nil
+	case whiteboard.FieldSceneJSON:
+		m.ResetSceneJSON()
+		return nil
+	case whiteboard.FieldThumbnail:
+		m.ResetThumbnail()
+		return nil
+	case whiteboard.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case whiteboard.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Whiteboard field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WhiteboardMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.note != nil {
+		edges = append(edges, whiteboard.EdgeNote)
+	}
+	if m.user != nil {
+		edges = append(edges, whiteboard.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WhiteboardMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case whiteboard.EdgeNote:
+		if id := m.note; id != nil {
+			return []ent.Value{*id}
+		}
+	case whiteboard.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WhiteboardMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WhiteboardMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WhiteboardMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearednote {
+		edges = append(edges, whiteboard.EdgeNote)
+	}
+	if m.cleareduser {
+		edges = append(edges, whiteboard.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WhiteboardMutation) EdgeCleared(name string) bool {
+	switch name {
+	case whiteboard.EdgeNote:
+		return m.clearednote
+	case whiteboard.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WhiteboardMutation) ClearEdge(name string) error {
+	switch name {
+	case whiteboard.EdgeNote:
+		m.ClearNote()
+		return nil
+	case whiteboard.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown Whiteboard unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WhiteboardMutation) ResetEdge(name string) error {
+	switch name {
+	case whiteboard.EdgeNote:
+		m.ResetNote()
+		return nil
+	case whiteboard.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown Whiteboard edge %s", name)
 }

@@ -1,5 +1,3 @@
-import { renderDrawioDiagram } from "./drawio";
-import { renderMermaidDiagram } from "./mermaid";
 import type {
   DiagramRenderRequest,
   DiagramRenderResult,
@@ -8,15 +6,22 @@ import type {
 } from "./types";
 
 const rendererOverrides = new Map<DiagramType, DiagramRenderer>();
+const defaultRendererCache = new Map<DiagramType, DiagramRenderer>();
 
-const defaultRenderers: Record<DiagramType, DiagramRenderer> = {
-  mermaid: {
-    type: "mermaid",
-    render: renderMermaidDiagram,
+const defaultRendererLoaders: Record<DiagramType, () => Promise<DiagramRenderer>> = {
+  mermaid: async () => {
+    const { renderMermaidDiagram } = await import("./mermaid");
+    return {
+      type: "mermaid",
+      render: renderMermaidDiagram,
+    };
   },
-  drawio: {
-    type: "drawio",
-    render: renderDrawioDiagram,
+  drawio: async () => {
+    const { renderDrawioDiagram } = await import("./drawio");
+    return {
+      type: "drawio",
+      render: renderDrawioDiagram,
+    };
   },
 };
 
@@ -31,9 +36,19 @@ export function setDiagramRendererForTest(
   rendererOverrides.delete(type);
 }
 
+async function loadDefaultRenderer(type: DiagramType): Promise<DiagramRenderer> {
+  const cached = defaultRendererCache.get(type);
+  if (cached) return cached;
+
+  const renderer = await defaultRendererLoaders[type]();
+  defaultRendererCache.set(type, renderer);
+  return renderer;
+}
+
 export async function renderDiagram(
   request: DiagramRenderRequest,
 ): Promise<DiagramRenderResult> {
-  const renderer = rendererOverrides.get(request.type) ?? defaultRenderers[request.type];
+  const renderer =
+    rendererOverrides.get(request.type) ?? (await loadDefaultRenderer(request.type));
   return renderer.render(request);
 }

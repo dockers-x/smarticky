@@ -1,4 +1,5 @@
 import type { DiagramType } from "./types";
+import { isWhiteboardFenceLanguage } from "../whiteboards";
 import { isMermaidDiagramLanguage, materializeMermaidSource } from "./mermaidSyntax";
 
 export function normalizeDiagramType(language: string | null | undefined): DiagramType | null {
@@ -23,7 +24,11 @@ export function stripDiagramFences(markdown: string): string {
 
   for (let index = 0; index < lines.length; index += 1) {
     const openingFence = lines[index].match(/^```([^\n`]*)\s*$/);
-    if (!openingFence || !normalizeDiagramType(openingFence[1])) {
+    if (
+      !openingFence ||
+      (!normalizeDiagramType(openingFence[1]) &&
+        !isWhiteboardFenceLanguage(openingFence[1]))
+    ) {
       visibleLines.push(lines[index]);
       continue;
     }

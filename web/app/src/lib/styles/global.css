@@ -2258,6 +2258,229 @@ h6 {
   font-size: 0.78em;
 }
 
+.whiteboard-reference {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  margin: 1em 0;
+  border: 1px solid var(--color-divider, rgba(0, 0, 0, 0.14));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-card, #fff) 94%, transparent);
+  color: var(--color-text, inherit);
+  padding: 13px 14px;
+  text-align: left;
+}
+
+.whiteboard-reference:hover {
+  border-color: color-mix(in srgb, var(--color-brand, #e8531a) 44%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand, #e8531a) 7%, var(--color-card, #fff));
+}
+
+.whiteboard-reference__label {
+  grid-column: 1 / -1;
+  color: var(--color-brand, #e8531a);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.whiteboard-reference__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text, inherit);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whiteboard-reference__id {
+  align-self: center;
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--color-text-muted, inherit);
+  font-family:
+    "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas,
+    "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-preview__markdown .whiteboard-reference {
+  border-color: var(--share-divider);
+  background: var(--share-code);
+  color: var(--share-text);
+  font-size: 0.82em;
+}
+
+.whiteboard-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  background: rgb(0 0 0 / 46%);
+}
+
+.whiteboard-dialog {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--color-page);
+  color: var(--color-text);
+}
+
+.whiteboard-dialog__header {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-divider);
+  background: color-mix(in srgb, var(--color-card) 94%, var(--color-page));
+  padding: 10px 14px;
+}
+
+.whiteboard-dialog__title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.whiteboard-dialog__title input {
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  padding: 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.whiteboard-dialog__title span {
+  flex: 0 0 auto;
+  opacity: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.whiteboard-dialog__title span.visible {
+  opacity: 1;
+}
+
+.whiteboard-dialog__font {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.whiteboard-dialog__font span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.whiteboard-dialog__font select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-card);
+  color: var(--color-text);
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.whiteboard-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.whiteboard-dialog__icon-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.whiteboard-dialog__icon-button:hover:not(:disabled) {
+  background: var(--color-surface-secondary);
+  color: var(--color-brand);
+}
+
+.whiteboard-dialog__icon-button.danger {
+  color: var(--color-danger);
+}
+
+.whiteboard-dialog__icon-button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
+.whiteboard-dialog__icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.whiteboard-dialog__body {
+  min-height: 0;
+  background: var(--color-card);
+}
+
+.whiteboard-dialog__canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.whiteboard-dialog__state {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.whiteboard-dialog__state.error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 720px) {
+  .whiteboard-dialog__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .whiteboard-dialog__font {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .whiteboard-reference {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .whiteboard-reference__id {
+    max-width: 100%;
+  }
+}
+
 .share-preview__markdown .diagram-error {
   color: var(--share-accent);
 }

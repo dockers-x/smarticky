@@ -76,4 +76,28 @@ describe("diagramRuntime", () => {
 
     expect(root.querySelector("[data-rendered='2']")).toBeTruthy();
   });
+
+  it("restores placeholders and rerenders when only the theme changes", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = createDiagramPlaceholder("mermaid", "flowchart TD\nA --> B");
+    const themes: string[] = [];
+
+    setDiagramRendererForTest("mermaid", {
+      type: "mermaid",
+      async render(request) {
+        themes.push(request.theme);
+        return { html: `<svg data-theme="${request.theme}"></svg>` };
+      },
+    });
+
+    const action = diagramRuntime(root, { theme: "light", contentKey: "same" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    action.update({ theme: "dark", contentKey: "same" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(themes).toEqual(["light", "dark"]);
+    expect(root.querySelector("[data-theme='dark']")).toBeTruthy();
+    expect(root.querySelector("[data-diagram-placeholder='true']")).toBeNull();
+  });
 });

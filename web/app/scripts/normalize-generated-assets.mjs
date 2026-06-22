@@ -8,6 +8,10 @@ const assetsDir = join(scriptsDir, "..", "..", "static", "app", "assets");
 const svelteWhitespaceSpread =
   "[...` " + "\t" + "\n" + "\\r\\f" + "\u00a0" + "\\v\\uFEFF`]";
 const escapedWhitespaceSpread = '[..." \\t\\n\\r\\f\\u00A0\\v\\uFEFF"]';
+const cspUnsafeGlobalProbes = [
+  'Function("return this")()',
+  "Function('return this')()",
+];
 
 let changed = 0;
 
@@ -16,10 +20,12 @@ for (const filename of readdirSync(assetsDir)) {
 
   const path = join(assetsDir, filename);
   const source = readFileSync(path, "utf8");
-  const normalized = source.replaceAll(
-    svelteWhitespaceSpread,
-    escapedWhitespaceSpread,
-  );
+  let normalized = source
+    .replaceAll(svelteWhitespaceSpread, escapedWhitespaceSpread)
+    .replace(/[ \t]+$/gm, "");
+  for (const probe of cspUnsafeGlobalProbes) {
+    normalized = normalized.replaceAll(probe, "globalThis");
+  }
 
   if (normalized !== source) {
     writeFileSync(path, normalized);

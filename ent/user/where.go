@@ -741,6 +741,52 @@ func HasAttachmentsWith(preds ...predicate.Attachment) predicate.User {
 	})
 }
 
+// HasExcalidrawLibrary applies the HasEdge predicate on the "excalidraw_library" edge.
+func HasExcalidrawLibrary() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, ExcalidrawLibraryTable, ExcalidrawLibraryColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasExcalidrawLibraryWith applies the HasEdge predicate on the "excalidraw_library" edge with a given conditions (other predicates).
+func HasExcalidrawLibraryWith(preds ...predicate.ExcalidrawLibrary) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newExcalidrawLibraryStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasWhiteboards applies the HasEdge predicate on the "whiteboards" edge.
+func HasWhiteboards() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, WhiteboardsTable, WhiteboardsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasWhiteboardsWith applies the HasEdge predicate on the "whiteboards" edge with a given conditions (other predicates).
+func HasWhiteboardsWith(preds ...predicate.Whiteboard) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newWhiteboardsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTags applies the HasEdge predicate on the "tags" edge.
 func HasTags() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

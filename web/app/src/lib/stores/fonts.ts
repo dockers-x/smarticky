@@ -38,7 +38,7 @@ function quoteFontFamily(name: string): string {
   return `"${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-function fontFamilyValue(name: string): string {
+export function fontFamilyValue(name: string): string {
   if (!name || name === DEFAULT_FONT) {
     return "inherit";
   }

@@ -31,7 +31,13 @@ describe("renderMermaidDiagram", () => {
       expect.objectContaining({
         startOnLoad: false,
         securityLevel: "strict",
-        theme: "default",
+        theme: "base",
+        themeVariables: expect.objectContaining({
+          actorTextColor: "#27231f",
+          primaryColor: "#fff8f0",
+          primaryTextColor: "#27231f",
+          signalTextColor: "#27231f",
+        }),
       }),
     );
     expect(mermaidMock.parse).toHaveBeenCalledWith("flowchart TD\nA --> B");
@@ -95,7 +101,7 @@ describe("renderMermaidDiagram", () => {
     expect(mermaidMock.render).not.toHaveBeenCalled();
   });
 
-  it("uses Mermaid dark theme for dark diagram theme", async () => {
+  it("uses high-contrast Mermaid colors for dark diagram theme", async () => {
     await renderMermaidDiagram({
       type: "mermaid",
       source: "sequenceDiagram\nA->>B: hi",
@@ -104,7 +110,13 @@ describe("renderMermaidDiagram", () => {
 
     expect(mermaidMock.initialize).toHaveBeenCalledWith(
       expect.objectContaining({
-        theme: "dark",
+        theme: "base",
+        themeVariables: expect.objectContaining({
+          actorTextColor: "#f6f1e8",
+          primaryColor: "#26231d",
+          primaryTextColor: "#f6f1e8",
+          signalTextColor: "#f6f1e8",
+        }),
       }),
     );
   });

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -17,6 +18,7 @@ import (
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"sync"
 
 	"entgo.io/ent"
@@ -82,16 +84,18 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			attachment.Table:   attachment.ValidColumn,
-			backupconfig.Table: backupconfig.ValidColumn,
-			font.Table:         font.ValidColumn,
-			importitem.Table:   importitem.ValidColumn,
-			importjob.Table:    importjob.ValidColumn,
-			mcpimage.Table:     mcpimage.ValidColumn,
-			mcptoken.Table:     mcptoken.ValidColumn,
-			note.Table:         note.ValidColumn,
-			tag.Table:          tag.ValidColumn,
-			user.Table:         user.ValidColumn,
+			attachment.Table:        attachment.ValidColumn,
+			backupconfig.Table:      backupconfig.ValidColumn,
+			excalidrawlibrary.Table: excalidrawlibrary.ValidColumn,
+			font.Table:              font.ValidColumn,
+			importitem.Table:        importitem.ValidColumn,
+			importjob.Table:         importjob.ValidColumn,
+			mcpimage.Table:          mcpimage.ValidColumn,
+			mcptoken.Table:          mcptoken.ValidColumn,
+			note.Table:              note.ValidColumn,
+			tag.Table:               tag.ValidColumn,
+			user.Table:              user.ValidColumn,
+			whiteboard.Table:        whiteboard.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

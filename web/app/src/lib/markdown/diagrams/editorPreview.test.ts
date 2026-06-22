@@ -18,9 +18,16 @@ describe("editor diagram preview", () => {
         "classDiagram",
         "packet",
         "drawio",
+        "excalidraw",
       ]),
     );
-    expect(diagramCodeLanguages.at(-1)?.alias).toContain("draw.io");
+    expect(
+      diagramCodeLanguages.find((language) => language.name === "drawio")
+        ?.alias,
+    ).toContain("draw.io");
+    for (const language of diagramCodeLanguages) {
+      expect(language.alias).toContain(language.name.toLowerCase());
+    }
   });
 
   it("does not render unsupported code block languages", () => {
@@ -111,5 +118,25 @@ describe("editor diagram preview", () => {
     expect(applyPreview).toHaveBeenLastCalledWith(
       expect.stringContaining("diagram-error"),
     );
+  });
+
+  it("renders Excalidraw whiteboard references without calling diagram renderers", () => {
+    const render = vi.fn();
+    const applyPreview = vi.fn();
+    const config = createEditorDiagramCodeBlockConfig({
+      getTheme: () => "light",
+      render,
+    });
+
+    const html = config.renderPreview?.(
+      "excalidraw",
+      "whiteboard: 123e4567-e89b-12d3-a456-426614174000",
+      applyPreview,
+    );
+
+    expect(config.renderLanguage?.("excalidraw", false)).toBe("Excalidraw");
+    expect(html).toContain("data-whiteboard-reference");
+    expect(render).not.toHaveBeenCalled();
+    expect(applyPreview).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,7 @@ package ent
 import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -14,6 +15,7 @@ import (
 	"smarticky/ent/schema"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"time"
 
 	"github.com/google/uuid"
@@ -69,6 +71,26 @@ func init() {
 	backupconfig.DefaultUpdatedAt = backupconfigDescUpdatedAt.Default.(func() time.Time)
 	// backupconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	backupconfig.UpdateDefaultUpdatedAt = backupconfigDescUpdatedAt.UpdateDefault.(func() time.Time)
+	excalidrawlibraryFields := schema.ExcalidrawLibrary{}.Fields()
+	_ = excalidrawlibraryFields
+	// excalidrawlibraryDescLibraryJSON is the schema descriptor for library_json field.
+	excalidrawlibraryDescLibraryJSON := excalidrawlibraryFields[1].Descriptor()
+	// excalidrawlibrary.DefaultLibraryJSON holds the default value on creation for the library_json field.
+	excalidrawlibrary.DefaultLibraryJSON = excalidrawlibraryDescLibraryJSON.Default.(string)
+	// excalidrawlibraryDescCreatedAt is the schema descriptor for created_at field.
+	excalidrawlibraryDescCreatedAt := excalidrawlibraryFields[2].Descriptor()
+	// excalidrawlibrary.DefaultCreatedAt holds the default value on creation for the created_at field.
+	excalidrawlibrary.DefaultCreatedAt = excalidrawlibraryDescCreatedAt.Default.(func() time.Time)
+	// excalidrawlibraryDescUpdatedAt is the schema descriptor for updated_at field.
+	excalidrawlibraryDescUpdatedAt := excalidrawlibraryFields[3].Descriptor()
+	// excalidrawlibrary.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	excalidrawlibrary.DefaultUpdatedAt = excalidrawlibraryDescUpdatedAt.Default.(func() time.Time)
+	// excalidrawlibrary.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	excalidrawlibrary.UpdateDefaultUpdatedAt = excalidrawlibraryDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// excalidrawlibraryDescID is the schema descriptor for id field.
+	excalidrawlibraryDescID := excalidrawlibraryFields[0].Descriptor()
+	// excalidrawlibrary.DefaultID holds the default value on creation for the id field.
+	excalidrawlibrary.DefaultID = excalidrawlibraryDescID.Default.(func() uuid.UUID)
 	fontFields := schema.Font{}.Fields()
 	_ = fontFields
 	// fontDescName is the schema descriptor for name field.
@@ -291,4 +313,28 @@ func init() {
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	whiteboardFields := schema.Whiteboard{}.Fields()
+	_ = whiteboardFields
+	// whiteboardDescTitle is the schema descriptor for title field.
+	whiteboardDescTitle := whiteboardFields[1].Descriptor()
+	// whiteboard.DefaultTitle holds the default value on creation for the title field.
+	whiteboard.DefaultTitle = whiteboardDescTitle.Default.(string)
+	// whiteboardDescSceneJSON is the schema descriptor for scene_json field.
+	whiteboardDescSceneJSON := whiteboardFields[2].Descriptor()
+	// whiteboard.DefaultSceneJSON holds the default value on creation for the scene_json field.
+	whiteboard.DefaultSceneJSON = whiteboardDescSceneJSON.Default.(string)
+	// whiteboardDescCreatedAt is the schema descriptor for created_at field.
+	whiteboardDescCreatedAt := whiteboardFields[4].Descriptor()
+	// whiteboard.DefaultCreatedAt holds the default value on creation for the created_at field.
+	whiteboard.DefaultCreatedAt = whiteboardDescCreatedAt.Default.(func() time.Time)
+	// whiteboardDescUpdatedAt is the schema descriptor for updated_at field.
+	whiteboardDescUpdatedAt := whiteboardFields[5].Descriptor()
+	// whiteboard.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	whiteboard.DefaultUpdatedAt = whiteboardDescUpdatedAt.Default.(func() time.Time)
+	// whiteboard.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	whiteboard.UpdateDefaultUpdatedAt = whiteboardDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// whiteboardDescID is the schema descriptor for id field.
+	whiteboardDescID := whiteboardFields[0].Descriptor()
+	// whiteboard.DefaultID holds the default value on creation for the id field.
+	whiteboard.DefaultID = whiteboardDescID.Default.(func() uuid.UUID)
 }

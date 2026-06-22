@@ -13,6 +13,7 @@ import (
 
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -21,6 +22,7 @@ import (
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -38,6 +40,8 @@ type Client struct {
 	Attachment *AttachmentClient
 	// BackupConfig is the client for interacting with the BackupConfig builders.
 	BackupConfig *BackupConfigClient
+	// ExcalidrawLibrary is the client for interacting with the ExcalidrawLibrary builders.
+	ExcalidrawLibrary *ExcalidrawLibraryClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
 	// ImportItem is the client for interacting with the ImportItem builders.
@@ -54,6 +58,8 @@ type Client struct {
 	Tag *TagClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// Whiteboard is the client for interacting with the Whiteboard builders.
+	Whiteboard *WhiteboardClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -67,6 +73,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Attachment = NewAttachmentClient(c.config)
 	c.BackupConfig = NewBackupConfigClient(c.config)
+	c.ExcalidrawLibrary = NewExcalidrawLibraryClient(c.config)
 	c.Font = NewFontClient(c.config)
 	c.ImportItem = NewImportItemClient(c.config)
 	c.ImportJob = NewImportJobClient(c.config)
@@ -75,6 +82,7 @@ func (c *Client) init() {
 	c.Note = NewNoteClient(c.config)
 	c.Tag = NewTagClient(c.config)
 	c.User = NewUserClient(c.config)
+	c.Whiteboard = NewWhiteboardClient(c.config)
 }
 
 type (
@@ -165,18 +173,20 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Attachment:   NewAttachmentClient(cfg),
-		BackupConfig: NewBackupConfigClient(cfg),
-		Font:         NewFontClient(cfg),
-		ImportItem:   NewImportItemClient(cfg),
-		ImportJob:    NewImportJobClient(cfg),
-		MCPImage:     NewMCPImageClient(cfg),
-		MCPToken:     NewMCPTokenClient(cfg),
-		Note:         NewNoteClient(cfg),
-		Tag:          NewTagClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		Attachment:        NewAttachmentClient(cfg),
+		BackupConfig:      NewBackupConfigClient(cfg),
+		ExcalidrawLibrary: NewExcalidrawLibraryClient(cfg),
+		Font:              NewFontClient(cfg),
+		ImportItem:        NewImportItemClient(cfg),
+		ImportJob:         NewImportJobClient(cfg),
+		MCPImage:          NewMCPImageClient(cfg),
+		MCPToken:          NewMCPTokenClient(cfg),
+		Note:              NewNoteClient(cfg),
+		Tag:               NewTagClient(cfg),
+		User:              NewUserClient(cfg),
+		Whiteboard:        NewWhiteboardClient(cfg),
 	}, nil
 }
 
@@ -194,18 +204,20 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Attachment:   NewAttachmentClient(cfg),
-		BackupConfig: NewBackupConfigClient(cfg),
-		Font:         NewFontClient(cfg),
-		ImportItem:   NewImportItemClient(cfg),
-		ImportJob:    NewImportJobClient(cfg),
-		MCPImage:     NewMCPImageClient(cfg),
-		MCPToken:     NewMCPTokenClient(cfg),
-		Note:         NewNoteClient(cfg),
-		Tag:          NewTagClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		Attachment:        NewAttachmentClient(cfg),
+		BackupConfig:      NewBackupConfigClient(cfg),
+		ExcalidrawLibrary: NewExcalidrawLibraryClient(cfg),
+		Font:              NewFontClient(cfg),
+		ImportItem:        NewImportItemClient(cfg),
+		ImportJob:         NewImportJobClient(cfg),
+		MCPImage:          NewMCPImageClient(cfg),
+		MCPToken:          NewMCPTokenClient(cfg),
+		Note:              NewNoteClient(cfg),
+		Tag:               NewTagClient(cfg),
+		User:              NewUserClient(cfg),
+		Whiteboard:        NewWhiteboardClient(cfg),
 	}, nil
 }
 
@@ -235,8 +247,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Attachment, c.BackupConfig, c.Font, c.ImportItem, c.ImportJob, c.MCPImage,
-		c.MCPToken, c.Note, c.Tag, c.User,
+		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Font, c.ImportItem,
+		c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User, c.Whiteboard,
 	} {
 		n.Use(hooks...)
 	}
@@ -246,8 +258,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Attachment, c.BackupConfig, c.Font, c.ImportItem, c.ImportJob, c.MCPImage,
-		c.MCPToken, c.Note, c.Tag, c.User,
+		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Font, c.ImportItem,
+		c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User, c.Whiteboard,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -260,6 +272,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Attachment.mutate(ctx, m)
 	case *BackupConfigMutation:
 		return c.BackupConfig.mutate(ctx, m)
+	case *ExcalidrawLibraryMutation:
+		return c.ExcalidrawLibrary.mutate(ctx, m)
 	case *FontMutation:
 		return c.Font.mutate(ctx, m)
 	case *ImportItemMutation:
@@ -276,6 +290,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Tag.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
+	case *WhiteboardMutation:
+		return c.Whiteboard.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -576,6 +592,155 @@ func (c *BackupConfigClient) mutate(ctx context.Context, m *BackupConfigMutation
 		return (&BackupConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown BackupConfig mutation op: %q", m.Op())
+	}
+}
+
+// ExcalidrawLibraryClient is a client for the ExcalidrawLibrary schema.
+type ExcalidrawLibraryClient struct {
+	config
+}
+
+// NewExcalidrawLibraryClient returns a client for the ExcalidrawLibrary from the given config.
+func NewExcalidrawLibraryClient(c config) *ExcalidrawLibraryClient {
+	return &ExcalidrawLibraryClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `excalidrawlibrary.Hooks(f(g(h())))`.
+func (c *ExcalidrawLibraryClient) Use(hooks ...Hook) {
+	c.hooks.ExcalidrawLibrary = append(c.hooks.ExcalidrawLibrary, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `excalidrawlibrary.Intercept(f(g(h())))`.
+func (c *ExcalidrawLibraryClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ExcalidrawLibrary = append(c.inters.ExcalidrawLibrary, interceptors...)
+}
+
+// Create returns a builder for creating a ExcalidrawLibrary entity.
+func (c *ExcalidrawLibraryClient) Create() *ExcalidrawLibraryCreate {
+	mutation := newExcalidrawLibraryMutation(c.config, OpCreate)
+	return &ExcalidrawLibraryCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ExcalidrawLibrary entities.
+func (c *ExcalidrawLibraryClient) CreateBulk(builders ...*ExcalidrawLibraryCreate) *ExcalidrawLibraryCreateBulk {
+	return &ExcalidrawLibraryCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ExcalidrawLibraryClient) MapCreateBulk(slice any, setFunc func(*ExcalidrawLibraryCreate, int)) *ExcalidrawLibraryCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ExcalidrawLibraryCreateBulk{err: fmt.Errorf("calling to ExcalidrawLibraryClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ExcalidrawLibraryCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ExcalidrawLibraryCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ExcalidrawLibrary.
+func (c *ExcalidrawLibraryClient) Update() *ExcalidrawLibraryUpdate {
+	mutation := newExcalidrawLibraryMutation(c.config, OpUpdate)
+	return &ExcalidrawLibraryUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ExcalidrawLibraryClient) UpdateOne(_m *ExcalidrawLibrary) *ExcalidrawLibraryUpdateOne {
+	mutation := newExcalidrawLibraryMutation(c.config, OpUpdateOne, withExcalidrawLibrary(_m))
+	return &ExcalidrawLibraryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ExcalidrawLibraryClient) UpdateOneID(id uuid.UUID) *ExcalidrawLibraryUpdateOne {
+	mutation := newExcalidrawLibraryMutation(c.config, OpUpdateOne, withExcalidrawLibraryID(id))
+	return &ExcalidrawLibraryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ExcalidrawLibrary.
+func (c *ExcalidrawLibraryClient) Delete() *ExcalidrawLibraryDelete {
+	mutation := newExcalidrawLibraryMutation(c.config, OpDelete)
+	return &ExcalidrawLibraryDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ExcalidrawLibraryClient) DeleteOne(_m *ExcalidrawLibrary) *ExcalidrawLibraryDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ExcalidrawLibraryClient) DeleteOneID(id uuid.UUID) *ExcalidrawLibraryDeleteOne {
+	builder := c.Delete().Where(excalidrawlibrary.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ExcalidrawLibraryDeleteOne{builder}
+}
+
+// Query returns a query builder for ExcalidrawLibrary.
+func (c *ExcalidrawLibraryClient) Query() *ExcalidrawLibraryQuery {
+	return &ExcalidrawLibraryQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeExcalidrawLibrary},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ExcalidrawLibrary entity by its id.
+func (c *ExcalidrawLibraryClient) Get(ctx context.Context, id uuid.UUID) (*ExcalidrawLibrary, error) {
+	return c.Query().Where(excalidrawlibrary.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ExcalidrawLibraryClient) GetX(ctx context.Context, id uuid.UUID) *ExcalidrawLibrary {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a ExcalidrawLibrary.
+func (c *ExcalidrawLibraryClient) QueryUser(_m *ExcalidrawLibrary) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(excalidrawlibrary.Table, excalidrawlibrary.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, excalidrawlibrary.UserTable, excalidrawlibrary.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ExcalidrawLibraryClient) Hooks() []Hook {
+	return c.hooks.ExcalidrawLibrary
+}
+
+// Interceptors returns the client interceptors.
+func (c *ExcalidrawLibraryClient) Interceptors() []Interceptor {
+	return c.inters.ExcalidrawLibrary
+}
+
+func (c *ExcalidrawLibraryClient) mutate(ctx context.Context, m *ExcalidrawLibraryMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ExcalidrawLibraryCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ExcalidrawLibraryUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ExcalidrawLibraryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ExcalidrawLibraryDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ExcalidrawLibrary mutation op: %q", m.Op())
 	}
 }
 
@@ -1480,6 +1645,22 @@ func (c *NoteClient) QueryAttachments(_m *Note) *AttachmentQuery {
 	return query
 }
 
+// QueryWhiteboards queries the whiteboards edge of a Note.
+func (c *NoteClient) QueryWhiteboards(_m *Note) *WhiteboardQuery {
+	query := (&WhiteboardClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(whiteboard.Table, whiteboard.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.WhiteboardsTable, note.WhiteboardsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryTags queries the tags edge of a Note.
 func (c *NoteClient) QueryTags(_m *Note) *TagQuery {
 	query := (&TagClient{config: c.config}).Query()
@@ -1826,6 +2007,38 @@ func (c *UserClient) QueryAttachments(_m *User) *AttachmentQuery {
 	return query
 }
 
+// QueryExcalidrawLibrary queries the excalidraw_library edge of a User.
+func (c *UserClient) QueryExcalidrawLibrary(_m *User) *ExcalidrawLibraryQuery {
+	query := (&ExcalidrawLibraryClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(excalidrawlibrary.Table, excalidrawlibrary.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, user.ExcalidrawLibraryTable, user.ExcalidrawLibraryColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryWhiteboards queries the whiteboards edge of a User.
+func (c *UserClient) QueryWhiteboards(_m *User) *WhiteboardQuery {
+	query := (&WhiteboardClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(whiteboard.Table, whiteboard.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.WhiteboardsTable, user.WhiteboardsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryTags queries the tags edge of a User.
 func (c *UserClient) QueryTags(_m *User) *TagQuery {
 	query := (&TagClient{config: c.config}).Query()
@@ -1931,14 +2144,179 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 	}
 }
 
+// WhiteboardClient is a client for the Whiteboard schema.
+type WhiteboardClient struct {
+	config
+}
+
+// NewWhiteboardClient returns a client for the Whiteboard from the given config.
+func NewWhiteboardClient(c config) *WhiteboardClient {
+	return &WhiteboardClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `whiteboard.Hooks(f(g(h())))`.
+func (c *WhiteboardClient) Use(hooks ...Hook) {
+	c.hooks.Whiteboard = append(c.hooks.Whiteboard, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `whiteboard.Intercept(f(g(h())))`.
+func (c *WhiteboardClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Whiteboard = append(c.inters.Whiteboard, interceptors...)
+}
+
+// Create returns a builder for creating a Whiteboard entity.
+func (c *WhiteboardClient) Create() *WhiteboardCreate {
+	mutation := newWhiteboardMutation(c.config, OpCreate)
+	return &WhiteboardCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Whiteboard entities.
+func (c *WhiteboardClient) CreateBulk(builders ...*WhiteboardCreate) *WhiteboardCreateBulk {
+	return &WhiteboardCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WhiteboardClient) MapCreateBulk(slice any, setFunc func(*WhiteboardCreate, int)) *WhiteboardCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WhiteboardCreateBulk{err: fmt.Errorf("calling to WhiteboardClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WhiteboardCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WhiteboardCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Whiteboard.
+func (c *WhiteboardClient) Update() *WhiteboardUpdate {
+	mutation := newWhiteboardMutation(c.config, OpUpdate)
+	return &WhiteboardUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WhiteboardClient) UpdateOne(_m *Whiteboard) *WhiteboardUpdateOne {
+	mutation := newWhiteboardMutation(c.config, OpUpdateOne, withWhiteboard(_m))
+	return &WhiteboardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WhiteboardClient) UpdateOneID(id uuid.UUID) *WhiteboardUpdateOne {
+	mutation := newWhiteboardMutation(c.config, OpUpdateOne, withWhiteboardID(id))
+	return &WhiteboardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Whiteboard.
+func (c *WhiteboardClient) Delete() *WhiteboardDelete {
+	mutation := newWhiteboardMutation(c.config, OpDelete)
+	return &WhiteboardDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WhiteboardClient) DeleteOne(_m *Whiteboard) *WhiteboardDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WhiteboardClient) DeleteOneID(id uuid.UUID) *WhiteboardDeleteOne {
+	builder := c.Delete().Where(whiteboard.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WhiteboardDeleteOne{builder}
+}
+
+// Query returns a query builder for Whiteboard.
+func (c *WhiteboardClient) Query() *WhiteboardQuery {
+	return &WhiteboardQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWhiteboard},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Whiteboard entity by its id.
+func (c *WhiteboardClient) Get(ctx context.Context, id uuid.UUID) (*Whiteboard, error) {
+	return c.Query().Where(whiteboard.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WhiteboardClient) GetX(ctx context.Context, id uuid.UUID) *Whiteboard {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryNote queries the note edge of a Whiteboard.
+func (c *WhiteboardClient) QueryNote(_m *Whiteboard) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(whiteboard.Table, whiteboard.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, whiteboard.NoteTable, whiteboard.NoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUser queries the user edge of a Whiteboard.
+func (c *WhiteboardClient) QueryUser(_m *Whiteboard) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(whiteboard.Table, whiteboard.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, whiteboard.UserTable, whiteboard.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WhiteboardClient) Hooks() []Hook {
+	return c.hooks.Whiteboard
+}
+
+// Interceptors returns the client interceptors.
+func (c *WhiteboardClient) Interceptors() []Interceptor {
+	return c.inters.Whiteboard
+}
+
+func (c *WhiteboardClient) mutate(ctx context.Context, m *WhiteboardMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WhiteboardCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WhiteboardUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WhiteboardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WhiteboardDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Whiteboard mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Attachment, BackupConfig, Font, ImportItem, ImportJob, MCPImage, MCPToken, Note,
-		Tag, User []ent.Hook
+		Attachment, BackupConfig, ExcalidrawLibrary, Font, ImportItem, ImportJob,
+		MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Hook
 	}
 	inters struct {
-		Attachment, BackupConfig, Font, ImportItem, ImportJob, MCPImage, MCPToken, Note,
-		Tag, User []ent.Interceptor
+		Attachment, BackupConfig, ExcalidrawLibrary, Font, ImportItem, ImportJob,
+		MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Interceptor
 	}
 )

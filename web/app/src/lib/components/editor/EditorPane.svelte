@@ -6,9 +6,11 @@
     FileCode,
     Image as ImageIcon,
     Network,
+    PencilRuler,
   } from "@lucide/svelte";
-  import { onDestroy, onMount, tick } from "svelte";
+  import { onDestroy, onMount, tick, type Component } from "svelte";
   import type { Note } from "../../api/types";
+  import { createWhiteboard } from "../../api/whiteboards";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
   import {
     createMermaidDiagramFence,
@@ -16,20 +18,31 @@
     type MermaidDiagramVariant,
     type MermaidDiagramVariantGroup,
   } from "../../markdown/diagrams/mermaidSyntax";
+  import {
+    createWhiteboardReferenceFence,
+    removeWhiteboardReferenceFences,
+    whiteboardRuntime,
+  } from "../../markdown/whiteboards";
   import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t, type Language } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
+  import { whiteboardStore } from "../../stores/whiteboard";
   import EditorInspector from "./EditorInspector.svelte";
-  import MarkdownEditor from "./MarkdownEditor.svelte";
   import ShareImageDialog from "./ShareImageDialog.svelte";
 
   export let note: Note | null = null;
 
   type SaveStatus = "idle" | "saving" | "saved" | "error";
+  type MarkdownEditorComponent = Component<{
+    value: string;
+    onChange: (value: string) => void;
+    bindEditor: (editor: MarkdownEditorHandle | null) => void;
+  }>;
 
   let markdownEditor: MarkdownEditorHandle | null = null;
+  let MarkdownEditor: MarkdownEditorComponent | null = null;
   let activeNoteID = "";
   let draftTitle = "";
   let draftContent = "";
@@ -49,6 +62,7 @@
   let folderMenuOpen = false;
   let quickTagName = "";
   let tagBusy = false;
+  let unregisterWhiteboardReferenceRemoval: (() => void) | null = null;
 
   const mermaidGroupOrder: MermaidDiagramVariantGroup[] = [
     "flow",
@@ -311,9 +325,10 @@
       insertBlockIntoSource(markdown);
       return;
     }
-    if (!markdownEditor) return;
-    markdownEditor.insertMarkdown(`${markdown.trim()}\n\n`);
-    markdownEditor.focus();
+
+    const snippet = withBlockSpacing(markdown, draftContent, "");
+    scheduleContentSave(`${draftContent}${snippet}`);
+    void tick().then(() => markdownEditor?.focus());
   }
 
   function insertMermaidTemplate(variant: MermaidDiagramVariant): void {
@@ -324,6 +339,51 @@
   function insertDrawioTemplate(): void {
     closeDiagramMenu();
     insertBlockMarkdown(drawioTemplate);
+  }
+
+  async function insertExcalidrawWhiteboard(): Promise<void> {
+    if (!note) return;
+
+    closeDiagramMenu();
+    try {
+      const whiteboard = await createWhiteboard(note.id, {
+        title: t("whiteboard", $preferencesStore.language),
+        scene_json: "{}",
+      });
+      insertBlockMarkdown(createWhiteboardReferenceFence(whiteboard.id));
+      whiteboardStore.open(whiteboard.id);
+    } catch {
+      notify(t("whiteboardCreateFailed", $preferencesStore.language), "error");
+    }
+  }
+
+  function openWhiteboard(whiteboardID: string): void {
+    if (!whiteboardID) return;
+    actionMenuOpen = false;
+    diagramMenuOpen = false;
+    whiteboardStore.open(whiteboardID);
+  }
+
+  async function removeWhiteboardReferenceFromDraft(
+    whiteboardID: string,
+    noteID: string,
+  ): Promise<{ handled: boolean; removedCount: number }> {
+    if (!note || note.id !== noteID || activeNoteID !== noteID) {
+      return { handled: false, removedCount: 0 };
+    }
+
+    const removal = removeWhiteboardReferenceFences(draftContent, whiteboardID);
+    if (removal.removedCount === 0) {
+      return { handled: true, removedCount: 0 };
+    }
+
+    clearTimer(contentTimer);
+    contentTimer = null;
+    draftContent = removal.markdown;
+    await tick();
+    resizeSourceInput();
+    await persistDraft(noteID, { content: removal.markdown });
+    return { handled: true, removedCount: removal.removedCount };
   }
 
   function getMermaidGroupLabel(
@@ -476,11 +536,19 @@
 
   onMount(() => {
     void tagsStore.load();
+    void import("./MarkdownEditor.svelte").then((module) => {
+      MarkdownEditor = module.default as MarkdownEditorComponent;
+    });
+    unregisterWhiteboardReferenceRemoval =
+      whiteboardStore.registerReferenceRemoval(removeWhiteboardReferenceFromDraft);
   });
 
   onDestroy(() => {
     clearTimer(titleTimer);
     clearTimer(contentTimer);
+    unregisterWhiteboardReferenceRemoval?.();
+    unregisterWhiteboardReferenceRemoval = null;
+    markdownEditor = null;
   });
 </script>
 
@@ -559,6 +627,20 @@
                     <span class="editor-diagram-row__title">drawio</span>
                     <span class="editor-diagram-row__description">
                       {t("drawioTemplateHint", $preferencesStore.language)}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  class="editor-popover-row editor-diagram-row"
+                  type="button"
+                  role="menuitem"
+                  on:click={() => void insertExcalidrawWhiteboard()}
+                >
+                  <PencilRuler aria-hidden="true" size={17} strokeWidth={2} />
+                  <span class="editor-diagram-row__text">
+                    <span class="editor-diagram-row__title">Excalidraw</span>
+                    <span class="editor-diagram-row__description">
+                      {t("whiteboardTemplateHint", $preferencesStore.language)}
                     </span>
                   </span>
                 </button>
@@ -782,7 +864,10 @@
       </button>
     </div>
     <div class:details-open={detailsOpen && !focusMode} class="editor-main">
-      <div class="editor-surface">
+      <div
+        class="editor-surface"
+        use:whiteboardRuntime={{ contentKey: draftContent, onOpen: openWhiteboard }}
+      >
         <textarea
           bind:this={titleInput}
           class="editor-title-input"
@@ -802,11 +887,16 @@
             on:input={(event) => scheduleContentSave(event.currentTarget.value)}
           ></textarea>
         {:else}
-          <MarkdownEditor
-            value={draftContent}
-            onChange={scheduleContentSave}
-            bindEditor={bindMarkdownEditor}
-          />
+          {#if MarkdownEditor}
+            <svelte:component
+              this={MarkdownEditor}
+              value={draftContent}
+              onChange={scheduleContentSave}
+              bindEditor={bindMarkdownEditor}
+            />
+          {:else}
+            <div class="markdown-editor-host markdown-editor-host--loading"></div>
+          {/if}
         {/if}
       </div>
       {#if detailsOpen && !focusMode}

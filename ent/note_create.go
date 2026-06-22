@@ -10,6 +10,7 @@ import (
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -196,6 +197,21 @@ func (_c *NoteCreate) AddAttachments(v ...*Attachment) *NoteCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddAttachmentIDs(ids...)
+}
+
+// AddWhiteboardIDs adds the "whiteboards" edge to the Whiteboard entity by IDs.
+func (_c *NoteCreate) AddWhiteboardIDs(ids ...uuid.UUID) *NoteCreate {
+	_c.mutation.AddWhiteboardIDs(ids...)
+	return _c
+}
+
+// AddWhiteboards adds the "whiteboards" edges to the Whiteboard entity.
+func (_c *NoteCreate) AddWhiteboards(v ...*Whiteboard) *NoteCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddWhiteboardIDs(ids...)
 }
 
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
@@ -399,6 +415,22 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(attachment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WhiteboardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.WhiteboardsTable,
+			Columns: []string{note.WhiteboardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

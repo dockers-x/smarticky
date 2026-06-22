@@ -50,11 +50,13 @@ type NoteEdges struct {
 	User *User `json:"user,omitempty"`
 	// Attachments holds the value of the attachments edge.
 	Attachments []*Attachment `json:"attachments,omitempty"`
+	// Whiteboards holds the value of the whiteboards edge.
+	Whiteboards []*Whiteboard `json:"whiteboards,omitempty"`
 	// Tags holds the value of the tags edge.
 	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -77,10 +79,19 @@ func (e NoteEdges) AttachmentsOrErr() ([]*Attachment, error) {
 	return nil, &NotLoadedError{edge: "attachments"}
 }
 
+// WhiteboardsOrErr returns the Whiteboards value or an error if the edge
+// was not loaded in eager-loading.
+func (e NoteEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
+	if e.loadedTypes[2] {
+		return e.Whiteboards, nil
+	}
+	return nil, &NotLoadedError{edge: "whiteboards"}
+}
+
 // TagsOrErr returns the Tags value or an error if the edge
 // was not loaded in eager-loading.
 func (e NoteEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
@@ -204,6 +215,11 @@ func (_m *Note) QueryUser() *UserQuery {
 // QueryAttachments queries the "attachments" edge of the Note entity.
 func (_m *Note) QueryAttachments() *AttachmentQuery {
 	return NewNoteClient(_m.config).QueryAttachments(_m)
+}
+
+// QueryWhiteboards queries the "whiteboards" edge of the Note entity.
+func (_m *Note) QueryWhiteboards() *WhiteboardQuery {
+	return NewNoteClient(_m.config).QueryWhiteboards(_m)
 }
 
 // QueryTags queries the "tags" edge of the Note entity.

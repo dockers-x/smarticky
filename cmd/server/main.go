@@ -156,6 +156,15 @@ func main() {
 	protected.GET("/attachments/:id/download", h.DownloadAttachment)
 	protected.DELETE("/attachments/:id", h.DeleteAttachment)
 
+	// Whiteboards API
+	protected.POST("/notes/:id/whiteboards", h.CreateWhiteboard)
+	protected.GET("/notes/:id/whiteboards", h.ListWhiteboards)
+	protected.GET("/whiteboards/:id", h.GetWhiteboard)
+	protected.PUT("/whiteboards/:id", h.UpdateWhiteboard)
+	protected.DELETE("/whiteboards/:id", h.DeleteWhiteboard)
+	protected.GET("/excalidraw/library", h.GetExcalidrawLibrary)
+	protected.PUT("/excalidraw/library", h.UpdateExcalidrawLibrary)
+
 	// Import API
 	protected.POST("/import/evernote/preview", h.PreviewEvernoteImport)
 	protected.POST("/import/evernote/confirm", h.ConfirmEvernoteImport)
@@ -222,19 +231,10 @@ func main() {
 
 	// Frontend - Serve compiled SPA shell from embedded FS
 	e.GET("/", func(c echo.Context) error {
-		html := []byte(`<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smarticky</title>
-  <script type="module" crossorigin src="/static/app/assets/index.js"></script>
-  <link rel="stylesheet" crossorigin href="/static/app/assets/index.css">
-</head>
-<body>
-  <div id="smarticky-app"></div>
-</body>
-</html>`)
+		html, err := web.Assets.ReadFile("static/app/index.html")
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to load app")
+		}
 		return c.HTMLBlob(http.StatusOK, html)
 	})
 

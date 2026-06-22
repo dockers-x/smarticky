@@ -37,6 +37,8 @@ const (
 	EdgeUser = "user"
 	// EdgeAttachments holds the string denoting the attachments edge name in mutations.
 	EdgeAttachments = "attachments"
+	// EdgeWhiteboards holds the string denoting the whiteboards edge name in mutations.
+	EdgeWhiteboards = "whiteboards"
 	// EdgeTags holds the string denoting the tags edge name in mutations.
 	EdgeTags = "tags"
 	// Table holds the table name of the note in the database.
@@ -55,6 +57,13 @@ const (
 	AttachmentsInverseTable = "attachments"
 	// AttachmentsColumn is the table column denoting the attachments relation/edge.
 	AttachmentsColumn = "note_attachments"
+	// WhiteboardsTable is the table that holds the whiteboards relation/edge.
+	WhiteboardsTable = "whiteboards"
+	// WhiteboardsInverseTable is the table name for the Whiteboard entity.
+	// It exists in this package in order to avoid circular dependency with the "whiteboard" package.
+	WhiteboardsInverseTable = "whiteboards"
+	// WhiteboardsColumn is the table column denoting the whiteboards relation/edge.
+	WhiteboardsColumn = "note_whiteboards"
 	// TagsTable is the table that holds the tags relation/edge. The primary key declared below.
 	TagsTable = "note_tags"
 	// TagsInverseTable is the table name for the Tag entity.
@@ -198,6 +207,20 @@ func ByAttachments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByWhiteboardsCount orders the results by whiteboards count.
+func ByWhiteboardsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newWhiteboardsStep(), opts...)
+	}
+}
+
+// ByWhiteboards orders the results by whiteboards terms.
+func ByWhiteboards(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWhiteboardsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByTagsCount orders the results by tags count.
 func ByTagsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -223,6 +246,13 @@ func newAttachmentsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AttachmentsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, AttachmentsTable, AttachmentsColumn),
+	)
+}
+func newWhiteboardsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(WhiteboardsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, WhiteboardsTable, WhiteboardsColumn),
 	)
 }
 func newTagsStep() *sqlgraph.Step {

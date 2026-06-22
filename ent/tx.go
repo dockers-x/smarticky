@@ -16,6 +16,8 @@ type Tx struct {
 	Attachment *AttachmentClient
 	// BackupConfig is the client for interacting with the BackupConfig builders.
 	BackupConfig *BackupConfigClient
+	// ExcalidrawLibrary is the client for interacting with the ExcalidrawLibrary builders.
+	ExcalidrawLibrary *ExcalidrawLibraryClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
 	// ImportItem is the client for interacting with the ImportItem builders.
@@ -32,6 +34,8 @@ type Tx struct {
 	Tag *TagClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// Whiteboard is the client for interacting with the Whiteboard builders.
+	Whiteboard *WhiteboardClient
 
 	// lazily loaded.
 	client     *Client
@@ -165,6 +169,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Attachment = NewAttachmentClient(tx.config)
 	tx.BackupConfig = NewBackupConfigClient(tx.config)
+	tx.ExcalidrawLibrary = NewExcalidrawLibraryClient(tx.config)
 	tx.Font = NewFontClient(tx.config)
 	tx.ImportItem = NewImportItemClient(tx.config)
 	tx.ImportJob = NewImportJobClient(tx.config)
@@ -173,6 +178,7 @@ func (tx *Tx) init() {
 	tx.Note = NewNoteClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)
+	tx.Whiteboard = NewWhiteboardClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

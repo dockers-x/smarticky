@@ -87,11 +87,15 @@ async function renderRoot(
 export function diagramRuntime(node: HTMLElement, initialOptions: DiagramRuntimeOptions) {
   let options = initialOptions;
   let runToken = { active: true };
+  let sourceHTML = node.innerHTML;
 
-  function scheduleRender(): void {
+  function scheduleRender(restoreSource = false): void {
     runToken.active = false;
     runToken = { active: true };
     queueMicrotask(() => {
+      if (restoreSource) {
+        node.innerHTML = sourceHTML;
+      }
       void renderRoot(node, options, runToken);
     });
   }
@@ -100,8 +104,13 @@ export function diagramRuntime(node: HTMLElement, initialOptions: DiagramRuntime
 
   return {
     update(nextOptions: DiagramRuntimeOptions): void {
+      const contentChanged = nextOptions.contentKey !== options.contentKey;
+      const themeChanged = nextOptions.theme !== options.theme;
       options = nextOptions;
-      scheduleRender();
+      if (contentChanged) {
+        sourceHTML = node.innerHTML;
+      }
+      scheduleRender(contentChanged || themeChanged);
     },
     destroy(): void {
       runToken.active = false;

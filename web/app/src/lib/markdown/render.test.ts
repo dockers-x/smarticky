@@ -10,6 +10,16 @@ function getPlaceholder(html: string): HTMLElement {
   return node;
 }
 
+function getWhiteboardReference(html: string): HTMLElement {
+  const root = document.createElement("div");
+  root.innerHTML = html;
+  const node = root.querySelector<HTMLElement>("[data-whiteboard-reference='true']");
+  if (!node) throw new Error("whiteboard reference missing");
+  return node;
+}
+
+const whiteboardID = "123e4567-e89b-12d3-a456-426614174000";
+
 describe("renderMarkdown diagram placeholders", () => {
   it("emits a safe Mermaid placeholder", () => {
     const source = "flowchart TD\n  A --> B";
@@ -55,6 +65,16 @@ describe("renderMarkdown diagram placeholders", () => {
     expect(decodeDiagramSource(node.dataset.diagramSource || "")).toBe(source);
   });
 
+  it("emits a safe Excalidraw whiteboard reference", () => {
+    const html = renderMarkdown(
+      `\`\`\`excalidraw\nwhiteboard: ${whiteboardID}\n\`\`\``,
+    );
+    const node = getWhiteboardReference(html);
+
+    expect(node.dataset.whiteboardId).toBe(whiteboardID);
+    expect(html).not.toContain("<script");
+  });
+
   it("keeps unsupported diagram fences as normal code blocks", () => {
     const html = renderMarkdown("```plantuml\n@startuml\nA -> B\n@enduml\n```");
 
@@ -72,8 +92,17 @@ describe("renderMarkdown diagram placeholders", () => {
 });
 
 describe("stripMarkdown", () => {
-  it("does not count Mermaid or drawio source as visible prose", () => {
-    const markdown = ["Visible", "```mermaid", "flowchart TD", "A --> B", "```"].join("\n");
+  it("does not count Mermaid, drawio, or whiteboard references as visible prose", () => {
+    const markdown = [
+      "Visible",
+      "```mermaid",
+      "flowchart TD",
+      "A --> B",
+      "```",
+      "```excalidraw",
+      `whiteboard: ${whiteboardID}`,
+      "```",
+    ].join("\n");
 
     expect(stripMarkdown(markdown)).toBe("Visible");
   });

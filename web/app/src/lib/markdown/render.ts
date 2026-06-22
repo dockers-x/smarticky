@@ -7,6 +7,11 @@ import {
   stripDiagramFences,
 } from "./diagrams/fences";
 import { createDiagramPlaceholder } from "./diagrams/placeholders";
+import {
+  createWhiteboardPlaceholder,
+  extractWhiteboardID,
+  isWhiteboardFenceLanguage,
+} from "./whiteboards";
 
 const markedOptions = {
   async: false,
@@ -24,6 +29,13 @@ const markdownRenderer = new Marked(
   {
     renderer: {
       code(token: Tokens.Code): string {
+        if (isWhiteboardFenceLanguage(token.lang)) {
+          const whiteboardID = extractWhiteboardID(token.text);
+          return whiteboardID
+            ? createWhiteboardPlaceholder(whiteboardID)
+            : fallbackRenderer.code(token);
+        }
+
         const diagramType = normalizeDiagramType(token.lang);
         if (diagramType && token.text.trim()) {
           return createDiagramPlaceholder(

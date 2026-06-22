@@ -1,5 +1,16 @@
 <script lang="ts">
-  import { Crepe } from "@milkdown/crepe";
+  import { CrepeBuilder } from "@milkdown/crepe/builder";
+  import { blockEdit } from "@milkdown/crepe/feature/block-edit";
+  import { codeMirror } from "@milkdown/crepe/feature/code-mirror";
+  import { cursor } from "@milkdown/crepe/feature/cursor";
+  import { imageBlock } from "@milkdown/crepe/feature/image-block";
+  import { latex } from "@milkdown/crepe/feature/latex";
+  import { linkTooltip } from "@milkdown/crepe/feature/link-tooltip";
+  import { listItem } from "@milkdown/crepe/feature/list-item";
+  import { placeholder } from "@milkdown/crepe/feature/placeholder";
+  import { table } from "@milkdown/crepe/feature/table";
+  import { toolbar } from "@milkdown/crepe/feature/toolbar";
+  import { oneDark } from "@codemirror/theme-one-dark";
   import { insert, replaceAll } from "@milkdown/kit/utils";
   import { onDestroy, onMount, tick } from "svelte";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
@@ -11,9 +22,10 @@
   export let bindEditor: (editor: MarkdownEditorHandle | null) => void = () => {};
 
   let host: HTMLDivElement;
-  let crepe: Crepe | null = null;
+  let crepe: CrepeBuilder | null = null;
   let applyingExternalValue = false;
   let lastMarkdown = value;
+  let activePreviewTheme = "light";
 
   const handle: MarkdownEditorHandle = {
     insertMarkdown(markdown: string, inline = false): void {
@@ -40,20 +52,39 @@
     applyingExternalValue = false;
   }
 
+  async function refreshPreviewTheme(): Promise<void> {
+    if (!crepe) return;
+
+    applyingExternalValue = true;
+    crepe.editor.action(replaceAll(lastMarkdown, true));
+    await tick();
+    applyingExternalValue = false;
+  }
+
   onMount(async () => {
-    crepe = new Crepe({
+    activePreviewTheme = $preferencesStore.theme;
+    crepe = new CrepeBuilder({
       root: host,
       defaultValue: value,
-      featureConfigs: {
-        [Crepe.Feature.CodeMirror]: createEditorDiagramCodeBlockConfig({
+    })
+      .addFeature(cursor)
+      .addFeature(listItem)
+      .addFeature(linkTooltip)
+      .addFeature(imageBlock)
+      .addFeature(blockEdit)
+      .addFeature(placeholder, {
+        mode: "doc",
+        text: t("contentEmpty", $preferencesStore.language),
+      })
+      .addFeature(toolbar)
+      .addFeature(codeMirror, {
+        ...createEditorDiagramCodeBlockConfig({
           getTheme: () => ($preferencesStore.theme === "dark" ? "dark" : "light"),
         }),
-        [Crepe.Feature.Placeholder]: {
-          mode: "doc",
-          text: t("contentEmpty", $preferencesStore.language),
-        },
-      },
-    });
+        theme: oneDark,
+      })
+      .addFeature(table)
+      .addFeature(latex);
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
@@ -71,6 +102,11 @@
 
   $: if (crepe && value !== lastMarkdown) {
     void setMarkdown(value);
+  }
+
+  $: if (crepe && $preferencesStore.theme !== activePreviewTheme) {
+    activePreviewTheme = $preferencesStore.theme;
+    void refreshPreviewTheme();
   }
 
   onDestroy(() => {
