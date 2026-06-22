@@ -14,7 +14,7 @@ The backend index is a derived data structure built with `github.com/blevesearch
 - Replace note body/title SQL `LIKE` search for `q` with Bleve-backed indexed search.
 - Keep existing note filters: starred, trash, folder, tags, title, created date, updated date, and timezone behavior.
 - Add an Index workspace that lets users browse notes by tag, folder, protection mode, and current search results.
-- Render a lightweight relationship map using existing note, tag, and folder data.
+- Render a relationship map using existing note, tag, folder, protection, and backlink data.
 - Preserve note protection boundaries: encrypted note bodies are never indexed, searched, or exposed by MCP.
 
 ## Non-Goals
@@ -88,10 +88,10 @@ Add an Index view reachable from the sidebar. It replaces the note-list pane whi
 Layout:
 
 - Left rail: Index title, total count, groups for tags, folders, protection mode, and current search.
-- Center map: SVG relationship graph generated from currently loaded notes. Notes connect to their tags, folder, and protection node. Nodes are deterministic, not physics-dependent.
+- Center map: Cytoscape.js relationship graph generated from currently loaded notes. Notes connect to their tags, folder, protection node, and resolved backlink edges. Layout remains deterministic enough for navigation and avoids a custom hand-written graph engine.
 - Right inspector: selected node details and connected notes. Selecting a note opens it in the editor.
 
-The first version does not need zoom/pan persistence or a heavy graph library. It should stay responsive and usable on mobile by stacking the rail, map, and inspector.
+The first version does not need zoom/pan persistence or force-directed authoring controls. It should stay responsive and usable on mobile by stacking the rail, map, and inspector.
 
 ## API and Frontend Contracts
 

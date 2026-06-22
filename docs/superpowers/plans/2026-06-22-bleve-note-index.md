@@ -4,9 +4,9 @@
 
 **Goal:** Add Bleve-backed note search and an Index workspace for browsing note relationships.
 
-**Architecture:** SQLite/Ent remains the source of truth. A rebuildable Bleve index in `<data-dir>/search.bleve` provides candidate note IDs for text search, while Ent still enforces ownership and structured filters. The frontend Index workspace builds a lightweight deterministic SVG graph from existing note, tag, and folder data.
+**Architecture:** SQLite/Ent remains the source of truth. A rebuildable Bleve index in `<data-dir>/search.bleve` provides candidate note IDs for text search, while Ent still enforces ownership and structured filters. The frontend Index workspace renders note, tag, folder, protection, and backlink relationships with Cytoscape.js.
 
-**Tech Stack:** Go, Echo, Ent, SQLite, `github.com/blevesearch/bleve/v2`, Svelte 5, SVG, Vitest-free Svelte check.
+**Tech Stack:** Go, Echo, Ent, SQLite, `github.com/blevesearch/bleve/v2`, Svelte 5, Cytoscape.js, Vitest-free Svelte check.
 
 ## Global Constraints
 
@@ -293,7 +293,7 @@ Create a Svelte component that:
 - Loads tags on mount.
 - Builds groups from `$notesStore.notes`, `$tagsStore`, and `$foldersStore.folders`.
 - Shows a left `.index-sidebar` with group counts.
-- Shows a center `.index-graph` SVG.
+- Shows a center `.index-graph` Cytoscape canvas.
 - Shows a right `.index-inspector` with selected node and connected notes.
 - Clicking a note in the inspector calls `notesStore.select(note)`.
 - The graph is deterministic: position the root in the center, note nodes on a large ring, tag/folder/protection nodes on smaller side rings.
