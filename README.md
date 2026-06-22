@@ -9,6 +9,8 @@ A modern notes application built with Go, inspired by Smartisan Notes.
 - ✅ **便签管理** / Note Management
   - 创建、编辑、删除便签
   - 支持 Markdown 格式
+  - 支持 Mermaid 与 drawio 图表代码块（分享预览与浏览器生成图片）
+  - Mermaid and drawio fenced diagrams are rendered in share previews and browser-generated images
   - 收藏功能
   - 废纸篓（软删除）
   - 搜索功能
@@ -52,6 +54,7 @@ A modern notes application built with Go, inspired by Smartisan Notes.
   - 用户级 MCP Token，绑定当前笔记用户
   - 支持查询、搜索、读取、创建笔记
   - 支持将笔记生成 PNG 长图
+  - MCP 生成 PNG 暂不渲染 Markdown 图表，仍使用文本长图渲染
   - LazyCat 微服内支持应用间委托访问
 
 - 🐳 **Docker 部署** / Docker Deployment
@@ -210,7 +213,9 @@ MCP tools:
 - `smarticky_create_note`
 - `smarticky_generate_note_image`
 
-锁定笔记不会通过 MCP 返回正文，也不能通过 MCP 生成图片。
+锁定笔记不会通过 MCP 返回正文，也不能通过 MCP 生成图片。MCP 生成 PNG 暂不渲染 Markdown 图表，仍使用文本长图渲染。
+
+Locked notes are not returned through MCP and cannot be rendered as MCP images. MCP-generated PNG images do not render Markdown diagrams yet and continue to use the text image renderer.
 
 LazyCat LPK exports `resources/mcp-providers/smarticky/mcp.yml` with `endpoint: /mcp`.
 For LazyCat delegated access, set the matching LazyCat user ID in the user's profile settings first.

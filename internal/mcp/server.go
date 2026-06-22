@@ -47,6 +47,8 @@ type generateNoteImageInput struct {
 	Ratio   string `json:"ratio,omitempty" jsonschema:"image ratio: story or square, defaults to story long image"`
 }
 
+const generateNoteImageDescription = "Generate a PNG share image from an owned note or explicit title/content. Locked notes cannot be rendered. Markdown diagrams are not rendered in MCP images yet."
+
 type notesOutput struct {
 	Notes []mcpNote `json:"notes"`
 	Count int       `json:"count"`
@@ -168,7 +170,7 @@ func registerTools(server *mcpsdk.Server, noteService *notes.Service, imageServi
 	mcpsdk.AddTool(server, &mcpsdk.Tool{
 		Name:        "smarticky_generate_note_image",
 		Title:       "Generate Smarticky Note Image",
-		Description: "Generate a PNG share image from an owned note or explicit title/content. Locked notes cannot be rendered.",
+		Description: generateNoteImageDescription,
 	}, func(ctx context.Context, _ *mcpsdk.CallToolRequest, input generateNoteImageInput) (*mcpsdk.CallToolResult, imageOutput, error) {
 		principal, err := requirePrincipal(ctx)
 		if err != nil {

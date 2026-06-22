@@ -272,6 +272,12 @@ func TestHTTPHandlerGenerateImageReturnsTokenDownloadURL(t *testing.T) {
 	}
 }
 
+func TestGenerateImageDescriptionMentionsDiagramLimitation(t *testing.T) {
+	if !strings.Contains(generateNoteImageDescription, "Markdown diagrams are not rendered") {
+		t.Fatalf("expected generate image description to mention diagram limitation, got %q", generateNoteImageDescription)
+	}
+}
+
 type imageToolOutput struct {
 	DownloadURL string `json:"download_url"`
 }
