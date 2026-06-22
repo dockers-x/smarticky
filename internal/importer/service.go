@@ -1,31 +1,32 @@
 package importer
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
-	"regexp"
+	"sort"
 	"strings"
 	"time"
 
 	"smarticky/ent"
+	"smarticky/ent/folder"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
-	"smarticky/internal/importer/evernote"
 	notesvc "smarticky/internal/notes"
 	"smarticky/internal/storage"
 
 	"github.com/google/uuid"
+	enex "github.com/lib-x/enex"
 )
 
 const maxENEXBytes = 50 << 20
@@ -43,9 +44,18 @@ type PreviewResult struct {
 	JobID         int               `json:"job_id"`
 	Filename      string            `json:"filename"`
 	NoteCount     int               `json:"note_count"`
+	NotebookCount int               `json:"notebook_count"`
+	Notebooks     []ImportNotebook  `json:"notebooks"`
 	TagCount      int               `json:"tag_count"`
 	ResourceCount int               `json:"resource_count"`
 	WarningCount  int               `json:"warning_count"`
+}
+
+type ImportNotebook struct {
+	Name          string `json:"name"`
+	NoteCount     int    `json:"note_count"`
+	ResourceCount int    `json:"resource_count"`
+	WarningCount  int    `json:"warning_count"`
 }
 
 type ImportResult struct {
@@ -61,7 +71,23 @@ type ImportResult struct {
 }
 
 type jobOptions struct {
-	ENEXPath string `json:"enex_path"`
+	Sources []jobSource `json:"sources"`
+}
+
+type jobSource struct {
+	Path         string `json:"path"`
+	NotebookName string `json:"notebook_name,omitempty"`
+}
+
+type uploadSource struct {
+	Filename     string
+	NotebookName string
+	Data         []byte
+}
+
+type parsedSource struct {
+	Source jobSource
+	Doc    *enex.Document
 }
 
 func NewService(client *ent.Client, fs *storage.FileSystem) *Service {
@@ -77,9 +103,22 @@ func (s *Service) PreviewEvernote(ctx context.Context, userID int, filename stri
 		return nil, err
 	}
 
-	doc, err := evernote.Parse(bytes.NewReader(data))
+	uploads, err := importSourcesFromUpload(filename, data)
 	if err != nil {
 		return nil, err
+	}
+	parsedSources := make([]parsedSource, 0, len(uploads))
+	noteCount := 0
+	for _, upload := range uploads {
+		doc, err := enex.Parse(bytes.NewReader(upload.Data), enex.WithNotebookName(upload.NotebookName))
+		if err != nil {
+			return nil, err
+		}
+		parsedSources = append(parsedSources, parsedSource{
+			Source: jobSource{NotebookName: upload.NotebookName},
+			Doc:    doc,
+		})
+		noteCount += len(doc.Notes)
 	}
 
 	tx, err := s.client.Tx(ctx)
@@ -88,16 +127,15 @@ func (s *Service) PreviewEvernote(ctx context.Context, userID int, filename stri
 	}
 
 	txClient := tx.Client()
-	var enexPath string
-	fileWritten := false
+	savedPaths := make([]string, 0, len(uploads))
 	committed := false
 	defer func() {
 		if committed {
 			return
 		}
 		_ = tx.Rollback()
-		if fileWritten {
-			_ = s.fs.Remove(enexPath)
+		for _, path := range savedPaths {
+			_ = s.fs.Remove(path)
 		}
 	}()
 
@@ -105,20 +143,31 @@ func (s *Service) PreviewEvernote(ctx context.Context, userID int, filename stri
 		SetSource("evernote").
 		SetFilename(cleanFilename(filename)).
 		SetStatus("previewed").
-		SetNoteCount(len(doc.Notes)).
+		SetNoteCount(noteCount).
 		SetUserID(userID).
 		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	enexPath = filepath.Join(s.fs.GetDataDir(), "imports", "evernote", fmt.Sprintf("%d.enex", job.ID))
-	if err := s.fs.WriteFile(enexPath, data, 0600); err != nil {
-		return nil, fmt.Errorf("save enex: %w", err)
+	options := jobOptions{Sources: make([]jobSource, 0, len(uploads))}
+	for index, upload := range uploads {
+		sourcePath := filepath.Join(
+			s.fs.GetDataDir(),
+			"imports",
+			"evernote",
+			fmt.Sprintf("%d", job.ID),
+			fmt.Sprintf("%03d-%s", index+1, cleanFilename(upload.Filename)),
+		)
+		if err := s.fs.WriteFile(sourcePath, upload.Data, 0600); err != nil {
+			return nil, fmt.Errorf("save enex: %w", err)
+		}
+		savedPaths = append(savedPaths, sourcePath)
+		parsedSources[index].Source.Path = sourcePath
+		options.Sources = append(options.Sources, parsedSources[index].Source)
 	}
-	fileWritten = true
 
-	optionsJSON, err := json.Marshal(jobOptions{ENEXPath: enexPath})
+	optionsJSON, err := json.Marshal(options)
 	if err != nil {
 		return nil, fmt.Errorf("encode import options: %w", err)
 	}
@@ -127,18 +176,20 @@ func (s *Service) PreviewEvernote(ctx context.Context, userID int, filename stri
 		return nil, err
 	}
 
-	items := make([]*ent.ImportItem, 0, len(doc.Notes))
-	for _, parsedNote := range doc.Notes {
-		item, err := txClient.ImportItem.Create().
-			SetJobID(job.ID).
-			SetSourceNoteKey(sourceNoteKey(parsedNote)).
-			SetTitle(titleOrUntitled(parsedNote.Title)).
-			SetStatus("pending").
-			Save(ctx)
-		if err != nil {
-			return nil, err
+	items := make([]*ent.ImportItem, 0, noteCount)
+	for _, source := range parsedSources {
+		for _, parsedNote := range source.Doc.Notes {
+			item, err := txClient.ImportItem.Create().
+				SetJobID(job.ID).
+				SetSourceNoteKey(sourceNoteKey(parsedNote)).
+				SetTitle(titleOrUntitled(parsedNote.Title)).
+				SetStatus("pending").
+				Save(ctx)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
 		}
-		items = append(items, item)
 	}
 
 	jobID := job.ID
@@ -158,13 +209,15 @@ func (s *Service) PreviewEvernote(ctx context.Context, userID int, filename stri
 		return nil, err
 	}
 
-	tagCount, resourceCount, warningCount := previewCounts(doc)
+	tagCount, resourceCount, warningCount, notebooks := previewCounts(parsedSources)
 	return &PreviewResult{
 		Job:           job,
 		Items:         items,
 		JobID:         job.ID,
 		Filename:      job.Filename,
 		NoteCount:     job.NoteCount,
+		NotebookCount: len(notebooks),
+		Notebooks:     notebooks,
 		TagCount:      tagCount,
 		ResourceCount: resourceCount,
 		WarningCount:  warningCount,
@@ -189,13 +242,17 @@ func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*
 	if err != nil {
 		return nil, err
 	}
-	rawENEX, err := s.fs.ReadFile(options.ENEXPath)
-	if err != nil {
-		return nil, fmt.Errorf("read enex: %w", err)
-	}
-	doc, err := evernote.Parse(bytes.NewReader(rawENEX))
-	if err != nil {
-		return nil, err
+	parsedSources := make([]parsedSource, 0, len(options.Sources))
+	for _, source := range options.Sources {
+		rawENEX, err := s.fs.ReadFile(source.Path)
+		if err != nil {
+			return nil, fmt.Errorf("read enex: %w", err)
+		}
+		doc, err := enex.Parse(bytes.NewReader(rawENEX), enex.WithNotebookName(source.NotebookName))
+		if err != nil {
+			return nil, err
+		}
+		parsedSources = append(parsedSources, parsedSource{Source: source, Doc: doc})
 	}
 
 	pendingItems, err := job.QueryItems().
@@ -205,9 +262,11 @@ func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*
 		return nil, err
 	}
 
-	notesByKey := make(map[string]evernote.Note, len(doc.Notes))
-	for _, parsedNote := range doc.Notes {
-		notesByKey[sourceNoteKey(parsedNote)] = parsedNote
+	notesByKey := make(map[string]enex.Note)
+	for _, source := range parsedSources {
+		for _, parsedNote := range source.Doc.Notes {
+			notesByKey[sourceNoteKey(parsedNote)] = parsedNote
+		}
 	}
 
 	existingKeys, err := s.existingNoteKeys(ctx, userID)
@@ -286,11 +345,18 @@ func (s *Service) existingNoteKeys(ctx context.Context, userID int) (map[string]
 	return keys, nil
 }
 
-func (s *Service) importNote(ctx context.Context, userID int, parsedNote evernote.Note) (*ent.Note, string, error) {
+func (s *Service) importNote(ctx context.Context, userID int, parsedNote enex.Note) (*ent.Note, string, error) {
 	create := s.client.Note.Create().
 		SetTitle(titleOrUntitled(parsedNote.Title)).
 		SetContent(importedContent(parsedNote)).
 		SetUserID(userID)
+	if notebookName := noteNotebookName(parsedNote); notebookName != "" {
+		folderRow, err := s.findOrCreateFolder(ctx, userID, notebookName)
+		if err != nil {
+			return nil, "", err
+		}
+		create.SetFolderID(folderRow.ID)
+	}
 	if !parsedNote.Created.IsZero() {
 		create.SetCreatedAt(parsedNote.Created)
 	}
@@ -315,11 +381,12 @@ func (s *Service) importNote(ctx context.Context, userID int, parsedNote evernot
 
 	skippedResources := 0
 	for index, resource := range parsedNote.Resources {
-		if resource.DecodeError != "" || len(resource.Data) == 0 {
+		data, err := resource.Data.Decode()
+		if err != nil || len(data) == 0 {
 			skippedResources++
 			continue
 		}
-		if err := s.saveResource(ctx, userID, createdNote.ID, index, resource); err != nil {
+		if err := s.saveResource(ctx, userID, createdNote.ID, index, resource, data); err != nil {
 			return nil, "", err
 		}
 	}
@@ -327,6 +394,29 @@ func (s *Service) importNote(ctx context.Context, userID int, parsedNote evernot
 		return createdNote, fmt.Sprintf("%d resource(s) skipped", skippedResources), nil
 	}
 	return createdNote, "", nil
+}
+
+func (s *Service) findOrCreateFolder(ctx context.Context, userID int, name string) (*ent.Folder, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, errors.New("empty folder")
+	}
+
+	existing, err := s.client.Folder.Query().
+		Where(folder.NameEQ(name), folder.HasUserWith(user.IDEQ(userID)), folder.Not(folder.HasParent())).
+		Order(ent.Asc(folder.FieldCreatedAt)).
+		First(ctx)
+	if err == nil {
+		return existing, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+
+	return s.client.Folder.Create().
+		SetName(name).
+		SetUserID(userID).
+		Save(ctx)
 }
 
 func (s *Service) findOrCreateTag(ctx context.Context, userID int, name string) (*ent.Tag, error) {
@@ -352,8 +442,8 @@ func (s *Service) findOrCreateTag(ctx context.Context, userID int, name string) 
 		Save(ctx)
 }
 
-func (s *Service) saveResource(ctx context.Context, userID int, noteID uuid.UUID, index int, resource evernote.Resource) error {
-	filename := cleanFilename(resource.FileName)
+func (s *Service) saveResource(ctx context.Context, userID int, noteID uuid.UUID, index int, resource enex.Resource, data []byte) error {
+	filename := cleanFilename(resource.Attributes.FileName)
 	if filename == "import.enex" {
 		filename = fmt.Sprintf("resource-%d", index+1)
 	}
@@ -361,14 +451,14 @@ func (s *Service) saveResource(ctx context.Context, userID int, noteID uuid.UUID
 	storedName := uuid.New().String() + ext
 	filePath := filepath.Join(s.fs.GetUploadsDir("attachments"), storedName)
 
-	if err := s.fs.WriteFile(filePath, resource.Data, 0644); err != nil {
+	if err := s.fs.WriteFile(filePath, data, 0644); err != nil {
 		return err
 	}
 
 	_, err := s.client.Attachment.Create().
 		SetFilename(filename).
 		SetFilePath(filePath).
-		SetFileSize(int64(len(resource.Data))).
+		SetFileSize(int64(len(data))).
 		SetMimeType(resource.MIME).
 		SetNoteID(noteID).
 		SetUserID(userID).
@@ -392,10 +482,88 @@ func decodeJobOptions(raw string) (jobOptions, error) {
 	if err := json.Unmarshal([]byte(raw), &options); err != nil {
 		return options, fmt.Errorf("decode import options: %w", err)
 	}
-	if options.ENEXPath == "" {
-		return options, errors.New("missing enex path")
+	if len(options.Sources) == 0 {
+		return options, errors.New("missing enex sources")
+	}
+	for _, source := range options.Sources {
+		if source.Path == "" {
+			return options, errors.New("missing enex path")
+		}
 	}
 	return options, nil
+}
+
+func importSourcesFromUpload(filename string, data []byte) ([]uploadSource, error) {
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".zip":
+		return zipENEXSources(data)
+	default:
+		return []uploadSource{{
+			Filename:     cleanFilename(filename),
+			NotebookName: notebookNameFromFilename(filename),
+			Data:         data,
+		}}, nil
+	}
+}
+
+func zipENEXSources(data []byte) ([]uploadSource, error) {
+	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, fmt.Errorf("read zip: %w", err)
+	}
+	sources := make([]uploadSource, 0, len(reader.File))
+	totalBytes := 0
+	for _, file := range reader.File {
+		if file.FileInfo().IsDir() {
+			return nil, fmt.Errorf("zip contains directory %q", file.Name)
+		}
+		if !safeZipEntryName(file.Name) {
+			return nil, fmt.Errorf("unsafe zip entry %q", file.Name)
+		}
+		if strings.ToLower(filepath.Ext(file.Name)) != ".enex" {
+			return nil, fmt.Errorf("zip contains non-enex entry %q", file.Name)
+		}
+		src, err := file.Open()
+		if err != nil {
+			return nil, fmt.Errorf("open zip entry %q: %w", file.Name, err)
+		}
+		entryData, err := io.ReadAll(io.LimitReader(src, maxENEXBytes+1))
+		closeErr := src.Close()
+		if err != nil {
+			return nil, fmt.Errorf("read zip entry %q: %w", file.Name, err)
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("close zip entry %q: %w", file.Name, closeErr)
+		}
+		if len(entryData) == 0 {
+			return nil, fmt.Errorf("zip entry %q is empty", file.Name)
+		}
+		if len(entryData) > maxENEXBytes {
+			return nil, fmt.Errorf("%w: max %d bytes", ErrImportTooLarge, maxENEXBytes)
+		}
+		totalBytes += len(entryData)
+		if totalBytes > maxENEXBytes {
+			return nil, fmt.Errorf("%w: max %d bytes", ErrImportTooLarge, maxENEXBytes)
+		}
+		sources = append(sources, uploadSource{
+			Filename:     filepath.Base(file.Name),
+			NotebookName: notebookNameFromFilename(file.Name),
+			Data:         entryData,
+		})
+	}
+	if len(sources) == 0 {
+		return nil, errors.New("zip contains no enex files")
+	}
+	return sources, nil
+}
+
+func safeZipEntryName(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" || filepath.IsAbs(name) || strings.Contains(name, "\\") {
+		return false
+	}
+	cleaned := filepath.Clean(name)
+	return cleaned != "." && cleaned != ".." && !strings.HasPrefix(cleaned, ".."+string(filepath.Separator))
 }
 
 func cleanFilename(filename string) string {
@@ -406,6 +574,28 @@ func cleanFilename(filename string) string {
 	return filename
 }
 
+func notebookNameFromFilename(filename string) string {
+	name := strings.TrimSpace(filepath.Base(filename))
+	ext := filepath.Ext(name)
+	if ext != "" {
+		name = strings.TrimSuffix(name, ext)
+	}
+	name = strings.TrimSpace(name)
+	if isGenericNotebookName(name) {
+		return ""
+	}
+	return name
+}
+
+func isGenericNotebookName(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "", "import", "evernote", "notes", "notebooks":
+		return true
+	default:
+		return false
+	}
+}
+
 func titleOrUntitled(title string) string {
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -414,24 +604,51 @@ func titleOrUntitled(title string) string {
 	return title
 }
 
-func previewCounts(doc *evernote.Document) (int, int, int) {
+func previewCounts(sources []parsedSource) (int, int, int, []ImportNotebook) {
 	tags := make(map[string]bool)
 	resourceCount := 0
 	warningCount := 0
+	notebooksByName := make(map[string]*ImportNotebook)
 
-	for _, note := range doc.Notes {
-		for _, tagName := range note.Tags {
-			tags[tagName] = true
-		}
-		for _, resource := range note.Resources {
-			resourceCount++
-			if resource.DecodeError != "" {
-				warningCount++
+	for _, source := range sources {
+		for _, note := range source.Doc.Notes {
+			notebookName := noteNotebookName(note)
+			var notebook *ImportNotebook
+			if notebookName != "" {
+				notebook = notebooksByName[notebookName]
+				if notebook == nil {
+					notebook = &ImportNotebook{Name: notebookName}
+					notebooksByName[notebookName] = notebook
+				}
+				notebook.NoteCount++
+			}
+			for _, tagName := range note.Tags {
+				tags[tagName] = true
+			}
+			for _, resource := range note.Resources {
+				resourceCount++
+				if notebook != nil {
+					notebook.ResourceCount++
+				}
+				if _, err := resource.Data.Decode(); err != nil {
+					warningCount++
+					if notebook != nil {
+						notebook.WarningCount++
+					}
+				}
 			}
 		}
 	}
 
-	return len(tags), resourceCount, warningCount
+	notebooks := make([]ImportNotebook, 0, len(notebooksByName))
+	for _, notebook := range notebooksByName {
+		notebooks = append(notebooks, *notebook)
+	}
+	sort.Slice(notebooks, func(i, j int) bool {
+		return notebooks[i].Name < notebooks[j].Name
+	})
+
+	return len(tags), resourceCount, warningCount, notebooks
 }
 
 func resultFromJob(job *ent.ImportJob) *ImportResult {
@@ -467,60 +684,18 @@ func duplicateKey(title string, created time.Time, content string) string {
 	return strings.ToLower(strings.TrimSpace(title)) + "|" + created.UTC().Format(time.RFC3339) + "|" + hex.EncodeToString(sum[:])
 }
 
-func sourceNoteKey(parsedNote evernote.Note) string {
+func sourceNoteKey(parsedNote enex.Note) string {
 	return duplicateKey(parsedNote.Title, parsedNote.Created, importedContent(parsedNote))
 }
 
-func importedContent(parsedNote evernote.Note) string {
-	return enmlToText(parsedNote.Content)
+func importedContent(parsedNote enex.Note) string {
+	return enex.PlainText(parsedNote.Content)
 }
 
-var (
-	xmlDeclarationPattern = regexp.MustCompile(`(?is)<\?xml.*?\?>`)
-	doctypePattern        = regexp.MustCompile(`(?is)<!DOCTYPE.*?>`)
-)
-
-func enmlToText(content string) string {
-	content = xmlDeclarationPattern.ReplaceAllString(content, "")
-	content = doctypePattern.ReplaceAllString(content, "")
-
-	decoder := xml.NewDecoder(strings.NewReader(content))
-	var builder strings.Builder
-	for {
-		token, err := decoder.Token()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return strings.TrimSpace(content)
-		}
-
-		switch t := token.(type) {
-		case xml.CharData:
-			builder.Write([]byte(t))
-		case xml.StartElement:
-			switch strings.ToLower(t.Name.Local) {
-			case "br":
-				builder.WriteString("\n")
-			case "div", "p":
-				writeNewlineIfNeeded(&builder)
-			case "en-todo":
-				writeNewlineIfNeeded(&builder)
-				builder.WriteString("- [ ] ")
-			}
-		case xml.EndElement:
-			switch strings.ToLower(t.Name.Local) {
-			case "div", "p":
-				writeNewlineIfNeeded(&builder)
-			}
-		}
+func noteNotebookName(parsedNote enex.Note) string {
+	name := strings.TrimSpace(parsedNote.NotebookName)
+	if isGenericNotebookName(name) {
+		return ""
 	}
-	return strings.TrimSpace(builder.String())
-}
-
-func writeNewlineIfNeeded(builder *strings.Builder) {
-	value := builder.String()
-	if value != "" && !strings.HasSuffix(value, "\n") {
-		builder.WriteString("\n")
-	}
+	return name
 }

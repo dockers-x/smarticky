@@ -909,6 +909,38 @@ h6 {
   font-size: 11px;
 }
 
+.import-summary__notebooks {
+  display: grid;
+  gap: 8px;
+}
+
+.import-summary__notebook {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-card);
+  padding: 8px 10px;
+}
+
+.import-summary__notebook span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-summary__notebook small {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
 .import-error {
   margin: 0;
   color: var(--color-danger);

@@ -38,7 +38,7 @@
     bind:this={fileInput}
     class="visually-hidden"
     type="file"
-    accept=".enex"
+    accept=".enex,.zip"
     aria-label={t("selectImportFile", $preferencesStore.language)}
     on:change={handleFileChange}
   />

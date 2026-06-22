@@ -4,7 +4,16 @@ export interface ImportPreview {
   job_id: number;
   filename: string;
   note_count: number;
+  notebook_count: number;
+  notebooks: ImportNotebook[];
   tag_count: number;
+  resource_count: number;
+  warning_count: number;
+}
+
+export interface ImportNotebook {
+  name: string;
+  note_count: number;
   resource_count: number;
   warning_count: number;
 }

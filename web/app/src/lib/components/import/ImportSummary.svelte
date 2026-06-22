@@ -8,6 +8,7 @@
   $: rows = preview
     ? [
         { label: t("notes", $preferencesStore.language), value: preview.note_count },
+        { label: t("notebooks", $preferencesStore.language), value: preview.notebook_count },
         { label: t("tags", $preferencesStore.language), value: preview.tag_count },
         { label: t("attachments", $preferencesStore.language), value: preview.resource_count },
         { label: t("warnings", $preferencesStore.language), value: preview.warning_count },
@@ -29,3 +30,14 @@
     </div>
   {/each}
 </div>
+
+{#if preview?.notebooks?.length}
+  <div class="import-summary__notebooks" aria-label={t("notebooks", $preferencesStore.language)}>
+    {#each preview.notebooks as notebook}
+      <div class="import-summary__notebook">
+        <span title={notebook.name}>{notebook.name}</span>
+        <small>{notebook.note_count} {t("notes", $preferencesStore.language)}</small>
+      </div>
+    {/each}
+  </div>
+{/if}

@@ -1,6 +1,8 @@
 package importer
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -123,5 +125,149 @@ func TestConfirmEvernoteImportsAndSkipsDuplicate(t *testing.T) {
 	notes = client.Note.Query().AllX(ctx)
 	if len(notes) != 1 {
 		t.Fatalf("expected duplicate import to keep 1 note, got %d", len(notes))
+	}
+}
+
+func TestConfirmEvernoteImportsSingleFileMultipleNotebooksTagsAndAttachments(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestConfirmEvernoteImportsSingleFileMultipleNotebooksTagsAndAttachments?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	input := `<?xml version="1.0" encoding="UTF-8"?>
+<en-export>
+  <note>
+    <title>Alpha</title>
+    <notebook-name>Work</notebook-name>
+    <content><![CDATA[<en-note><div>Hello alpha</div></en-note>]]></content>
+    <created>20260620T010203Z</created>
+    <tag>project</tag>
+    <resource>
+      <data encoding="base64">aGVsbG8=</data>
+      <mime>text/plain</mime>
+      <resource-attributes><file-name>hello.txt</file-name></resource-attributes>
+    </resource>
+  </note>
+  <note>
+    <title>Beta</title>
+    <note-attributes><application-data key="notebook">Personal</application-data></note-attributes>
+    <content><![CDATA[<en-note><div>Hello beta</div></en-note>]]></content>
+    <created>20260621T010203Z</created>
+    <tag>home</tag>
+  </note>
+</en-export>`
+
+	service := NewService(client, storage.NewMemoryFileSystem())
+	preview, err := service.PreviewEvernote(ctx, u.ID, "all.enex", strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.NotebookCount != 2 || len(preview.Notebooks) != 2 {
+		t.Fatalf("expected 2 notebooks, got count=%d notebooks=%#v", preview.NotebookCount, preview.Notebooks)
+	}
+
+	result, err := service.ConfirmEvernote(ctx, u.ID, preview.Job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Imported != 2 || result.Failed != 0 {
+		t.Fatalf("expected 2 imported, got imported=%d failed=%d", result.Imported, result.Failed)
+	}
+	if folders := client.Folder.Query().CountX(ctx); folders != 2 {
+		t.Fatalf("expected 2 folders, got %d", folders)
+	}
+	if tags := client.Tag.Query().CountX(ctx); tags != 2 {
+		t.Fatalf("expected 2 tags, got %d", tags)
+	}
+	if attachments := client.Attachment.Query().CountX(ctx); attachments != 1 {
+		t.Fatalf("expected 1 attachment, got %d", attachments)
+	}
+
+	notes := client.Note.Query().WithFolder().WithTags().WithAttachments().AllX(ctx)
+	if len(notes) != 2 {
+		t.Fatalf("expected 2 notes, got %d", len(notes))
+	}
+	for _, row := range notes {
+		if row.Edges.Folder == nil {
+			t.Fatalf("expected note %q to have a folder", row.Title)
+		}
+	}
+}
+
+func TestPreviewEvernoteZipCreatesNotebookSources(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestPreviewEvernoteZipCreatesNotebookSources?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
+	for name, title := range map[string]string{
+		"Work.enex":     "Work Note",
+		"Personal.enex": "Personal Note",
+	} {
+		entry, err := zipWriter.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = entry.Write([]byte(`<en-export><note><title>` + title + `</title><content><![CDATA[<en-note>` + title + `</en-note>]]></content><created>20260620T010203Z</created></note></en-export>`))
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	service := NewService(client, storage.NewMemoryFileSystem())
+	preview, err := service.PreviewEvernote(ctx, u.ID, "notebooks.zip", bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.NoteCount != 2 || preview.NotebookCount != 2 {
+		t.Fatalf("expected 2 notes and 2 notebooks, got notes=%d notebooks=%d", preview.NoteCount, preview.NotebookCount)
+	}
+
+	result, err := service.ConfirmEvernote(ctx, u.ID, preview.Job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Imported != 2 {
+		t.Fatalf("expected 2 imported, got %d", result.Imported)
+	}
+	if folders := client.Folder.Query().CountX(ctx); folders != 2 {
+		t.Fatalf("expected 2 folders, got %d", folders)
+	}
+}
+
+func TestPreviewEvernoteZipRejectsUnsafeEntries(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestPreviewEvernoteZipRejectsUnsafeEntries?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
+	entry, err := zipWriter.Create("../evil.enex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = entry.Write([]byte(`<en-export><note><title>Evil</title><content><![CDATA[<en-note>Evil</en-note>]]></content></note></en-export>`))
+	if err := zipWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	service := NewService(client, storage.NewMemoryFileSystem())
+	if _, err := service.PreviewEvernote(ctx, u.ID, "evil.zip", bytes.NewReader(buf.Bytes())); err == nil {
+		t.Fatalf("expected unsafe zip entry error")
 	}
 }

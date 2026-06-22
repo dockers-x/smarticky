@@ -36,7 +36,8 @@ function createImportsStore() {
       set({ ...initialState });
     },
     async preview(file: File): Promise<ImportPreview | null> {
-      if (!file.name.toLowerCase().endsWith(".enex")) {
+      const lowerName = file.name.toLowerCase();
+      if (!lowerName.endsWith(".enex") && !lowerName.endsWith(".zip")) {
         update((state) => ({
           ...state,
           preview: null,
