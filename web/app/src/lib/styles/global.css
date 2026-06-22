@@ -346,8 +346,8 @@ h6 {
 .tools-panel__nav {
   min-width: 0;
   min-height: 0;
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
   padding: 16px;
   border-right: 1px solid var(--color-divider);
@@ -380,6 +380,36 @@ h6 {
 .tools-panel__nav button.danger {
   margin-top: 8px;
   color: var(--color-danger);
+}
+
+.tools-panel__version {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  margin-top: auto;
+  border-top: 1px solid var(--color-divider);
+  padding-top: 12px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.tools-panel__version div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.tools-panel__version span,
+.tools-panel__version strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tools-panel__version strong {
+  color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
 .tools-panel__content {
@@ -2588,6 +2618,7 @@ h6 {
 
   .tools-panel__nav {
     display: flex;
+    flex-direction: row;
     overflow-x: auto;
     gap: 8px;
     border-right: 0;
@@ -2599,6 +2630,10 @@ h6 {
     flex: 0 0 auto;
     min-height: 44px;
     white-space: nowrap;
+  }
+
+  .tools-panel__version {
+    display: none;
   }
 
   .settings-view {

@@ -3,6 +3,7 @@
   import { insert, replaceAll } from "@milkdown/kit/utils";
   import { onDestroy, onMount, tick } from "svelte";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
+  import { createEditorDiagramCodeBlockConfig } from "../../markdown/diagrams/editorPreview";
   import { preferencesStore, t } from "../../stores/preferences";
 
   export let value = "";
@@ -44,6 +45,9 @@
       root: host,
       defaultValue: value,
       featureConfigs: {
+        [Crepe.Feature.CodeMirror]: createEditorDiagramCodeBlockConfig({
+          getTheme: () => ($preferencesStore.theme === "dark" ? "dark" : "light"),
+        }),
         [Crepe.Feature.Placeholder]: {
           mode: "doc",
           text: t("contentEmpty", $preferencesStore.language),

@@ -9,8 +9,8 @@ A modern notes application built with Go, inspired by Smartisan Notes.
 - ✅ **便签管理** / Note Management
   - 创建、编辑、删除便签
   - 支持 Markdown 格式
-  - 支持 Mermaid 与 drawio 图表代码块（分享预览与浏览器生成图片）
-  - Mermaid and drawio fenced diagrams are rendered in share previews and browser-generated images
+  - 支持 Mermaid 与 drawio 图表代码块（编辑器预览、分享预览与浏览器生成图片）
+  - Mermaid and drawio fenced diagrams render in the editor, share previews, and browser-generated images
   - 收藏功能
   - 废纸篓（软删除）
   - 搜索功能

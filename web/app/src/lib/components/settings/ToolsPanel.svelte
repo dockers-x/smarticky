@@ -8,8 +8,10 @@
     Users,
     X,
   } from "@lucide/svelte";
+  import { onMount } from "svelte";
   import type { ImportResult } from "../../api/imports";
   import type { User } from "../../api/types";
+  import { getVersionInfo, type VersionInfo } from "../../api/version";
   import ImportCenter from "../import/ImportCenter.svelte";
   import BackupPanel from "./BackupPanel.svelte";
   import FontPanel from "./FontPanel.svelte";
@@ -33,6 +35,23 @@
   }
 
   let view: ToolsView = "profile";
+  let versionInfo: VersionInfo | null = null;
+  let versionLoadFailed = false;
+
+  onMount(() => {
+    let active = true;
+    void getVersionInfo()
+      .then((info) => {
+        if (active) versionInfo = info;
+      })
+      .catch(() => {
+        if (active) versionLoadFailed = true;
+      });
+
+    return () => {
+      active = false;
+    };
+  });
 
   function selectView(nextView: ToolsView): void {
     if (nextView === "import") importsStore.reset();
@@ -62,6 +81,41 @@
       cancelLabel: t("cancel", $preferencesStore.language),
     });
     if (confirmed) authStore.logout();
+  }
+
+  function displayValue(value: string | undefined): string {
+    return value && value !== "unknown"
+      ? value
+      : t("unknown", $preferencesStore.language);
+  }
+
+  function displayBuildTime(value: string | undefined): string {
+    if (!value || value === "unknown") {
+      return t("unknown", $preferencesStore.language);
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return parsed.toLocaleString(
+      $preferencesStore.language === "zh" ? "zh-CN" : "en-US",
+      {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      },
+    );
+  }
+
+  function displayCommit(value: string | undefined): string {
+    if (!value || value === "unknown") {
+      return t("unknown", $preferencesStore.language);
+    }
+    return value.length > 8 ? value.slice(0, 8) : value;
   }
 
   const navItems: ToolNavItem[] = [
@@ -119,7 +173,12 @@
     <div class="tools-panel__header">
       <div>
         <h2 id="settings-dialog-title">{t("settings", $preferencesStore.language)}</h2>
-        <p>{panelTitle}</p>
+        <p>
+          {panelTitle}
+          {#if versionInfo}
+            - {t("appVersion", $preferencesStore.language)} {displayValue(versionInfo.version)}
+          {/if}
+        </p>
       </div>
       <button class="tools-panel__close" type="button" aria-label={t("closeSettings", $preferencesStore.language)} on:click={onClose}>
         <X size={20} strokeWidth={1.8} aria-hidden="true" />
@@ -159,6 +218,29 @@
           <LogOut size={17} strokeWidth={1.8} aria-hidden="true" />
           {t("logout", $preferencesStore.language)}
         </button>
+
+        <div class="tools-panel__version" aria-label={t("appVersion", $preferencesStore.language)}>
+          {#if versionInfo}
+            <div>
+              <span>{t("appVersion", $preferencesStore.language)}</span>
+              <strong>{displayValue(versionInfo.version)}</strong>
+            </div>
+            <div>
+              <span>{t("buildTime", $preferencesStore.language)}</span>
+              <strong>{displayBuildTime(versionInfo.build_time)}</strong>
+            </div>
+            <div>
+              <span>{t("gitCommit", $preferencesStore.language)}</span>
+              <strong title={displayValue(versionInfo.git_commit)}>
+                {displayCommit(versionInfo.git_commit)}
+              </strong>
+            </div>
+          {:else if versionLoadFailed}
+            <span>{t("versionUnavailable", $preferencesStore.language)}</span>
+          {:else}
+            <span>{t("loading", $preferencesStore.language)}</span>
+          {/if}
+        </div>
       </nav>
 
       <div class="tools-panel__content">
