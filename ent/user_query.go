@@ -15,6 +15,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -43,6 +44,7 @@ type UserQuery struct {
 	withImportJobs        *ImportJobQuery
 	withMcpTokens         *MCPTokenQuery
 	withMcpImages         *MCPImageQuery
+	withNoteLinks         *NoteLinkQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -299,6 +301,28 @@ func (_q *UserQuery) QueryMcpImages() *MCPImageQuery {
 	return query
 }
 
+// QueryNoteLinks chains the current query on the "note_links" edge.
+func (_q *UserQuery) QueryNoteLinks() *NoteLinkQuery {
+	query := (&NoteLinkClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(notelink.Table, notelink.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteLinksTable, user.NoteLinksColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (_q *UserQuery) First(ctx context.Context) (*User, error) {
@@ -501,6 +525,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withImportJobs:        _q.withImportJobs.Clone(),
 		withMcpTokens:         _q.withMcpTokens.Clone(),
 		withMcpImages:         _q.withMcpImages.Clone(),
+		withNoteLinks:         _q.withNoteLinks.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -617,6 +642,17 @@ func (_q *UserQuery) WithMcpImages(opts ...func(*MCPImageQuery)) *UserQuery {
 	return _q
 }
 
+// WithNoteLinks tells the query-builder to eager-load the nodes that are connected to
+// the "note_links" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNoteLinks(opts ...func(*NoteLinkQuery)) *UserQuery {
+	query := (&NoteLinkClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withNoteLinks = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -695,7 +731,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [10]bool{
+		loadedTypes = [11]bool{
 			_q.withNotes != nil,
 			_q.withFolders != nil,
 			_q.withAttachments != nil,
@@ -706,6 +742,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withImportJobs != nil,
 			_q.withMcpTokens != nil,
 			_q.withMcpImages != nil,
+			_q.withNoteLinks != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -792,6 +829,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadMcpImages(ctx, query, nodes,
 			func(n *User) { n.Edges.McpImages = []*MCPImage{} },
 			func(n *User, e *MCPImage) { n.Edges.McpImages = append(n.Edges.McpImages, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withNoteLinks; query != nil {
+		if err := _q.loadNoteLinks(ctx, query, nodes,
+			func(n *User) { n.Edges.NoteLinks = []*NoteLink{} },
+			func(n *User, e *NoteLink) { n.Edges.NoteLinks = append(n.Edges.NoteLinks, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1100,6 +1144,36 @@ func (_q *UserQuery) loadMcpImages(ctx context.Context, query *MCPImageQuery, no
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_mcp_images" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadNoteLinks(ctx context.Context, query *NoteLinkQuery, nodes []*User, init func(*User), assign func(*User, *NoteLink)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(notelink.FieldUserID)
+	}
+	query.Where(predicate.NoteLink(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.NoteLinksColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

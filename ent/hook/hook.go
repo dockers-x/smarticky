@@ -128,6 +128,18 @@ func (f NoteFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteMutation", m)
 }
 
+// The NoteLinkFunc type is an adapter to allow the use of ordinary
+// function as NoteLink mutator.
+type NoteLinkFunc func(context.Context, *ent.NoteLinkMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteLinkFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteLinkMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteLinkMutation", m)
+}
+
 // The TagFunc type is an adapter to allow the use of ordinary
 // function as Tag mutator.
 type TagFunc func(context.Context, *ent.TagMutation) (ent.Value, error)

@@ -9,6 +9,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/ent/whiteboard"
@@ -304,6 +305,36 @@ func (_c *NoteCreate) AddWhiteboards(v ...*Whiteboard) *NoteCreate {
 	return _c.AddWhiteboardIDs(ids...)
 }
 
+// AddOutgoingLinkIDs adds the "outgoing_links" edge to the NoteLink entity by IDs.
+func (_c *NoteCreate) AddOutgoingLinkIDs(ids ...uuid.UUID) *NoteCreate {
+	_c.mutation.AddOutgoingLinkIDs(ids...)
+	return _c
+}
+
+// AddOutgoingLinks adds the "outgoing_links" edges to the NoteLink entity.
+func (_c *NoteCreate) AddOutgoingLinks(v ...*NoteLink) *NoteCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOutgoingLinkIDs(ids...)
+}
+
+// AddBacklinkIDs adds the "backlinks" edge to the NoteLink entity by IDs.
+func (_c *NoteCreate) AddBacklinkIDs(ids ...uuid.UUID) *NoteCreate {
+	_c.mutation.AddBacklinkIDs(ids...)
+	return _c
+}
+
+// AddBacklinks adds the "backlinks" edges to the NoteLink entity.
+func (_c *NoteCreate) AddBacklinks(v ...*NoteLink) *NoteCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddBacklinkIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_c *NoteCreate) AddTagIDs(ids ...uuid.UUID) *NoteCreate {
 	_c.mutation.AddTagIDs(ids...)
@@ -563,6 +594,38 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OutgoingLinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BacklinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

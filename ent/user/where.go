@@ -995,6 +995,29 @@ func HasMcpImagesWith(preds ...predicate.MCPImage) predicate.User {
 	})
 }
 
+// HasNoteLinks applies the HasEdge predicate on the "note_links" edge.
+func HasNoteLinks() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NoteLinksTable, NoteLinksColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNoteLinksWith applies the HasEdge predicate on the "note_links" edge with a given conditions (other predicates).
+func HasNoteLinksWith(preds ...predicate.NoteLink) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newNoteLinksStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.User) predicate.User {
 	return predicate.User(sql.AndPredicates(predicates...))

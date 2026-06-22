@@ -442,6 +442,9 @@ func (h *Handler) CreateNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	h.indexNoteBestEffort(ctx, n)
+	if err := h.notes.SyncUserLinks(ctx, userID); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 
 	response, err := noteToResponse(ctx, n, false)
 	if err != nil {
@@ -621,6 +624,11 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	h.indexNoteBestEffort(ctx, n)
+	if req.Title != nil || req.Content != nil || req.ProtectionMode != nil {
+		if err := h.notes.SyncUserLinks(ctx, userID); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+	}
 
 	response, err := noteToResponse(ctx, n, false)
 	if err != nil {
@@ -640,6 +648,9 @@ func (h *Handler) DeleteNote(c echo.Context) error {
 	userID := c.Get("user_id").(int)
 
 	ctx := context.Background()
+	if err := h.notes.DeleteLinksForNotes(ctx, userID, id); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 
 	// 删除时验证笔记是否属于当前用户
 	count, err := h.client.Note.Delete().
@@ -663,13 +674,26 @@ func (h *Handler) DeleteNote(c echo.Context) error {
 
 func (h *Handler) EmptyTrash(c echo.Context) error {
 	userID := c.Get("user_id").(int)
+	ctx := context.Background()
+	ids, err := h.client.Note.Query().
+		Where(
+			note.IsDeleted(true),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		IDs(ctx)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if err := h.notes.DeleteLinksForNotes(ctx, userID, ids...); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 
 	count, err := h.client.Note.Delete().
 		Where(
 			note.IsDeleted(true),
 			note.HasUserWith(user.IDEQ(userID)),
 		).
-		Exec(context.Background())
+		Exec(ctx)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

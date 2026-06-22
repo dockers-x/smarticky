@@ -199,6 +199,9 @@ func (s *Service) Create(ctx context.Context, userID int, input CreateInput) (No
 	if s.search != nil {
 		_ = s.search.IndexNote(ctx, row)
 	}
+	if err := s.SyncUserLinks(ctx, userID); err != nil {
+		return NoteView{}, err
+	}
 	return s.noteToView(ctx, row, false)
 }
 

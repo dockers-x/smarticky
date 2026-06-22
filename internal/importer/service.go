@@ -22,6 +22,7 @@ import (
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/internal/importer/evernote"
+	notesvc "smarticky/internal/notes"
 	"smarticky/internal/storage"
 
 	"github.com/google/uuid"
@@ -244,6 +245,9 @@ func (s *Service) ConfirmEvernote(ctx context.Context, userID int, jobID int) (*
 		if err := update.Exec(ctx); err != nil {
 			return nil, err
 		}
+	}
+	if err := notesvc.NewService(s.client).SyncUserLinks(ctx, userID); err != nil {
+		return nil, err
 	}
 
 	status := finalImportStatus(result)

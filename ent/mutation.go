@@ -16,6 +16,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -47,6 +48,7 @@ const (
 	TypeMCPImage          = "MCPImage"
 	TypeMCPToken          = "MCPToken"
 	TypeNote              = "Note"
+	TypeNoteLink          = "NoteLink"
 	TypeTag               = "Tag"
 	TypeUser              = "User"
 	TypeWhiteboard        = "Whiteboard"
@@ -7539,6 +7541,12 @@ type NoteMutation struct {
 	whiteboards              map[uuid.UUID]struct{}
 	removedwhiteboards       map[uuid.UUID]struct{}
 	clearedwhiteboards       bool
+	outgoing_links           map[uuid.UUID]struct{}
+	removedoutgoing_links    map[uuid.UUID]struct{}
+	clearedoutgoing_links    bool
+	backlinks                map[uuid.UUID]struct{}
+	removedbacklinks         map[uuid.UUID]struct{}
+	clearedbacklinks         bool
 	tags                     map[uuid.UUID]struct{}
 	removedtags              map[uuid.UUID]struct{}
 	clearedtags              bool
@@ -8445,6 +8453,114 @@ func (m *NoteMutation) ResetWhiteboards() {
 	m.removedwhiteboards = nil
 }
 
+// AddOutgoingLinkIDs adds the "outgoing_links" edge to the NoteLink entity by ids.
+func (m *NoteMutation) AddOutgoingLinkIDs(ids ...uuid.UUID) {
+	if m.outgoing_links == nil {
+		m.outgoing_links = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.outgoing_links[ids[i]] = struct{}{}
+	}
+}
+
+// ClearOutgoingLinks clears the "outgoing_links" edge to the NoteLink entity.
+func (m *NoteMutation) ClearOutgoingLinks() {
+	m.clearedoutgoing_links = true
+}
+
+// OutgoingLinksCleared reports if the "outgoing_links" edge to the NoteLink entity was cleared.
+func (m *NoteMutation) OutgoingLinksCleared() bool {
+	return m.clearedoutgoing_links
+}
+
+// RemoveOutgoingLinkIDs removes the "outgoing_links" edge to the NoteLink entity by IDs.
+func (m *NoteMutation) RemoveOutgoingLinkIDs(ids ...uuid.UUID) {
+	if m.removedoutgoing_links == nil {
+		m.removedoutgoing_links = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.outgoing_links, ids[i])
+		m.removedoutgoing_links[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedOutgoingLinks returns the removed IDs of the "outgoing_links" edge to the NoteLink entity.
+func (m *NoteMutation) RemovedOutgoingLinksIDs() (ids []uuid.UUID) {
+	for id := range m.removedoutgoing_links {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// OutgoingLinksIDs returns the "outgoing_links" edge IDs in the mutation.
+func (m *NoteMutation) OutgoingLinksIDs() (ids []uuid.UUID) {
+	for id := range m.outgoing_links {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetOutgoingLinks resets all changes to the "outgoing_links" edge.
+func (m *NoteMutation) ResetOutgoingLinks() {
+	m.outgoing_links = nil
+	m.clearedoutgoing_links = false
+	m.removedoutgoing_links = nil
+}
+
+// AddBacklinkIDs adds the "backlinks" edge to the NoteLink entity by ids.
+func (m *NoteMutation) AddBacklinkIDs(ids ...uuid.UUID) {
+	if m.backlinks == nil {
+		m.backlinks = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.backlinks[ids[i]] = struct{}{}
+	}
+}
+
+// ClearBacklinks clears the "backlinks" edge to the NoteLink entity.
+func (m *NoteMutation) ClearBacklinks() {
+	m.clearedbacklinks = true
+}
+
+// BacklinksCleared reports if the "backlinks" edge to the NoteLink entity was cleared.
+func (m *NoteMutation) BacklinksCleared() bool {
+	return m.clearedbacklinks
+}
+
+// RemoveBacklinkIDs removes the "backlinks" edge to the NoteLink entity by IDs.
+func (m *NoteMutation) RemoveBacklinkIDs(ids ...uuid.UUID) {
+	if m.removedbacklinks == nil {
+		m.removedbacklinks = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.backlinks, ids[i])
+		m.removedbacklinks[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedBacklinks returns the removed IDs of the "backlinks" edge to the NoteLink entity.
+func (m *NoteMutation) RemovedBacklinksIDs() (ids []uuid.UUID) {
+	for id := range m.removedbacklinks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// BacklinksIDs returns the "backlinks" edge IDs in the mutation.
+func (m *NoteMutation) BacklinksIDs() (ids []uuid.UUID) {
+	for id := range m.backlinks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetBacklinks resets all changes to the "backlinks" edge.
+func (m *NoteMutation) ResetBacklinks() {
+	m.backlinks = nil
+	m.clearedbacklinks = false
+	m.removedbacklinks = nil
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by ids.
 func (m *NoteMutation) AddTagIDs(ids ...uuid.UUID) {
 	if m.tags == nil {
@@ -8904,7 +9020,7 @@ func (m *NoteMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NoteMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.user != nil {
 		edges = append(edges, note.EdgeUser)
 	}
@@ -8916,6 +9032,12 @@ func (m *NoteMutation) AddedEdges() []string {
 	}
 	if m.whiteboards != nil {
 		edges = append(edges, note.EdgeWhiteboards)
+	}
+	if m.outgoing_links != nil {
+		edges = append(edges, note.EdgeOutgoingLinks)
+	}
+	if m.backlinks != nil {
+		edges = append(edges, note.EdgeBacklinks)
 	}
 	if m.tags != nil {
 		edges = append(edges, note.EdgeTags)
@@ -8947,6 +9069,18 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case note.EdgeOutgoingLinks:
+		ids := make([]ent.Value, 0, len(m.outgoing_links))
+		for id := range m.outgoing_links {
+			ids = append(ids, id)
+		}
+		return ids
+	case note.EdgeBacklinks:
+		ids := make([]ent.Value, 0, len(m.backlinks))
+		for id := range m.backlinks {
+			ids = append(ids, id)
+		}
+		return ids
 	case note.EdgeTags:
 		ids := make([]ent.Value, 0, len(m.tags))
 		for id := range m.tags {
@@ -8959,12 +9093,18 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *NoteMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.removedattachments != nil {
 		edges = append(edges, note.EdgeAttachments)
 	}
 	if m.removedwhiteboards != nil {
 		edges = append(edges, note.EdgeWhiteboards)
+	}
+	if m.removedoutgoing_links != nil {
+		edges = append(edges, note.EdgeOutgoingLinks)
+	}
+	if m.removedbacklinks != nil {
+		edges = append(edges, note.EdgeBacklinks)
 	}
 	if m.removedtags != nil {
 		edges = append(edges, note.EdgeTags)
@@ -8988,6 +9128,18 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case note.EdgeOutgoingLinks:
+		ids := make([]ent.Value, 0, len(m.removedoutgoing_links))
+		for id := range m.removedoutgoing_links {
+			ids = append(ids, id)
+		}
+		return ids
+	case note.EdgeBacklinks:
+		ids := make([]ent.Value, 0, len(m.removedbacklinks))
+		for id := range m.removedbacklinks {
+			ids = append(ids, id)
+		}
+		return ids
 	case note.EdgeTags:
 		ids := make([]ent.Value, 0, len(m.removedtags))
 		for id := range m.removedtags {
@@ -9000,7 +9152,7 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NoteMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.cleareduser {
 		edges = append(edges, note.EdgeUser)
 	}
@@ -9012,6 +9164,12 @@ func (m *NoteMutation) ClearedEdges() []string {
 	}
 	if m.clearedwhiteboards {
 		edges = append(edges, note.EdgeWhiteboards)
+	}
+	if m.clearedoutgoing_links {
+		edges = append(edges, note.EdgeOutgoingLinks)
+	}
+	if m.clearedbacklinks {
+		edges = append(edges, note.EdgeBacklinks)
 	}
 	if m.clearedtags {
 		edges = append(edges, note.EdgeTags)
@@ -9031,6 +9189,10 @@ func (m *NoteMutation) EdgeCleared(name string) bool {
 		return m.clearedattachments
 	case note.EdgeWhiteboards:
 		return m.clearedwhiteboards
+	case note.EdgeOutgoingLinks:
+		return m.clearedoutgoing_links
+	case note.EdgeBacklinks:
+		return m.clearedbacklinks
 	case note.EdgeTags:
 		return m.clearedtags
 	}
@@ -9067,11 +9229,1093 @@ func (m *NoteMutation) ResetEdge(name string) error {
 	case note.EdgeWhiteboards:
 		m.ResetWhiteboards()
 		return nil
+	case note.EdgeOutgoingLinks:
+		m.ResetOutgoingLinks()
+		return nil
+	case note.EdgeBacklinks:
+		m.ResetBacklinks()
+		return nil
 	case note.EdgeTags:
 		m.ResetTags()
 		return nil
 	}
 	return fmt.Errorf("unknown Note edge %s", name)
+}
+
+// NoteLinkMutation represents an operation that mutates the NoteLink nodes in the graph.
+type NoteLinkMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	target_ref          *string
+	target_ref_norm     *string
+	target_key          *string
+	display_text        *string
+	link_type           *notelink.LinkType
+	occurrence_count    *int
+	addoccurrence_count *int
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	user                *int
+	cleareduser         bool
+	source_note         *uuid.UUID
+	clearedsource_note  bool
+	target_note         *uuid.UUID
+	clearedtarget_note  bool
+	done                bool
+	oldValue            func(context.Context) (*NoteLink, error)
+	predicates          []predicate.NoteLink
+}
+
+var _ ent.Mutation = (*NoteLinkMutation)(nil)
+
+// notelinkOption allows management of the mutation configuration using functional options.
+type notelinkOption func(*NoteLinkMutation)
+
+// newNoteLinkMutation creates new mutation for the NoteLink entity.
+func newNoteLinkMutation(c config, op Op, opts ...notelinkOption) *NoteLinkMutation {
+	m := &NoteLinkMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeNoteLink,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withNoteLinkID sets the ID field of the mutation.
+func withNoteLinkID(id uuid.UUID) notelinkOption {
+	return func(m *NoteLinkMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NoteLink
+		)
+		m.oldValue = func(ctx context.Context) (*NoteLink, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NoteLink.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNoteLink sets the old NoteLink of the mutation.
+func withNoteLink(node *NoteLink) notelinkOption {
+	return func(m *NoteLinkMutation) {
+		m.oldValue = func(context.Context) (*NoteLink, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NoteLinkMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NoteLinkMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of NoteLink entities.
+func (m *NoteLinkMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NoteLinkMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NoteLinkMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().NoteLink.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUserID sets the "user_id" field.
+func (m *NoteLinkMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *NoteLinkMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *NoteLinkMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetSourceNoteID sets the "source_note_id" field.
+func (m *NoteLinkMutation) SetSourceNoteID(u uuid.UUID) {
+	m.source_note = &u
+}
+
+// SourceNoteID returns the value of the "source_note_id" field in the mutation.
+func (m *NoteLinkMutation) SourceNoteID() (r uuid.UUID, exists bool) {
+	v := m.source_note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceNoteID returns the old "source_note_id" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldSourceNoteID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceNoteID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceNoteID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceNoteID: %w", err)
+	}
+	return oldValue.SourceNoteID, nil
+}
+
+// ResetSourceNoteID resets all changes to the "source_note_id" field.
+func (m *NoteLinkMutation) ResetSourceNoteID() {
+	m.source_note = nil
+}
+
+// SetTargetNoteID sets the "target_note_id" field.
+func (m *NoteLinkMutation) SetTargetNoteID(u uuid.UUID) {
+	m.target_note = &u
+}
+
+// TargetNoteID returns the value of the "target_note_id" field in the mutation.
+func (m *NoteLinkMutation) TargetNoteID() (r uuid.UUID, exists bool) {
+	v := m.target_note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTargetNoteID returns the old "target_note_id" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldTargetNoteID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTargetNoteID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTargetNoteID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTargetNoteID: %w", err)
+	}
+	return oldValue.TargetNoteID, nil
+}
+
+// ClearTargetNoteID clears the value of the "target_note_id" field.
+func (m *NoteLinkMutation) ClearTargetNoteID() {
+	m.target_note = nil
+	m.clearedFields[notelink.FieldTargetNoteID] = struct{}{}
+}
+
+// TargetNoteIDCleared returns if the "target_note_id" field was cleared in this mutation.
+func (m *NoteLinkMutation) TargetNoteIDCleared() bool {
+	_, ok := m.clearedFields[notelink.FieldTargetNoteID]
+	return ok
+}
+
+// ResetTargetNoteID resets all changes to the "target_note_id" field.
+func (m *NoteLinkMutation) ResetTargetNoteID() {
+	m.target_note = nil
+	delete(m.clearedFields, notelink.FieldTargetNoteID)
+}
+
+// SetTargetRef sets the "target_ref" field.
+func (m *NoteLinkMutation) SetTargetRef(s string) {
+	m.target_ref = &s
+}
+
+// TargetRef returns the value of the "target_ref" field in the mutation.
+func (m *NoteLinkMutation) TargetRef() (r string, exists bool) {
+	v := m.target_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTargetRef returns the old "target_ref" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldTargetRef(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTargetRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTargetRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTargetRef: %w", err)
+	}
+	return oldValue.TargetRef, nil
+}
+
+// ResetTargetRef resets all changes to the "target_ref" field.
+func (m *NoteLinkMutation) ResetTargetRef() {
+	m.target_ref = nil
+}
+
+// SetTargetRefNorm sets the "target_ref_norm" field.
+func (m *NoteLinkMutation) SetTargetRefNorm(s string) {
+	m.target_ref_norm = &s
+}
+
+// TargetRefNorm returns the value of the "target_ref_norm" field in the mutation.
+func (m *NoteLinkMutation) TargetRefNorm() (r string, exists bool) {
+	v := m.target_ref_norm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTargetRefNorm returns the old "target_ref_norm" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldTargetRefNorm(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTargetRefNorm is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTargetRefNorm requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTargetRefNorm: %w", err)
+	}
+	return oldValue.TargetRefNorm, nil
+}
+
+// ResetTargetRefNorm resets all changes to the "target_ref_norm" field.
+func (m *NoteLinkMutation) ResetTargetRefNorm() {
+	m.target_ref_norm = nil
+}
+
+// SetTargetKey sets the "target_key" field.
+func (m *NoteLinkMutation) SetTargetKey(s string) {
+	m.target_key = &s
+}
+
+// TargetKey returns the value of the "target_key" field in the mutation.
+func (m *NoteLinkMutation) TargetKey() (r string, exists bool) {
+	v := m.target_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTargetKey returns the old "target_key" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldTargetKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTargetKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTargetKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTargetKey: %w", err)
+	}
+	return oldValue.TargetKey, nil
+}
+
+// ResetTargetKey resets all changes to the "target_key" field.
+func (m *NoteLinkMutation) ResetTargetKey() {
+	m.target_key = nil
+}
+
+// SetDisplayText sets the "display_text" field.
+func (m *NoteLinkMutation) SetDisplayText(s string) {
+	m.display_text = &s
+}
+
+// DisplayText returns the value of the "display_text" field in the mutation.
+func (m *NoteLinkMutation) DisplayText() (r string, exists bool) {
+	v := m.display_text
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisplayText returns the old "display_text" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldDisplayText(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisplayText is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisplayText requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisplayText: %w", err)
+	}
+	return oldValue.DisplayText, nil
+}
+
+// ResetDisplayText resets all changes to the "display_text" field.
+func (m *NoteLinkMutation) ResetDisplayText() {
+	m.display_text = nil
+}
+
+// SetLinkType sets the "link_type" field.
+func (m *NoteLinkMutation) SetLinkType(nt notelink.LinkType) {
+	m.link_type = &nt
+}
+
+// LinkType returns the value of the "link_type" field in the mutation.
+func (m *NoteLinkMutation) LinkType() (r notelink.LinkType, exists bool) {
+	v := m.link_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkType returns the old "link_type" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldLinkType(ctx context.Context) (v notelink.LinkType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkType: %w", err)
+	}
+	return oldValue.LinkType, nil
+}
+
+// ResetLinkType resets all changes to the "link_type" field.
+func (m *NoteLinkMutation) ResetLinkType() {
+	m.link_type = nil
+}
+
+// SetOccurrenceCount sets the "occurrence_count" field.
+func (m *NoteLinkMutation) SetOccurrenceCount(i int) {
+	m.occurrence_count = &i
+	m.addoccurrence_count = nil
+}
+
+// OccurrenceCount returns the value of the "occurrence_count" field in the mutation.
+func (m *NoteLinkMutation) OccurrenceCount() (r int, exists bool) {
+	v := m.occurrence_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOccurrenceCount returns the old "occurrence_count" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldOccurrenceCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOccurrenceCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOccurrenceCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOccurrenceCount: %w", err)
+	}
+	return oldValue.OccurrenceCount, nil
+}
+
+// AddOccurrenceCount adds i to the "occurrence_count" field.
+func (m *NoteLinkMutation) AddOccurrenceCount(i int) {
+	if m.addoccurrence_count != nil {
+		*m.addoccurrence_count += i
+	} else {
+		m.addoccurrence_count = &i
+	}
+}
+
+// AddedOccurrenceCount returns the value that was added to the "occurrence_count" field in this mutation.
+func (m *NoteLinkMutation) AddedOccurrenceCount() (r int, exists bool) {
+	v := m.addoccurrence_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOccurrenceCount resets all changes to the "occurrence_count" field.
+func (m *NoteLinkMutation) ResetOccurrenceCount() {
+	m.occurrence_count = nil
+	m.addoccurrence_count = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *NoteLinkMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *NoteLinkMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *NoteLinkMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *NoteLinkMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *NoteLinkMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the NoteLink entity.
+// If the NoteLink object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteLinkMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *NoteLinkMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *NoteLinkMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[notelink.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *NoteLinkMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *NoteLinkMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *NoteLinkMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearSourceNote clears the "source_note" edge to the Note entity.
+func (m *NoteLinkMutation) ClearSourceNote() {
+	m.clearedsource_note = true
+	m.clearedFields[notelink.FieldSourceNoteID] = struct{}{}
+}
+
+// SourceNoteCleared reports if the "source_note" edge to the Note entity was cleared.
+func (m *NoteLinkMutation) SourceNoteCleared() bool {
+	return m.clearedsource_note
+}
+
+// SourceNoteIDs returns the "source_note" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SourceNoteID instead. It exists only for internal usage by the builders.
+func (m *NoteLinkMutation) SourceNoteIDs() (ids []uuid.UUID) {
+	if id := m.source_note; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSourceNote resets all changes to the "source_note" edge.
+func (m *NoteLinkMutation) ResetSourceNote() {
+	m.source_note = nil
+	m.clearedsource_note = false
+}
+
+// ClearTargetNote clears the "target_note" edge to the Note entity.
+func (m *NoteLinkMutation) ClearTargetNote() {
+	m.clearedtarget_note = true
+	m.clearedFields[notelink.FieldTargetNoteID] = struct{}{}
+}
+
+// TargetNoteCleared reports if the "target_note" edge to the Note entity was cleared.
+func (m *NoteLinkMutation) TargetNoteCleared() bool {
+	return m.TargetNoteIDCleared() || m.clearedtarget_note
+}
+
+// TargetNoteIDs returns the "target_note" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TargetNoteID instead. It exists only for internal usage by the builders.
+func (m *NoteLinkMutation) TargetNoteIDs() (ids []uuid.UUID) {
+	if id := m.target_note; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTargetNote resets all changes to the "target_note" edge.
+func (m *NoteLinkMutation) ResetTargetNote() {
+	m.target_note = nil
+	m.clearedtarget_note = false
+}
+
+// Where appends a list predicates to the NoteLinkMutation builder.
+func (m *NoteLinkMutation) Where(ps ...predicate.NoteLink) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the NoteLinkMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *NoteLinkMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.NoteLink, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *NoteLinkMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *NoteLinkMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (NoteLink).
+func (m *NoteLinkMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *NoteLinkMutation) Fields() []string {
+	fields := make([]string, 0, 11)
+	if m.user != nil {
+		fields = append(fields, notelink.FieldUserID)
+	}
+	if m.source_note != nil {
+		fields = append(fields, notelink.FieldSourceNoteID)
+	}
+	if m.target_note != nil {
+		fields = append(fields, notelink.FieldTargetNoteID)
+	}
+	if m.target_ref != nil {
+		fields = append(fields, notelink.FieldTargetRef)
+	}
+	if m.target_ref_norm != nil {
+		fields = append(fields, notelink.FieldTargetRefNorm)
+	}
+	if m.target_key != nil {
+		fields = append(fields, notelink.FieldTargetKey)
+	}
+	if m.display_text != nil {
+		fields = append(fields, notelink.FieldDisplayText)
+	}
+	if m.link_type != nil {
+		fields = append(fields, notelink.FieldLinkType)
+	}
+	if m.occurrence_count != nil {
+		fields = append(fields, notelink.FieldOccurrenceCount)
+	}
+	if m.created_at != nil {
+		fields = append(fields, notelink.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, notelink.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *NoteLinkMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case notelink.FieldUserID:
+		return m.UserID()
+	case notelink.FieldSourceNoteID:
+		return m.SourceNoteID()
+	case notelink.FieldTargetNoteID:
+		return m.TargetNoteID()
+	case notelink.FieldTargetRef:
+		return m.TargetRef()
+	case notelink.FieldTargetRefNorm:
+		return m.TargetRefNorm()
+	case notelink.FieldTargetKey:
+		return m.TargetKey()
+	case notelink.FieldDisplayText:
+		return m.DisplayText()
+	case notelink.FieldLinkType:
+		return m.LinkType()
+	case notelink.FieldOccurrenceCount:
+		return m.OccurrenceCount()
+	case notelink.FieldCreatedAt:
+		return m.CreatedAt()
+	case notelink.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NoteLinkMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case notelink.FieldUserID:
+		return m.OldUserID(ctx)
+	case notelink.FieldSourceNoteID:
+		return m.OldSourceNoteID(ctx)
+	case notelink.FieldTargetNoteID:
+		return m.OldTargetNoteID(ctx)
+	case notelink.FieldTargetRef:
+		return m.OldTargetRef(ctx)
+	case notelink.FieldTargetRefNorm:
+		return m.OldTargetRefNorm(ctx)
+	case notelink.FieldTargetKey:
+		return m.OldTargetKey(ctx)
+	case notelink.FieldDisplayText:
+		return m.OldDisplayText(ctx)
+	case notelink.FieldLinkType:
+		return m.OldLinkType(ctx)
+	case notelink.FieldOccurrenceCount:
+		return m.OldOccurrenceCount(ctx)
+	case notelink.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case notelink.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown NoteLink field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteLinkMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case notelink.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case notelink.FieldSourceNoteID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceNoteID(v)
+		return nil
+	case notelink.FieldTargetNoteID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTargetNoteID(v)
+		return nil
+	case notelink.FieldTargetRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTargetRef(v)
+		return nil
+	case notelink.FieldTargetRefNorm:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTargetRefNorm(v)
+		return nil
+	case notelink.FieldTargetKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTargetKey(v)
+		return nil
+	case notelink.FieldDisplayText:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisplayText(v)
+		return nil
+	case notelink.FieldLinkType:
+		v, ok := value.(notelink.LinkType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkType(v)
+		return nil
+	case notelink.FieldOccurrenceCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOccurrenceCount(v)
+		return nil
+	case notelink.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case notelink.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NoteLink field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *NoteLinkMutation) AddedFields() []string {
+	var fields []string
+	if m.addoccurrence_count != nil {
+		fields = append(fields, notelink.FieldOccurrenceCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *NoteLinkMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case notelink.FieldOccurrenceCount:
+		return m.AddedOccurrenceCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteLinkMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case notelink.FieldOccurrenceCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOccurrenceCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NoteLink numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *NoteLinkMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(notelink.FieldTargetNoteID) {
+		fields = append(fields, notelink.FieldTargetNoteID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *NoteLinkMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *NoteLinkMutation) ClearField(name string) error {
+	switch name {
+	case notelink.FieldTargetNoteID:
+		m.ClearTargetNoteID()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteLink nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *NoteLinkMutation) ResetField(name string) error {
+	switch name {
+	case notelink.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case notelink.FieldSourceNoteID:
+		m.ResetSourceNoteID()
+		return nil
+	case notelink.FieldTargetNoteID:
+		m.ResetTargetNoteID()
+		return nil
+	case notelink.FieldTargetRef:
+		m.ResetTargetRef()
+		return nil
+	case notelink.FieldTargetRefNorm:
+		m.ResetTargetRefNorm()
+		return nil
+	case notelink.FieldTargetKey:
+		m.ResetTargetKey()
+		return nil
+	case notelink.FieldDisplayText:
+		m.ResetDisplayText()
+		return nil
+	case notelink.FieldLinkType:
+		m.ResetLinkType()
+		return nil
+	case notelink.FieldOccurrenceCount:
+		m.ResetOccurrenceCount()
+		return nil
+	case notelink.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case notelink.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteLink field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *NoteLinkMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.user != nil {
+		edges = append(edges, notelink.EdgeUser)
+	}
+	if m.source_note != nil {
+		edges = append(edges, notelink.EdgeSourceNote)
+	}
+	if m.target_note != nil {
+		edges = append(edges, notelink.EdgeTargetNote)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *NoteLinkMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case notelink.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case notelink.EdgeSourceNote:
+		if id := m.source_note; id != nil {
+			return []ent.Value{*id}
+		}
+	case notelink.EdgeTargetNote:
+		if id := m.target_note; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *NoteLinkMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *NoteLinkMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *NoteLinkMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.cleareduser {
+		edges = append(edges, notelink.EdgeUser)
+	}
+	if m.clearedsource_note {
+		edges = append(edges, notelink.EdgeSourceNote)
+	}
+	if m.clearedtarget_note {
+		edges = append(edges, notelink.EdgeTargetNote)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *NoteLinkMutation) EdgeCleared(name string) bool {
+	switch name {
+	case notelink.EdgeUser:
+		return m.cleareduser
+	case notelink.EdgeSourceNote:
+		return m.clearedsource_note
+	case notelink.EdgeTargetNote:
+		return m.clearedtarget_note
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *NoteLinkMutation) ClearEdge(name string) error {
+	switch name {
+	case notelink.EdgeUser:
+		m.ClearUser()
+		return nil
+	case notelink.EdgeSourceNote:
+		m.ClearSourceNote()
+		return nil
+	case notelink.EdgeTargetNote:
+		m.ClearTargetNote()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteLink unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *NoteLinkMutation) ResetEdge(name string) error {
+	switch name {
+	case notelink.EdgeUser:
+		m.ResetUser()
+		return nil
+	case notelink.EdgeSourceNote:
+		m.ResetSourceNote()
+		return nil
+	case notelink.EdgeTargetNote:
+		m.ResetTargetNote()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteLink edge %s", name)
 }
 
 // TagMutation represents an operation that mutates the Tag nodes in the graph.
@@ -9789,6 +11033,9 @@ type UserMutation struct {
 	mcp_images                map[int]struct{}
 	removedmcp_images         map[int]struct{}
 	clearedmcp_images         bool
+	note_links                map[uuid.UUID]struct{}
+	removednote_links         map[uuid.UUID]struct{}
+	clearednote_links         bool
 	done                      bool
 	oldValue                  func(context.Context) (*User, error)
 	predicates                []predicate.User
@@ -10865,6 +12112,60 @@ func (m *UserMutation) ResetMcpImages() {
 	m.removedmcp_images = nil
 }
 
+// AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by ids.
+func (m *UserMutation) AddNoteLinkIDs(ids ...uuid.UUID) {
+	if m.note_links == nil {
+		m.note_links = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.note_links[ids[i]] = struct{}{}
+	}
+}
+
+// ClearNoteLinks clears the "note_links" edge to the NoteLink entity.
+func (m *UserMutation) ClearNoteLinks() {
+	m.clearednote_links = true
+}
+
+// NoteLinksCleared reports if the "note_links" edge to the NoteLink entity was cleared.
+func (m *UserMutation) NoteLinksCleared() bool {
+	return m.clearednote_links
+}
+
+// RemoveNoteLinkIDs removes the "note_links" edge to the NoteLink entity by IDs.
+func (m *UserMutation) RemoveNoteLinkIDs(ids ...uuid.UUID) {
+	if m.removednote_links == nil {
+		m.removednote_links = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.note_links, ids[i])
+		m.removednote_links[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedNoteLinks returns the removed IDs of the "note_links" edge to the NoteLink entity.
+func (m *UserMutation) RemovedNoteLinksIDs() (ids []uuid.UUID) {
+	for id := range m.removednote_links {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// NoteLinksIDs returns the "note_links" edge IDs in the mutation.
+func (m *UserMutation) NoteLinksIDs() (ids []uuid.UUID) {
+	for id := range m.note_links {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetNoteLinks resets all changes to the "note_links" edge.
+func (m *UserMutation) ResetNoteLinks() {
+	m.note_links = nil
+	m.clearednote_links = false
+	m.removednote_links = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -11195,7 +12496,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 11)
 	if m.notes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -11225,6 +12526,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.mcp_images != nil {
 		edges = append(edges, user.EdgeMcpImages)
+	}
+	if m.note_links != nil {
+		edges = append(edges, user.EdgeNoteLinks)
 	}
 	return edges
 }
@@ -11291,13 +12595,19 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeNoteLinks:
+		ids := make([]ent.Value, 0, len(m.note_links))
+		for id := range m.note_links {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 11)
 	if m.removednotes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -11324,6 +12634,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedmcp_images != nil {
 		edges = append(edges, user.EdgeMcpImages)
+	}
+	if m.removednote_links != nil {
+		edges = append(edges, user.EdgeNoteLinks)
 	}
 	return edges
 }
@@ -11386,13 +12699,19 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeNoteLinks:
+		ids := make([]ent.Value, 0, len(m.removednote_links))
+		for id := range m.removednote_links {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 11)
 	if m.clearednotes {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -11423,6 +12742,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedmcp_images {
 		edges = append(edges, user.EdgeMcpImages)
 	}
+	if m.clearednote_links {
+		edges = append(edges, user.EdgeNoteLinks)
+	}
 	return edges
 }
 
@@ -11450,6 +12772,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedmcp_tokens
 	case user.EdgeMcpImages:
 		return m.clearedmcp_images
+	case user.EdgeNoteLinks:
+		return m.clearednote_links
 	}
 	return false
 }
@@ -11498,6 +12822,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeMcpImages:
 		m.ResetMcpImages()
+		return nil
+	case user.EdgeNoteLinks:
+		m.ResetNoteLinks()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

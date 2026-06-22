@@ -998,6 +998,52 @@ func HasWhiteboardsWith(preds ...predicate.Whiteboard) predicate.Note {
 	})
 }
 
+// HasOutgoingLinks applies the HasEdge predicate on the "outgoing_links" edge.
+func HasOutgoingLinks() predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OutgoingLinksTable, OutgoingLinksColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOutgoingLinksWith applies the HasEdge predicate on the "outgoing_links" edge with a given conditions (other predicates).
+func HasOutgoingLinksWith(preds ...predicate.NoteLink) predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := newOutgoingLinksStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasBacklinks applies the HasEdge predicate on the "backlinks" edge.
+func HasBacklinks() predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, BacklinksTable, BacklinksColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasBacklinksWith applies the HasEdge predicate on the "backlinks" edge with a given conditions (other predicates).
+func HasBacklinksWith(preds ...predicate.NoteLink) predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := newBacklinksStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTags applies the HasEdge predicate on the "tags" edge.
 func HasTags() predicate.Note {
 	return predicate.Note(func(s *sql.Selector) {

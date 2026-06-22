@@ -36,6 +36,9 @@ type MCPToken func(*sql.Selector)
 // Note is the predicate function for note builders.
 type Note func(*sql.Selector)
 
+// NoteLink is the predicate function for notelink builders.
+type NoteLink func(*sql.Selector)
+
 // Tag is the predicate function for tag builders.
 type Tag func(*sql.Selector)
 

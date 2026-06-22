@@ -32,6 +32,8 @@ type Tx struct {
 	MCPToken *MCPTokenClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
+	// NoteLink is the client for interacting with the NoteLink builders.
+	NoteLink *NoteLinkClient
 	// Tag is the client for interacting with the Tag builders.
 	Tag *TagClient
 	// User is the client for interacting with the User builders.
@@ -179,6 +181,7 @@ func (tx *Tx) init() {
 	tx.MCPImage = NewMCPImageClient(tx.config)
 	tx.MCPToken = NewMCPTokenClient(tx.config)
 	tx.Note = NewNoteClient(tx.config)
+	tx.NoteLink = NewNoteLinkClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.Whiteboard = NewWhiteboardClient(tx.config)

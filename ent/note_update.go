@@ -9,6 +9,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -338,6 +339,36 @@ func (_u *NoteUpdate) AddWhiteboards(v ...*Whiteboard) *NoteUpdate {
 	return _u.AddWhiteboardIDs(ids...)
 }
 
+// AddOutgoingLinkIDs adds the "outgoing_links" edge to the NoteLink entity by IDs.
+func (_u *NoteUpdate) AddOutgoingLinkIDs(ids ...uuid.UUID) *NoteUpdate {
+	_u.mutation.AddOutgoingLinkIDs(ids...)
+	return _u
+}
+
+// AddOutgoingLinks adds the "outgoing_links" edges to the NoteLink entity.
+func (_u *NoteUpdate) AddOutgoingLinks(v ...*NoteLink) *NoteUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddOutgoingLinkIDs(ids...)
+}
+
+// AddBacklinkIDs adds the "backlinks" edge to the NoteLink entity by IDs.
+func (_u *NoteUpdate) AddBacklinkIDs(ids ...uuid.UUID) *NoteUpdate {
+	_u.mutation.AddBacklinkIDs(ids...)
+	return _u
+}
+
+// AddBacklinks adds the "backlinks" edges to the NoteLink entity.
+func (_u *NoteUpdate) AddBacklinks(v ...*NoteLink) *NoteUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddBacklinkIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *NoteUpdate) AddTagIDs(ids ...uuid.UUID) *NoteUpdate {
 	_u.mutation.AddTagIDs(ids...)
@@ -410,6 +441,48 @@ func (_u *NoteUpdate) RemoveWhiteboards(v ...*Whiteboard) *NoteUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveWhiteboardIDs(ids...)
+}
+
+// ClearOutgoingLinks clears all "outgoing_links" edges to the NoteLink entity.
+func (_u *NoteUpdate) ClearOutgoingLinks() *NoteUpdate {
+	_u.mutation.ClearOutgoingLinks()
+	return _u
+}
+
+// RemoveOutgoingLinkIDs removes the "outgoing_links" edge to NoteLink entities by IDs.
+func (_u *NoteUpdate) RemoveOutgoingLinkIDs(ids ...uuid.UUID) *NoteUpdate {
+	_u.mutation.RemoveOutgoingLinkIDs(ids...)
+	return _u
+}
+
+// RemoveOutgoingLinks removes "outgoing_links" edges to NoteLink entities.
+func (_u *NoteUpdate) RemoveOutgoingLinks(v ...*NoteLink) *NoteUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveOutgoingLinkIDs(ids...)
+}
+
+// ClearBacklinks clears all "backlinks" edges to the NoteLink entity.
+func (_u *NoteUpdate) ClearBacklinks() *NoteUpdate {
+	_u.mutation.ClearBacklinks()
+	return _u
+}
+
+// RemoveBacklinkIDs removes the "backlinks" edge to NoteLink entities by IDs.
+func (_u *NoteUpdate) RemoveBacklinkIDs(ids ...uuid.UUID) *NoteUpdate {
+	_u.mutation.RemoveBacklinkIDs(ids...)
+	return _u
+}
+
+// RemoveBacklinks removes "backlinks" edges to NoteLink entities.
+func (_u *NoteUpdate) RemoveBacklinks(v ...*NoteLink) *NoteUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveBacklinkIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -698,6 +771,96 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.OutgoingLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedOutgoingLinksIDs(); len(nodes) > 0 && !_u.mutation.OutgoingLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.OutgoingLinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BacklinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedBacklinksIDs(); len(nodes) > 0 && !_u.mutation.BacklinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BacklinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1074,6 +1237,36 @@ func (_u *NoteUpdateOne) AddWhiteboards(v ...*Whiteboard) *NoteUpdateOne {
 	return _u.AddWhiteboardIDs(ids...)
 }
 
+// AddOutgoingLinkIDs adds the "outgoing_links" edge to the NoteLink entity by IDs.
+func (_u *NoteUpdateOne) AddOutgoingLinkIDs(ids ...uuid.UUID) *NoteUpdateOne {
+	_u.mutation.AddOutgoingLinkIDs(ids...)
+	return _u
+}
+
+// AddOutgoingLinks adds the "outgoing_links" edges to the NoteLink entity.
+func (_u *NoteUpdateOne) AddOutgoingLinks(v ...*NoteLink) *NoteUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddOutgoingLinkIDs(ids...)
+}
+
+// AddBacklinkIDs adds the "backlinks" edge to the NoteLink entity by IDs.
+func (_u *NoteUpdateOne) AddBacklinkIDs(ids ...uuid.UUID) *NoteUpdateOne {
+	_u.mutation.AddBacklinkIDs(ids...)
+	return _u
+}
+
+// AddBacklinks adds the "backlinks" edges to the NoteLink entity.
+func (_u *NoteUpdateOne) AddBacklinks(v ...*NoteLink) *NoteUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddBacklinkIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *NoteUpdateOne) AddTagIDs(ids ...uuid.UUID) *NoteUpdateOne {
 	_u.mutation.AddTagIDs(ids...)
@@ -1146,6 +1339,48 @@ func (_u *NoteUpdateOne) RemoveWhiteboards(v ...*Whiteboard) *NoteUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveWhiteboardIDs(ids...)
+}
+
+// ClearOutgoingLinks clears all "outgoing_links" edges to the NoteLink entity.
+func (_u *NoteUpdateOne) ClearOutgoingLinks() *NoteUpdateOne {
+	_u.mutation.ClearOutgoingLinks()
+	return _u
+}
+
+// RemoveOutgoingLinkIDs removes the "outgoing_links" edge to NoteLink entities by IDs.
+func (_u *NoteUpdateOne) RemoveOutgoingLinkIDs(ids ...uuid.UUID) *NoteUpdateOne {
+	_u.mutation.RemoveOutgoingLinkIDs(ids...)
+	return _u
+}
+
+// RemoveOutgoingLinks removes "outgoing_links" edges to NoteLink entities.
+func (_u *NoteUpdateOne) RemoveOutgoingLinks(v ...*NoteLink) *NoteUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveOutgoingLinkIDs(ids...)
+}
+
+// ClearBacklinks clears all "backlinks" edges to the NoteLink entity.
+func (_u *NoteUpdateOne) ClearBacklinks() *NoteUpdateOne {
+	_u.mutation.ClearBacklinks()
+	return _u
+}
+
+// RemoveBacklinkIDs removes the "backlinks" edge to NoteLink entities by IDs.
+func (_u *NoteUpdateOne) RemoveBacklinkIDs(ids ...uuid.UUID) *NoteUpdateOne {
+	_u.mutation.RemoveBacklinkIDs(ids...)
+	return _u
+}
+
+// RemoveBacklinks removes "backlinks" edges to NoteLink entities.
+func (_u *NoteUpdateOne) RemoveBacklinks(v ...*NoteLink) *NoteUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveBacklinkIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -1464,6 +1699,96 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(whiteboard.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.OutgoingLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedOutgoingLinksIDs(); len(nodes) > 0 && !_u.mutation.OutgoingLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.OutgoingLinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.OutgoingLinksTable,
+			Columns: []string{note.OutgoingLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BacklinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedBacklinksIDs(); len(nodes) > 0 && !_u.mutation.BacklinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BacklinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.BacklinksTable,
+			Columns: []string{note.BacklinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

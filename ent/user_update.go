@@ -14,6 +14,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -349,6 +350,21 @@ func (_u *UserUpdate) AddMcpImages(v ...*MCPImage) *UserUpdate {
 	return _u.AddMcpImageIDs(ids...)
 }
 
+// AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by IDs.
+func (_u *UserUpdate) AddNoteLinkIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.AddNoteLinkIDs(ids...)
+	return _u
+}
+
+// AddNoteLinks adds the "note_links" edges to the NoteLink entity.
+func (_u *UserUpdate) AddNoteLinks(v ...*NoteLink) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNoteLinkIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -547,6 +563,27 @@ func (_u *UserUpdate) RemoveMcpImages(v ...*MCPImage) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMcpImageIDs(ids...)
+}
+
+// ClearNoteLinks clears all "note_links" edges to the NoteLink entity.
+func (_u *UserUpdate) ClearNoteLinks() *UserUpdate {
+	_u.mutation.ClearNoteLinks()
+	return _u
+}
+
+// RemoveNoteLinkIDs removes the "note_links" edge to NoteLink entities by IDs.
+func (_u *UserUpdate) RemoveNoteLinkIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.RemoveNoteLinkIDs(ids...)
+	return _u
+}
+
+// RemoveNoteLinks removes "note_links" edges to NoteLink entities.
+func (_u *UserUpdate) RemoveNoteLinks(v ...*NoteLink) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNoteLinkIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1093,6 +1130,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.NoteLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNoteLinksIDs(); len(nodes) > 0 && !_u.mutation.NoteLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NoteLinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1423,6 +1505,21 @@ func (_u *UserUpdateOne) AddMcpImages(v ...*MCPImage) *UserUpdateOne {
 	return _u.AddMcpImageIDs(ids...)
 }
 
+// AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by IDs.
+func (_u *UserUpdateOne) AddNoteLinkIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.AddNoteLinkIDs(ids...)
+	return _u
+}
+
+// AddNoteLinks adds the "note_links" edges to the NoteLink entity.
+func (_u *UserUpdateOne) AddNoteLinks(v ...*NoteLink) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNoteLinkIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -1621,6 +1718,27 @@ func (_u *UserUpdateOne) RemoveMcpImages(v ...*MCPImage) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMcpImageIDs(ids...)
+}
+
+// ClearNoteLinks clears all "note_links" edges to the NoteLink entity.
+func (_u *UserUpdateOne) ClearNoteLinks() *UserUpdateOne {
+	_u.mutation.ClearNoteLinks()
+	return _u
+}
+
+// RemoveNoteLinkIDs removes the "note_links" edge to NoteLink entities by IDs.
+func (_u *UserUpdateOne) RemoveNoteLinkIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.RemoveNoteLinkIDs(ids...)
+	return _u
+}
+
+// RemoveNoteLinks removes "note_links" edges to NoteLink entities.
+func (_u *UserUpdateOne) RemoveNoteLinks(v ...*NoteLink) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNoteLinkIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -2190,6 +2308,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.NoteLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNoteLinksIDs(); len(nodes) > 0 && !_u.mutation.NoteLinksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NoteLinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

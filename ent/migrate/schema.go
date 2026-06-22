@@ -287,6 +287,69 @@ var (
 			},
 		},
 	}
+	// NoteLinksColumns holds the columns for the "note_links" table.
+	NoteLinksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "target_ref", Type: field.TypeString},
+		{Name: "target_ref_norm", Type: field.TypeString},
+		{Name: "target_key", Type: field.TypeString},
+		{Name: "display_text", Type: field.TypeString},
+		{Name: "link_type", Type: field.TypeEnum, Enums: []string{"wiki"}, Default: "wiki"},
+		{Name: "occurrence_count", Type: field.TypeInt, Default: 1},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "source_note_id", Type: field.TypeUUID},
+		{Name: "target_note_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// NoteLinksTable holds the schema information for the "note_links" table.
+	NoteLinksTable = &schema.Table{
+		Name:       "note_links",
+		Columns:    NoteLinksColumns,
+		PrimaryKey: []*schema.Column{NoteLinksColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_links_notes_outgoing_links",
+				Columns:    []*schema.Column{NoteLinksColumns[9]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "note_links_notes_backlinks",
+				Columns:    []*schema.Column{NoteLinksColumns[10]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "note_links_users_note_links",
+				Columns:    []*schema.Column{NoteLinksColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "notelink_source_note_id_target_key_link_type",
+				Unique:  true,
+				Columns: []*schema.Column{NoteLinksColumns[9], NoteLinksColumns[3], NoteLinksColumns[5]},
+			},
+			{
+				Name:    "notelink_user_id_source_note_id",
+				Unique:  false,
+				Columns: []*schema.Column{NoteLinksColumns[11], NoteLinksColumns[9]},
+			},
+			{
+				Name:    "notelink_user_id_target_note_id",
+				Unique:  false,
+				Columns: []*schema.Column{NoteLinksColumns[11], NoteLinksColumns[10]},
+			},
+			{
+				Name:    "notelink_user_id_target_ref_norm",
+				Unique:  false,
+				Columns: []*schema.Column{NoteLinksColumns[11], NoteLinksColumns[2]},
+			},
+		},
+	}
 	// TagsColumns holds the columns for the "tags" table.
 	TagsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -399,6 +462,7 @@ var (
 		McpImagesTable,
 		McpTokensTable,
 		NotesTable,
+		NoteLinksTable,
 		TagsTable,
 		UsersTable,
 		WhiteboardsTable,
@@ -419,6 +483,9 @@ func init() {
 	McpTokensTable.ForeignKeys[0].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = FoldersTable
 	NotesTable.ForeignKeys[1].RefTable = UsersTable
+	NoteLinksTable.ForeignKeys[0].RefTable = NotesTable
+	NoteLinksTable.ForeignKeys[1].RefTable = NotesTable
+	NoteLinksTable.ForeignKeys[2].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
 	WhiteboardsTable.ForeignKeys[0].RefTable = NotesTable
 	WhiteboardsTable.ForeignKeys[1].RefTable = UsersTable

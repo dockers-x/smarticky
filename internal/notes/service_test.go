@@ -7,6 +7,7 @@ import (
 	"smarticky/ent"
 	"smarticky/ent/enttest"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	searchsvc "smarticky/internal/search"
 
 	_ "github.com/lib-x/entsqlite"
@@ -51,6 +52,27 @@ func TestServiceCreateAssignsOwner(t *testing.T) {
 
 	if _, err := service.Get(ctx, other.ID, created.ID, false); err == nil {
 		t.Fatal("expected other user to be unable to read created note")
+	}
+}
+
+func TestServiceCreateSyncsOutgoingLinks(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestServiceCreateSyncsOutgoingLinks?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	target := client.Note.Create().SetTitle("Target").SetUserID(owner.ID).SaveX(ctx)
+
+	created, err := NewService(client).Create(ctx, owner.ID, CreateInput{
+		Title:   "Source",
+		Content: "[[Target]]",
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	if count := client.NoteLink.Query().Where(notelink.SourceNoteIDEQ(created.ID), notelink.TargetNoteIDEQ(target.ID)).CountX(ctx); count != 1 {
+		t.Fatalf("expected service create to sync one outgoing link, got %d", count)
 	}
 }
 

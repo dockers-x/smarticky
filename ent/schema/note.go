@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
@@ -66,6 +67,10 @@ func (Note) Edges() []ent.Edge {
 			Unique(),
 		edge.To("attachments", Attachment.Type),
 		edge.To("whiteboards", Whiteboard.Type),
+		edge.To("outgoing_links", NoteLink.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("backlinks", NoteLink.Type).
+			Annotations(entsql.OnDelete(entsql.SetNull)),
 		edge.To("tags", Tag.Type), // Many-to-many relationship with tags
 	}
 }

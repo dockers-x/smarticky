@@ -150,8 +150,10 @@ func main() {
 
 	// Notes API
 	protected.GET("/notes", h.ListNotes)
+	protected.GET("/note-links", h.ListNoteLinkGraph)
 	protected.POST("/notes", h.CreateNote)
 	protected.POST("/notes/move", h.MoveNotes)
+	protected.GET("/notes/:id/links", h.GetNoteLinks)
 	protected.GET("/notes/:id", h.GetNote)
 	protected.PUT("/notes/:id", h.UpdateNote)
 	protected.DELETE("/notes/trash", h.EmptyTrash)

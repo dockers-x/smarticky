@@ -68,9 +68,11 @@ type UserEdges struct {
 	McpTokens []*MCPToken `json:"mcp_tokens,omitempty"`
 	// McpImages holds the value of the mcp_images edge.
 	McpImages []*MCPImage `json:"mcp_images,omitempty"`
+	// NoteLinks holds the value of the note_links edge.
+	NoteLinks []*NoteLink `json:"note_links,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [10]bool
+	loadedTypes [11]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -163,6 +165,15 @@ func (e UserEdges) McpImagesOrErr() ([]*MCPImage, error) {
 		return e.McpImages, nil
 	}
 	return nil, &NotLoadedError{edge: "mcp_images"}
+}
+
+// NoteLinksOrErr returns the NoteLinks value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) NoteLinksOrErr() ([]*NoteLink, error) {
+	if e.loadedTypes[10] {
+		return e.NoteLinks, nil
+	}
+	return nil, &NotLoadedError{edge: "note_links"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -325,6 +336,11 @@ func (_m *User) QueryMcpTokens() *MCPTokenQuery {
 // QueryMcpImages queries the "mcp_images" edge of the User entity.
 func (_m *User) QueryMcpImages() *MCPImageQuery {
 	return NewUserClient(_m.config).QueryMcpImages(_m)
+}
+
+// QueryNoteLinks queries the "note_links" edge of the User entity.
+func (_m *User) QueryNoteLinks() *NoteLinkQuery {
+	return NewUserClient(_m.config).QueryNoteLinks(_m)
 }
 
 // Update returns a builder for updating this User.

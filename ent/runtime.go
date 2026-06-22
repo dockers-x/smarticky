@@ -13,6 +13,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/schema"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -286,6 +287,26 @@ func init() {
 	noteDescID := noteFields[0].Descriptor()
 	// note.DefaultID holds the default value on creation for the id field.
 	note.DefaultID = noteDescID.Default.(func() uuid.UUID)
+	notelinkFields := schema.NoteLink{}.Fields()
+	_ = notelinkFields
+	// notelinkDescOccurrenceCount is the schema descriptor for occurrence_count field.
+	notelinkDescOccurrenceCount := notelinkFields[9].Descriptor()
+	// notelink.DefaultOccurrenceCount holds the default value on creation for the occurrence_count field.
+	notelink.DefaultOccurrenceCount = notelinkDescOccurrenceCount.Default.(int)
+	// notelinkDescCreatedAt is the schema descriptor for created_at field.
+	notelinkDescCreatedAt := notelinkFields[10].Descriptor()
+	// notelink.DefaultCreatedAt holds the default value on creation for the created_at field.
+	notelink.DefaultCreatedAt = notelinkDescCreatedAt.Default.(func() time.Time)
+	// notelinkDescUpdatedAt is the schema descriptor for updated_at field.
+	notelinkDescUpdatedAt := notelinkFields[11].Descriptor()
+	// notelink.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	notelink.DefaultUpdatedAt = notelinkDescUpdatedAt.Default.(func() time.Time)
+	// notelink.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	notelink.UpdateDefaultUpdatedAt = notelinkDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// notelinkDescID is the schema descriptor for id field.
+	notelinkDescID := notelinkFields[0].Descriptor()
+	// notelink.DefaultID holds the default value on creation for the id field.
+	notelink.DefaultID = notelinkDescID.Default.(func() uuid.UUID)
 	tagFields := schema.Tag{}.Fields()
 	_ = tagFields
 	// tagDescName is the schema descriptor for name field.

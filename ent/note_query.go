@@ -10,6 +10,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -25,16 +26,18 @@ import (
 // NoteQuery is the builder for querying Note entities.
 type NoteQuery struct {
 	config
-	ctx             *QueryContext
-	order           []note.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.Note
-	withUser        *UserQuery
-	withFolder      *FolderQuery
-	withAttachments *AttachmentQuery
-	withWhiteboards *WhiteboardQuery
-	withTags        *TagQuery
-	withFKs         bool
+	ctx               *QueryContext
+	order             []note.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.Note
+	withUser          *UserQuery
+	withFolder        *FolderQuery
+	withAttachments   *AttachmentQuery
+	withWhiteboards   *WhiteboardQuery
+	withOutgoingLinks *NoteLinkQuery
+	withBacklinks     *NoteLinkQuery
+	withTags          *TagQuery
+	withFKs           bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -152,6 +155,50 @@ func (_q *NoteQuery) QueryWhiteboards() *WhiteboardQuery {
 			sqlgraph.From(note.Table, note.FieldID, selector),
 			sqlgraph.To(whiteboard.Table, whiteboard.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, note.WhiteboardsTable, note.WhiteboardsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryOutgoingLinks chains the current query on the "outgoing_links" edge.
+func (_q *NoteQuery) QueryOutgoingLinks() *NoteLinkQuery {
+	query := (&NoteLinkClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, selector),
+			sqlgraph.To(notelink.Table, notelink.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.OutgoingLinksTable, note.OutgoingLinksColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryBacklinks chains the current query on the "backlinks" edge.
+func (_q *NoteQuery) QueryBacklinks() *NoteLinkQuery {
+	query := (&NoteLinkClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, selector),
+			sqlgraph.To(notelink.Table, notelink.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.BacklinksTable, note.BacklinksColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -368,16 +415,18 @@ func (_q *NoteQuery) Clone() *NoteQuery {
 		return nil
 	}
 	return &NoteQuery{
-		config:          _q.config,
-		ctx:             _q.ctx.Clone(),
-		order:           append([]note.OrderOption{}, _q.order...),
-		inters:          append([]Interceptor{}, _q.inters...),
-		predicates:      append([]predicate.Note{}, _q.predicates...),
-		withUser:        _q.withUser.Clone(),
-		withFolder:      _q.withFolder.Clone(),
-		withAttachments: _q.withAttachments.Clone(),
-		withWhiteboards: _q.withWhiteboards.Clone(),
-		withTags:        _q.withTags.Clone(),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]note.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.Note{}, _q.predicates...),
+		withUser:          _q.withUser.Clone(),
+		withFolder:        _q.withFolder.Clone(),
+		withAttachments:   _q.withAttachments.Clone(),
+		withWhiteboards:   _q.withWhiteboards.Clone(),
+		withOutgoingLinks: _q.withOutgoingLinks.Clone(),
+		withBacklinks:     _q.withBacklinks.Clone(),
+		withTags:          _q.withTags.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -425,6 +474,28 @@ func (_q *NoteQuery) WithWhiteboards(opts ...func(*WhiteboardQuery)) *NoteQuery 
 		opt(query)
 	}
 	_q.withWhiteboards = query
+	return _q
+}
+
+// WithOutgoingLinks tells the query-builder to eager-load the nodes that are connected to
+// the "outgoing_links" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NoteQuery) WithOutgoingLinks(opts ...func(*NoteLinkQuery)) *NoteQuery {
+	query := (&NoteLinkClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withOutgoingLinks = query
+	return _q
+}
+
+// WithBacklinks tells the query-builder to eager-load the nodes that are connected to
+// the "backlinks" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NoteQuery) WithBacklinks(opts ...func(*NoteLinkQuery)) *NoteQuery {
+	query := (&NoteLinkClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBacklinks = query
 	return _q
 }
 
@@ -518,11 +589,13 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		nodes       = []*Note{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [5]bool{
+		loadedTypes = [7]bool{
 			_q.withUser != nil,
 			_q.withFolder != nil,
 			_q.withAttachments != nil,
 			_q.withWhiteboards != nil,
+			_q.withOutgoingLinks != nil,
+			_q.withBacklinks != nil,
 			_q.withTags != nil,
 		}
 	)
@@ -573,6 +646,20 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		if err := _q.loadWhiteboards(ctx, query, nodes,
 			func(n *Note) { n.Edges.Whiteboards = []*Whiteboard{} },
 			func(n *Note, e *Whiteboard) { n.Edges.Whiteboards = append(n.Edges.Whiteboards, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withOutgoingLinks; query != nil {
+		if err := _q.loadOutgoingLinks(ctx, query, nodes,
+			func(n *Note) { n.Edges.OutgoingLinks = []*NoteLink{} },
+			func(n *Note, e *NoteLink) { n.Edges.OutgoingLinks = append(n.Edges.OutgoingLinks, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withBacklinks; query != nil {
+		if err := _q.loadBacklinks(ctx, query, nodes,
+			func(n *Note) { n.Edges.Backlinks = []*NoteLink{} },
+			func(n *Note, e *NoteLink) { n.Edges.Backlinks = append(n.Edges.Backlinks, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -707,6 +794,69 @@ func (_q *NoteQuery) loadWhiteboards(ctx context.Context, query *WhiteboardQuery
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "note_whiteboards" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *NoteQuery) loadOutgoingLinks(ctx context.Context, query *NoteLinkQuery, nodes []*Note, init func(*Note), assign func(*Note, *NoteLink)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Note)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(notelink.FieldSourceNoteID)
+	}
+	query.Where(predicate.NoteLink(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(note.OutgoingLinksColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.SourceNoteID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "source_note_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *NoteQuery) loadBacklinks(ctx context.Context, query *NoteLinkQuery, nodes []*Note, init func(*Note), assign func(*Note, *NoteLink)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Note)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(notelink.FieldTargetNoteID)
+	}
+	query.Where(predicate.NoteLink(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(note.BacklinksColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.TargetNoteID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "target_note_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "target_note_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

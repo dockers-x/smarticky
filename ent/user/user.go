@@ -57,6 +57,8 @@ const (
 	EdgeMcpTokens = "mcp_tokens"
 	// EdgeMcpImages holds the string denoting the mcp_images edge name in mutations.
 	EdgeMcpImages = "mcp_images"
+	// EdgeNoteLinks holds the string denoting the note_links edge name in mutations.
+	EdgeNoteLinks = "note_links"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// NotesTable is the table that holds the notes relation/edge.
@@ -129,6 +131,13 @@ const (
 	McpImagesInverseTable = "mcp_images"
 	// McpImagesColumn is the table column denoting the mcp_images relation/edge.
 	McpImagesColumn = "user_mcp_images"
+	// NoteLinksTable is the table that holds the note_links relation/edge.
+	NoteLinksTable = "note_links"
+	// NoteLinksInverseTable is the table name for the NoteLink entity.
+	// It exists in this package in order to avoid circular dependency with the "notelink" package.
+	NoteLinksInverseTable = "note_links"
+	// NoteLinksColumn is the table column denoting the note_links relation/edge.
+	NoteLinksColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -399,6 +408,20 @@ func ByMcpImages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newMcpImagesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByNoteLinksCount orders the results by note_links count.
+func ByNoteLinksCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNoteLinksStep(), opts...)
+	}
+}
+
+// ByNoteLinks orders the results by note_links terms.
+func ByNoteLinks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNoteLinksStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newNotesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -467,5 +490,12 @@ func newMcpImagesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(McpImagesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, McpImagesTable, McpImagesColumn),
+	)
+}
+func newNoteLinksStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NoteLinksInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NoteLinksTable, NoteLinksColumn),
 	)
 }

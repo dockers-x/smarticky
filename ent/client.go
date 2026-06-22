@@ -21,6 +21,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/ent/whiteboard"
@@ -57,6 +58,8 @@ type Client struct {
 	MCPToken *MCPTokenClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
+	// NoteLink is the client for interacting with the NoteLink builders.
+	NoteLink *NoteLinkClient
 	// Tag is the client for interacting with the Tag builders.
 	Tag *TagClient
 	// User is the client for interacting with the User builders.
@@ -84,6 +87,7 @@ func (c *Client) init() {
 	c.MCPImage = NewMCPImageClient(c.config)
 	c.MCPToken = NewMCPTokenClient(c.config)
 	c.Note = NewNoteClient(c.config)
+	c.NoteLink = NewNoteLinkClient(c.config)
 	c.Tag = NewTagClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.Whiteboard = NewWhiteboardClient(c.config)
@@ -189,6 +193,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		MCPImage:          NewMCPImageClient(cfg),
 		MCPToken:          NewMCPTokenClient(cfg),
 		Note:              NewNoteClient(cfg),
+		NoteLink:          NewNoteLinkClient(cfg),
 		Tag:               NewTagClient(cfg),
 		User:              NewUserClient(cfg),
 		Whiteboard:        NewWhiteboardClient(cfg),
@@ -221,6 +226,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		MCPImage:          NewMCPImageClient(cfg),
 		MCPToken:          NewMCPTokenClient(cfg),
 		Note:              NewNoteClient(cfg),
+		NoteLink:          NewNoteLinkClient(cfg),
 		Tag:               NewTagClient(cfg),
 		User:              NewUserClient(cfg),
 		Whiteboard:        NewWhiteboardClient(cfg),
@@ -254,8 +260,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Folder, c.Font,
-		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User,
-		c.Whiteboard,
+		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.NoteLink, c.Tag,
+		c.User, c.Whiteboard,
 	} {
 		n.Use(hooks...)
 	}
@@ -266,8 +272,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Folder, c.Font,
-		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User,
-		c.Whiteboard,
+		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.NoteLink, c.Tag,
+		c.User, c.Whiteboard,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -296,6 +302,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.MCPToken.mutate(ctx, m)
 	case *NoteMutation:
 		return c.Note.mutate(ctx, m)
+	case *NoteLinkMutation:
+		return c.NoteLink.mutate(ctx, m)
 	case *TagMutation:
 		return c.Tag.mutate(ctx, m)
 	case *UserMutation:
@@ -1884,6 +1892,38 @@ func (c *NoteClient) QueryWhiteboards(_m *Note) *WhiteboardQuery {
 	return query
 }
 
+// QueryOutgoingLinks queries the outgoing_links edge of a Note.
+func (c *NoteClient) QueryOutgoingLinks(_m *Note) *NoteLinkQuery {
+	query := (&NoteLinkClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(notelink.Table, notelink.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.OutgoingLinksTable, note.OutgoingLinksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBacklinks queries the backlinks edge of a Note.
+func (c *NoteClient) QueryBacklinks(_m *Note) *NoteLinkQuery {
+	query := (&NoteLinkClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(notelink.Table, notelink.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.BacklinksTable, note.BacklinksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryTags queries the tags edge of a Note.
 func (c *NoteClient) QueryTags(_m *Note) *TagQuery {
 	query := (&TagClient{config: c.config}).Query()
@@ -1922,6 +1962,187 @@ func (c *NoteClient) mutate(ctx context.Context, m *NoteMutation) (Value, error)
 		return (&NoteDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Note mutation op: %q", m.Op())
+	}
+}
+
+// NoteLinkClient is a client for the NoteLink schema.
+type NoteLinkClient struct {
+	config
+}
+
+// NewNoteLinkClient returns a client for the NoteLink from the given config.
+func NewNoteLinkClient(c config) *NoteLinkClient {
+	return &NoteLinkClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `notelink.Hooks(f(g(h())))`.
+func (c *NoteLinkClient) Use(hooks ...Hook) {
+	c.hooks.NoteLink = append(c.hooks.NoteLink, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `notelink.Intercept(f(g(h())))`.
+func (c *NoteLinkClient) Intercept(interceptors ...Interceptor) {
+	c.inters.NoteLink = append(c.inters.NoteLink, interceptors...)
+}
+
+// Create returns a builder for creating a NoteLink entity.
+func (c *NoteLinkClient) Create() *NoteLinkCreate {
+	mutation := newNoteLinkMutation(c.config, OpCreate)
+	return &NoteLinkCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of NoteLink entities.
+func (c *NoteLinkClient) CreateBulk(builders ...*NoteLinkCreate) *NoteLinkCreateBulk {
+	return &NoteLinkCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteLinkClient) MapCreateBulk(slice any, setFunc func(*NoteLinkCreate, int)) *NoteLinkCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteLinkCreateBulk{err: fmt.Errorf("calling to NoteLinkClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteLinkCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteLinkCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for NoteLink.
+func (c *NoteLinkClient) Update() *NoteLinkUpdate {
+	mutation := newNoteLinkMutation(c.config, OpUpdate)
+	return &NoteLinkUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteLinkClient) UpdateOne(_m *NoteLink) *NoteLinkUpdateOne {
+	mutation := newNoteLinkMutation(c.config, OpUpdateOne, withNoteLink(_m))
+	return &NoteLinkUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteLinkClient) UpdateOneID(id uuid.UUID) *NoteLinkUpdateOne {
+	mutation := newNoteLinkMutation(c.config, OpUpdateOne, withNoteLinkID(id))
+	return &NoteLinkUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for NoteLink.
+func (c *NoteLinkClient) Delete() *NoteLinkDelete {
+	mutation := newNoteLinkMutation(c.config, OpDelete)
+	return &NoteLinkDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteLinkClient) DeleteOne(_m *NoteLink) *NoteLinkDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteLinkClient) DeleteOneID(id uuid.UUID) *NoteLinkDeleteOne {
+	builder := c.Delete().Where(notelink.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteLinkDeleteOne{builder}
+}
+
+// Query returns a query builder for NoteLink.
+func (c *NoteLinkClient) Query() *NoteLinkQuery {
+	return &NoteLinkQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNoteLink},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a NoteLink entity by its id.
+func (c *NoteLinkClient) Get(ctx context.Context, id uuid.UUID) (*NoteLink, error) {
+	return c.Query().Where(notelink.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteLinkClient) GetX(ctx context.Context, id uuid.UUID) *NoteLink {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a NoteLink.
+func (c *NoteLinkClient) QueryUser(_m *NoteLink) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(notelink.Table, notelink.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notelink.UserTable, notelink.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySourceNote queries the source_note edge of a NoteLink.
+func (c *NoteLinkClient) QuerySourceNote(_m *NoteLink) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(notelink.Table, notelink.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notelink.SourceNoteTable, notelink.SourceNoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTargetNote queries the target_note edge of a NoteLink.
+func (c *NoteLinkClient) QueryTargetNote(_m *NoteLink) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(notelink.Table, notelink.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notelink.TargetNoteTable, notelink.TargetNoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteLinkClient) Hooks() []Hook {
+	return c.hooks.NoteLink
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteLinkClient) Interceptors() []Interceptor {
+	return c.inters.NoteLink
+}
+
+func (c *NoteLinkClient) mutate(ctx context.Context, m *NoteLinkMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteLinkCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteLinkUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteLinkUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteLinkDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown NoteLink mutation op: %q", m.Op())
 	}
 }
 
@@ -2358,6 +2579,22 @@ func (c *UserClient) QueryMcpImages(_m *User) *MCPImageQuery {
 	return query
 }
 
+// QueryNoteLinks queries the note_links edge of a User.
+func (c *UserClient) QueryNoteLinks(_m *User) *NoteLinkQuery {
+	query := (&NoteLinkClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(notelink.Table, notelink.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteLinksTable, user.NoteLinksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -2552,10 +2789,11 @@ func (c *WhiteboardClient) mutate(ctx context.Context, m *WhiteboardMutation) (V
 type (
 	hooks struct {
 		Attachment, BackupConfig, ExcalidrawLibrary, Folder, Font, ImportItem,
-		ImportJob, MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Hook
+		ImportJob, MCPImage, MCPToken, Note, NoteLink, Tag, User, Whiteboard []ent.Hook
 	}
 	inters struct {
 		Attachment, BackupConfig, ExcalidrawLibrary, Folder, Font, ImportItem,
-		ImportJob, MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Interceptor
+		ImportJob, MCPImage, MCPToken, Note, NoteLink, Tag, User,
+		Whiteboard []ent.Interceptor
 	}
 )

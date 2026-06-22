@@ -14,6 +14,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/ent/whiteboard"
@@ -321,6 +322,21 @@ func (_c *UserCreate) AddMcpImages(v ...*MCPImage) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddMcpImageIDs(ids...)
+}
+
+// AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by IDs.
+func (_c *UserCreate) AddNoteLinkIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddNoteLinkIDs(ids...)
+	return _c
+}
+
+// AddNoteLinks adds the "note_links" edges to the NoteLink entity.
+func (_c *UserCreate) AddNoteLinks(v ...*NoteLink) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddNoteLinkIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -649,6 +665,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.NoteLinksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLinksTable,
+			Columns: []string{user.NoteLinksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

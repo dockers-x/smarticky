@@ -17,6 +17,7 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/ent/whiteboard"
@@ -95,6 +96,7 @@ func checkColumn(t, c string) error {
 			mcpimage.Table:          mcpimage.ValidColumn,
 			mcptoken.Table:          mcptoken.ValidColumn,
 			note.Table:              note.ValidColumn,
+			notelink.Table:          notelink.ValidColumn,
 			tag.Table:               tag.ValidColumn,
 			user.Table:              user.ValidColumn,
 			whiteboard.Table:        whiteboard.ValidColumn,

@@ -52,6 +52,10 @@ const (
 	EdgeAttachments = "attachments"
 	// EdgeWhiteboards holds the string denoting the whiteboards edge name in mutations.
 	EdgeWhiteboards = "whiteboards"
+	// EdgeOutgoingLinks holds the string denoting the outgoing_links edge name in mutations.
+	EdgeOutgoingLinks = "outgoing_links"
+	// EdgeBacklinks holds the string denoting the backlinks edge name in mutations.
+	EdgeBacklinks = "backlinks"
 	// EdgeTags holds the string denoting the tags edge name in mutations.
 	EdgeTags = "tags"
 	// Table holds the table name of the note in the database.
@@ -84,6 +88,20 @@ const (
 	WhiteboardsInverseTable = "whiteboards"
 	// WhiteboardsColumn is the table column denoting the whiteboards relation/edge.
 	WhiteboardsColumn = "note_whiteboards"
+	// OutgoingLinksTable is the table that holds the outgoing_links relation/edge.
+	OutgoingLinksTable = "note_links"
+	// OutgoingLinksInverseTable is the table name for the NoteLink entity.
+	// It exists in this package in order to avoid circular dependency with the "notelink" package.
+	OutgoingLinksInverseTable = "note_links"
+	// OutgoingLinksColumn is the table column denoting the outgoing_links relation/edge.
+	OutgoingLinksColumn = "source_note_id"
+	// BacklinksTable is the table that holds the backlinks relation/edge.
+	BacklinksTable = "note_links"
+	// BacklinksInverseTable is the table name for the NoteLink entity.
+	// It exists in this package in order to avoid circular dependency with the "notelink" package.
+	BacklinksInverseTable = "note_links"
+	// BacklinksColumn is the table column denoting the backlinks relation/edge.
+	BacklinksColumn = "target_note_id"
 	// TagsTable is the table that holds the tags relation/edge. The primary key declared below.
 	TagsTable = "note_tags"
 	// TagsInverseTable is the table name for the Tag entity.
@@ -304,6 +322,34 @@ func ByWhiteboards(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByOutgoingLinksCount orders the results by outgoing_links count.
+func ByOutgoingLinksCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOutgoingLinksStep(), opts...)
+	}
+}
+
+// ByOutgoingLinks orders the results by outgoing_links terms.
+func ByOutgoingLinks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOutgoingLinksStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByBacklinksCount orders the results by backlinks count.
+func ByBacklinksCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newBacklinksStep(), opts...)
+	}
+}
+
+// ByBacklinks orders the results by backlinks terms.
+func ByBacklinks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newBacklinksStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByTagsCount orders the results by tags count.
 func ByTagsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -343,6 +389,20 @@ func newWhiteboardsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(WhiteboardsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, WhiteboardsTable, WhiteboardsColumn),
+	)
+}
+func newOutgoingLinksStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OutgoingLinksInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OutgoingLinksTable, OutgoingLinksColumn),
+	)
+}
+func newBacklinksStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(BacklinksInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, BacklinksTable, BacklinksColumn),
 	)
 }
 func newTagsStep() *sqlgraph.Step {

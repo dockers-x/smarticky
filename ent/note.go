@@ -66,11 +66,15 @@ type NoteEdges struct {
 	Attachments []*Attachment `json:"attachments,omitempty"`
 	// Whiteboards holds the value of the whiteboards edge.
 	Whiteboards []*Whiteboard `json:"whiteboards,omitempty"`
+	// OutgoingLinks holds the value of the outgoing_links edge.
+	OutgoingLinks []*NoteLink `json:"outgoing_links,omitempty"`
+	// Backlinks holds the value of the backlinks edge.
+	Backlinks []*NoteLink `json:"backlinks,omitempty"`
 	// Tags holds the value of the tags edge.
 	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [5]bool
+	loadedTypes [7]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -113,10 +117,28 @@ func (e NoteEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
 	return nil, &NotLoadedError{edge: "whiteboards"}
 }
 
+// OutgoingLinksOrErr returns the OutgoingLinks value or an error if the edge
+// was not loaded in eager-loading.
+func (e NoteEdges) OutgoingLinksOrErr() ([]*NoteLink, error) {
+	if e.loadedTypes[4] {
+		return e.OutgoingLinks, nil
+	}
+	return nil, &NotLoadedError{edge: "outgoing_links"}
+}
+
+// BacklinksOrErr returns the Backlinks value or an error if the edge
+// was not loaded in eager-loading.
+func (e NoteEdges) BacklinksOrErr() ([]*NoteLink, error) {
+	if e.loadedTypes[5] {
+		return e.Backlinks, nil
+	}
+	return nil, &NotLoadedError{edge: "backlinks"}
+}
+
 // TagsOrErr returns the Tags value or an error if the edge
 // was not loaded in eager-loading.
 func (e NoteEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[6] {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
@@ -289,6 +311,16 @@ func (_m *Note) QueryAttachments() *AttachmentQuery {
 // QueryWhiteboards queries the "whiteboards" edge of the Note entity.
 func (_m *Note) QueryWhiteboards() *WhiteboardQuery {
 	return NewNoteClient(_m.config).QueryWhiteboards(_m)
+}
+
+// QueryOutgoingLinks queries the "outgoing_links" edge of the Note entity.
+func (_m *Note) QueryOutgoingLinks() *NoteLinkQuery {
+	return NewNoteClient(_m.config).QueryOutgoingLinks(_m)
+}
+
+// QueryBacklinks queries the "backlinks" edge of the Note entity.
+func (_m *Note) QueryBacklinks() *NoteLinkQuery {
+	return NewNoteClient(_m.config).QueryBacklinks(_m)
 }
 
 // QueryTags queries the "tags" edge of the Note entity.

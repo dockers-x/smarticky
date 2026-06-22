@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -63,5 +64,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("import_jobs", ImportJob.Type),
 		edge.To("mcp_tokens", MCPToken.Type),
 		edge.To("mcp_images", MCPImage.Type),
+		edge.To("note_links", NoteLink.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }
