@@ -28,6 +28,18 @@ function isDependencyWithGlobalProbe(id: string): boolean {
   );
 }
 
+function isIgnoredRadixDirectiveWarning(warning: {
+  code?: string;
+  id?: string;
+  message?: string;
+}): boolean {
+  return (
+    warning.code === "MODULE_LEVEL_DIRECTIVE" &&
+    warning.message?.includes('"use client"') === true &&
+    warning.id?.includes("/node_modules/@radix-ui/") === true
+  );
+}
+
 export default defineConfig({
   plugins: [
     {
@@ -83,6 +95,10 @@ export default defineConfig({
     outDir: "../static/app",
     emptyOutDir: true,
     rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        if (isIgnoredRadixDirectiveWarning(warning)) return;
+        defaultHandler(warning);
+      },
       output: {
         entryFileNames: "assets/index.js",
         chunkFileNames: "assets/[name].js",
