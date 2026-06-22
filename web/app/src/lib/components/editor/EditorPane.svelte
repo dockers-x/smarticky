@@ -1,12 +1,25 @@
 <script lang="ts">
-  import { FileCode, Image as ImageIcon } from "@lucide/svelte";
+  import {
+    ChevronLeft,
+    ChevronRight,
+    CodeXml,
+    FileCode,
+    Image as ImageIcon,
+    Network,
+  } from "@lucide/svelte";
   import { onDestroy, onMount, tick } from "svelte";
   import type { Note } from "../../api/types";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
+  import {
+    createMermaidDiagramFence,
+    mermaidDiagramVariants,
+    type MermaidDiagramVariant,
+    type MermaidDiagramVariantGroup,
+  } from "../../markdown/diagrams/mermaidSyntax";
   import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
-  import { preferencesStore, t } from "../../stores/preferences";
+  import { preferencesStore, t, type Language } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
   import EditorInspector from "./EditorInspector.svelte";
   import MarkdownEditor from "./MarkdownEditor.svelte";
@@ -31,9 +44,35 @@
   let detailsOpen = false;
   let shareOpen = false;
   let actionMenuOpen = false;
+  let diagramMenuOpen = false;
+  let diagramMenuView: "root" | "mermaid" = "root";
   let folderMenuOpen = false;
   let quickTagName = "";
   let tagBusy = false;
+
+  const mermaidGroupOrder: MermaidDiagramVariantGroup[] = [
+    "flow",
+    "structure",
+    "planning",
+    "data",
+    "advanced",
+  ];
+
+  const drawioTemplate = `\`\`\`drawio
+<mxfile>
+  <diagram name="Page-1">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Hello" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="120" height="60" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+\`\`\``;
 
   $: statusText = {
     idle: "",
@@ -61,6 +100,13 @@
         (name) => name.toLowerCase() === tag.name.toLowerCase(),
       ),
   );
+  $: mermaidVariantGroups = mermaidGroupOrder
+    .map((group) => ({
+      group,
+      label: getMermaidGroupLabel(group, $preferencesStore.language),
+      variants: mermaidDiagramVariants.filter((variant) => variant.group === group),
+    }))
+    .filter((group) => group.variants.length > 0);
 
   function clearTimer(timer: ReturnType<typeof setTimeout> | null): void {
     if (timer) clearTimeout(timer);
@@ -79,6 +125,8 @@
     detailsOpen = false;
     shareOpen = false;
     actionMenuOpen = false;
+    diagramMenuOpen = false;
+    diagramMenuView = "root";
     folderMenuOpen = false;
     quickTagName = "";
     void tick().then(resizeTitleInput);
@@ -218,9 +266,89 @@
     });
   }
 
+  function withBlockSpacing(markdown: string, before: string, after: string): string {
+    const trimmed = markdown.trim();
+    const prefix =
+      before.length === 0 || before.endsWith("\n\n")
+        ? ""
+        : before.endsWith("\n")
+          ? "\n"
+          : "\n\n";
+    const suffix =
+      after.length === 0 || after.startsWith("\n\n")
+        ? "\n\n"
+        : after.startsWith("\n")
+          ? "\n"
+          : "\n\n";
+
+    return `${prefix}${trimmed}${suffix}`;
+  }
+
+  function insertBlockIntoSource(markdown: string): void {
+    if (!sourceTextarea) {
+      const snippet = withBlockSpacing(markdown, draftContent, "");
+      scheduleContentSave(`${draftContent}${snippet}`);
+      return;
+    }
+
+    const start = sourceTextarea.selectionStart ?? draftContent.length;
+    const end = sourceTextarea.selectionEnd ?? start;
+    const before = draftContent.slice(0, start);
+    const after = draftContent.slice(end);
+    const snippet = withBlockSpacing(markdown, before, after);
+    const nextValue = `${before}${snippet}${after}`;
+    scheduleContentSave(nextValue);
+    void tick().then(() => {
+      const cursor = start + snippet.length;
+      sourceTextarea?.focus();
+      sourceTextarea?.setSelectionRange(cursor, cursor);
+      resizeSourceInput();
+    });
+  }
+
+  function insertBlockMarkdown(markdown: string): void {
+    if (sourceMode) {
+      insertBlockIntoSource(markdown);
+      return;
+    }
+    if (!markdownEditor) return;
+    markdownEditor.insertMarkdown(`${markdown.trim()}\n\n`);
+    markdownEditor.focus();
+  }
+
+  function insertMermaidTemplate(variant: MermaidDiagramVariant): void {
+    closeDiagramMenu();
+    insertBlockMarkdown(createMermaidDiagramFence(variant));
+  }
+
+  function insertDrawioTemplate(): void {
+    closeDiagramMenu();
+    insertBlockMarkdown(drawioTemplate);
+  }
+
+  function getMermaidGroupLabel(
+    group: MermaidDiagramVariantGroup,
+    language: Language,
+  ): string {
+    switch (group) {
+      case "flow":
+        return t("mermaidGroupFlow", language);
+      case "structure":
+        return t("mermaidGroupStructure", language);
+      case "planning":
+        return t("mermaidGroupPlanning", language);
+      case "data":
+        return t("mermaidGroupData", language);
+      case "advanced":
+        return t("mermaidGroupAdvanced", language);
+    }
+  }
+
   function toggleSourceMode(): void {
     sourceMode = !sourceMode;
     actionMenuOpen = false;
+    diagramMenuOpen = false;
+    diagramMenuView = "root";
     void tick().then(() => {
       if (sourceMode) {
         resizeSourceInput();
@@ -325,6 +453,22 @@
     actionMenuOpen = false;
   }
 
+  function closeDiagramMenu(): void {
+    diagramMenuOpen = false;
+    diagramMenuView = "root";
+  }
+
+  function toggleDiagramMenu(): void {
+    diagramMenuOpen = !diagramMenuOpen;
+    if (diagramMenuOpen) {
+      actionMenuOpen = false;
+      folderMenuOpen = false;
+      diagramMenuView = "root";
+      return;
+    }
+    diagramMenuView = "root";
+  }
+
   async function runMenuAction(action: () => void | Promise<void>): Promise<void> {
     closeActionMenu();
     await action();
@@ -372,6 +516,85 @@
         >
           <ImageIcon aria-hidden="true" size={19} strokeWidth={2} />
         </button>
+        <div class="editor-diagram-menu">
+          <button
+            class="editor-icon-button"
+            type="button"
+            title={t("insertDiagram", $preferencesStore.language)}
+            aria-label={t("insertDiagram", $preferencesStore.language)}
+            aria-expanded={diagramMenuOpen}
+            disabled={!markdownEditor && !sourceMode}
+            on:click={toggleDiagramMenu}
+          >
+            <Network aria-hidden="true" size={19} strokeWidth={2} />
+          </button>
+          {#if diagramMenuOpen}
+            <div class="editor-popover editor-diagram-popover" role="menu">
+              {#if diagramMenuView === "root"}
+                <p class="editor-popover-title">
+                  {t("insertDiagram", $preferencesStore.language)}
+                </p>
+                <button
+                  class="editor-popover-row editor-diagram-row"
+                  type="button"
+                  role="menuitem"
+                  on:click={() => (diagramMenuView = "mermaid")}
+                >
+                  <span class="editor-diagram-row__text">
+                    <span class="editor-diagram-row__title">Mermaid</span>
+                    <span class="editor-diagram-row__description">
+                      {t("mermaidTemplatesHint", $preferencesStore.language)}
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden="true" size={17} strokeWidth={2} />
+                </button>
+                <button
+                  class="editor-popover-row editor-diagram-row"
+                  type="button"
+                  role="menuitem"
+                  on:click={insertDrawioTemplate}
+                >
+                  <CodeXml aria-hidden="true" size={17} strokeWidth={2} />
+                  <span class="editor-diagram-row__text">
+                    <span class="editor-diagram-row__title">drawio</span>
+                    <span class="editor-diagram-row__description">
+                      {t("drawioTemplateHint", $preferencesStore.language)}
+                    </span>
+                  </span>
+                </button>
+              {:else}
+                <button
+                  class="editor-popover-row editor-diagram-back"
+                  type="button"
+                  role="menuitem"
+                  on:click={() => (diagramMenuView = "root")}
+                >
+                  <ChevronLeft aria-hidden="true" size={17} strokeWidth={2} />
+                  <span>{t("mermaidTemplates", $preferencesStore.language)}</span>
+                </button>
+                {#each mermaidVariantGroups as group}
+                  <p class="editor-popover-label">{group.label}</p>
+                  {#each group.variants as variant (variant.name)}
+                    <button
+                      class="editor-popover-row editor-diagram-template-row"
+                      type="button"
+                      role="menuitem"
+                      on:click={() => insertMermaidTemplate(variant)}
+                    >
+                      <span class="editor-diagram-row__text">
+                        <span class="editor-diagram-row__title">{variant.label}</span>
+                        <span class="editor-diagram-row__description">
+                          {variant.description[$preferencesStore.language]}
+                        </span>
+                      </span>
+                      <code>{variant.name}</code>
+                    </button>
+                  {/each}
+                {/each}
+              {/if}
+            </div>
+          {/if}
+        </div>
         <button
           class="editor-icon-button"
           type="button"

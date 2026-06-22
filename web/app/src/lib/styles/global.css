@@ -1192,6 +1192,7 @@ h6 {
 
 .editor-icon-button:hover,
 .editor-icon-button[aria-pressed="true"],
+.editor-icon-button[aria-expanded="true"],
 .editor-icon-button:disabled,
 .editor-done-button:hover,
 .editor-more-button[aria-expanded="true"],
@@ -1258,6 +1259,11 @@ h6 {
 }
 
 .editor-action-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.editor-diagram-menu {
   position: relative;
   flex: 0 0 auto;
 }
@@ -1416,10 +1422,82 @@ h6 {
   text-align: left;
 }
 
+.editor-popover-row svg {
+  flex: 0 0 auto;
+}
+
 .editor-popover-row.active,
 .editor-popover-row:hover {
   background: var(--color-surface-secondary);
   color: var(--color-brand);
+}
+
+.editor-diagram-popover {
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+}
+
+.editor-diagram-row,
+.editor-diagram-template-row,
+.editor-diagram-back {
+  justify-content: flex-start;
+}
+
+.editor-diagram-row {
+  gap: 10px;
+}
+
+.editor-diagram-row .editor-diagram-row__text:first-child {
+  margin-right: auto;
+}
+
+.editor-diagram-row__text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.editor-diagram-row__title {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.editor-diagram-row__description {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.editor-diagram-template-row {
+  align-items: center;
+}
+
+.editor-diagram-template-row code {
+  flex: 0 0 auto;
+  max-width: 128px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-divider) 72%, transparent);
+  border-radius: 6px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+  padding: 3px 6px;
+  font-family:
+    "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas,
+    "Liberation Mono", Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-diagram-back {
+  gap: 8px;
+  border-bottom: 1px solid var(--color-divider);
+  border-radius: 8px 8px 4px 4px;
 }
 
 .editor-popover-row:disabled {
@@ -1761,6 +1839,20 @@ h6 {
 .markdown-editor-host .cm-gutters {
   border-right: 1px solid var(--color-divider);
   color: var(--sm-code-cmt);
+}
+
+.markdown-editor-host .cm-editor .cm-activeLine,
+.markdown-editor-host .cm-editor .cm-activeLineGutter {
+  background: transparent;
+}
+
+.markdown-editor-host .cm-focused .cm-activeLine {
+  background: color-mix(in srgb, var(--color-brand) 8%, transparent);
+}
+
+.markdown-editor-host .cm-focused .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  color: var(--color-brand);
 }
 
 .markdown-editor-host .tok-keyword,

@@ -5,7 +5,11 @@ import {
   type StringStream,
 } from "@codemirror/language";
 import type { CodeMirrorFeatureConfig } from "@milkdown/crepe/feature/code-mirror";
-import { normalizeDiagramType } from "./fences";
+import { normalizeDiagramType, prepareDiagramSource } from "./fences";
+import {
+  findMermaidDiagramVariant,
+  mermaidDiagramVariants,
+} from "./mermaidSyntax";
 import { renderDiagram } from "./registry";
 import type {
   DiagramRenderRequest,
@@ -38,6 +42,13 @@ export const diagramCodeLanguages = [
     alias: ["mmd"],
     support: diagramLanguageSupport,
   }),
+  ...mermaidDiagramVariants.map((variant) =>
+    LanguageDescription.of({
+      name: variant.name,
+      alias: variant.aliases,
+      support: diagramLanguageSupport,
+    }),
+  ),
   LanguageDescription.of({
     name: "drawio",
     alias: ["draw.io"],
@@ -78,12 +89,14 @@ export function createEditorDiagramCodeBlockConfig({
     previewLabel: "Diagram preview",
     previewLoading: loadingMarkup(),
     renderLanguage(language) {
+      const mermaidVariant = findMermaidDiagramVariant(language);
+      if (mermaidVariant) return mermaidVariant.label;
       const type = normalizeDiagramType(language);
       return type ? diagramLanguageLabels[type] : language;
     },
     renderPreview(language: string, content: string, applyPreview: ApplyPreview) {
       const type = normalizeDiagramType(language);
-      const source = content.trim();
+      const source = prepareDiagramSource(language, content);
       if (!type || !source) return null;
 
       applyPreview(loadingMarkup());

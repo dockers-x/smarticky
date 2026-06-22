@@ -73,6 +73,42 @@ A modern notes application built with Go, inspired by Smartisan Notes.
   - CSS3
   - 无框架依赖
 
+## 图表代码块 / Diagram Fences
+
+Mermaid 支持标准 `mermaid` 围栏，也可以在编辑器语言选择里直接选择具体类型，例如 `flowchart`、`sequenceDiagram`、`classDiagram`、`erDiagram` 等。编辑器工具栏的图表按钮会先让你选择 Mermaid 或 drawio；只有选择 Mermaid 后才会显示 Flowchart、Sequence、ER、Gantt、Packet 等 Mermaid 类型模板。选择具体类型时，可以只写主体内容，应用会补齐 Mermaid 类型声明。
+
+````markdown
+```flowchart
+A->B
+B->C
+```
+
+```sequenceDiagram
+Alice->>Bob: Hello
+Bob-->>Alice: Hi
+```
+````
+
+drawio 支持 draw.io XML 内容。`.drawio` 文件通常就是 XML，可以把文件内容粘到 `drawio` 代码块里。
+
+````markdown
+```drawio
+<mxfile>
+  <diagram name="Page-1">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Hello" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="120" height="60" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+```
+````
+
 ## 快速开始 / Quick Start
 
 ### 使用 Docker Compose (推荐)

@@ -1,7 +1,11 @@
 import DOMPurify from "dompurify";
 import { Marked, Renderer, type Tokens } from "marked";
 import markedKatex from "marked-katex-extension";
-import { normalizeDiagramType, stripDiagramFences } from "./diagrams/fences";
+import {
+  normalizeDiagramType,
+  prepareDiagramSource,
+  stripDiagramFences,
+} from "./diagrams/fences";
 import { createDiagramPlaceholder } from "./diagrams/placeholders";
 
 const markedOptions = {
@@ -22,7 +26,10 @@ const markdownRenderer = new Marked(
       code(token: Tokens.Code): string {
         const diagramType = normalizeDiagramType(token.lang);
         if (diagramType && token.text.trim()) {
-          return createDiagramPlaceholder(diagramType, token.text.trim());
+          return createDiagramPlaceholder(
+            diagramType,
+            prepareDiagramSource(token.lang, token.text),
+          );
         }
         return fallbackRenderer.code(token);
       },

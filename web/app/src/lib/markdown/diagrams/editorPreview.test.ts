@@ -10,11 +10,17 @@ function flushMicrotasks(): Promise<void> {
 
 describe("editor diagram preview", () => {
   it("registers Mermaid and drawio languages for code fences", () => {
-    expect(diagramCodeLanguages.map((language) => language.name)).toEqual([
-      "mermaid",
-      "drawio",
-    ]);
-    expect(diagramCodeLanguages[1].alias).toContain("draw.io");
+    expect(diagramCodeLanguages.map((language) => language.name)).toEqual(
+      expect.arrayContaining([
+        "mermaid",
+        "flowchart",
+        "sequenceDiagram",
+        "classDiagram",
+        "packet",
+        "drawio",
+      ]),
+    );
+    expect(diagramCodeLanguages.at(-1)?.alias).toContain("draw.io");
   });
 
   it("does not render unsupported code block languages", () => {
@@ -65,6 +71,27 @@ describe("editor diagram preview", () => {
     expect(applyPreview).toHaveBeenLastCalledWith(
       `<div class="diagram-render">ok</div>`,
     );
+  });
+
+  it("renders selected Mermaid type previews with generated declarations", async () => {
+    const render = vi.fn().mockResolvedValue({
+      html: `<div class="diagram-render">ok</div>`,
+    });
+    const applyPreview = vi.fn();
+    const config = createEditorDiagramCodeBlockConfig({
+      getTheme: () => "light",
+      render,
+    });
+
+    config.renderPreview?.("flowchart", "A->B\nB->C", applyPreview);
+    await flushMicrotasks();
+
+    expect(config.renderLanguage?.("flowchart", false)).toBe("Flowchart");
+    expect(render).toHaveBeenCalledWith({
+      type: "mermaid",
+      source: "flowchart TD\nA-->B\nB-->C",
+      theme: "light",
+    });
   });
 
   it("renders escaped inline errors for failed drawio previews", async () => {

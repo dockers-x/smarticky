@@ -1,10 +1,20 @@
 import type { DiagramType } from "./types";
+import { isMermaidDiagramLanguage, materializeMermaidSource } from "./mermaidSyntax";
 
 export function normalizeDiagramType(language: string | null | undefined): DiagramType | null {
   const normalized = (language || "").trim().toLowerCase();
-  if (normalized === "mermaid") return "mermaid";
+  if (isMermaidDiagramLanguage(normalized)) return "mermaid";
   if (normalized === "drawio" || normalized === "draw.io") return "drawio";
   return null;
+}
+
+export function prepareDiagramSource(
+  language: string | null | undefined,
+  source: string,
+): string {
+  const diagramType = normalizeDiagramType(language);
+  if (diagramType === "mermaid") return materializeMermaidSource(language, source);
+  return source.trim();
 }
 
 export function stripDiagramFences(markdown: string): string {

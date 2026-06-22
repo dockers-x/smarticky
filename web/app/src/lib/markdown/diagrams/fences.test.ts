@@ -5,6 +5,9 @@ describe("normalizeDiagramType", () => {
   it("recognizes first-version diagram fence languages", () => {
     expect(normalizeDiagramType("mermaid")).toBe("mermaid");
     expect(normalizeDiagramType("MERMAID")).toBe("mermaid");
+    expect(normalizeDiagramType("flowchart")).toBe("mermaid");
+    expect(normalizeDiagramType("sequenceDiagram")).toBe("mermaid");
+    expect(normalizeDiagramType("classDiagram")).toBe("mermaid");
     expect(normalizeDiagramType("drawio")).toBe("drawio");
     expect(normalizeDiagramType("draw.io")).toBe("drawio");
   });
@@ -27,6 +30,9 @@ describe("stripDiagramFences", () => {
       "A --> B",
       "```",
       "Middle",
+      "```flowchart",
+      "A --> C",
+      "```",
       "```drawio",
       "<mxfile></mxfile>",
       "```",

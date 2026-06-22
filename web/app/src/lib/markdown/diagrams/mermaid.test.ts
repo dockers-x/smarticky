@@ -41,6 +41,60 @@ describe("renderMermaidDiagram", () => {
     expect(result.html).toContain("diagram");
   });
 
+  it("treats bare flowchart edges as a top-down Mermaid flowchart", async () => {
+    mermaidMock.parse
+      .mockRejectedValueOnce(new Error("No diagram type detected"))
+      .mockResolvedValueOnce(true);
+
+    await renderMermaidDiagram({
+      type: "mermaid",
+      source: "A-->B\nB-->C",
+      theme: "light",
+    });
+
+    expect(mermaidMock.parse).toHaveBeenNthCalledWith(1, "A-->B\nB-->C");
+    expect(mermaidMock.parse).toHaveBeenNthCalledWith(
+      2,
+      "flowchart TD\nA-->B\nB-->C",
+    );
+    expect(mermaidMock.render).toHaveBeenCalledWith(
+      expect.stringMatching(/^smarticky-mermaid-/),
+      "flowchart TD\nA-->B\nB-->C",
+    );
+  });
+
+  it("keeps declared Mermaid diagram types unchanged", async () => {
+    await renderMermaidDiagram({
+      type: "mermaid",
+      source: "classDiagram\nAnimal <|-- Duck",
+      theme: "light",
+    });
+
+    expect(mermaidMock.parse).toHaveBeenCalledWith(
+      "classDiagram\nAnimal <|-- Duck",
+    );
+    expect(mermaidMock.render).toHaveBeenCalledWith(
+      expect.stringMatching(/^smarticky-mermaid-/),
+      "classDiagram\nAnimal <|-- Duck",
+    );
+  });
+
+  it("does not hide Mermaid syntax errors after the fallback attempt", async () => {
+    mermaidMock.parse
+      .mockRejectedValueOnce(new Error("No diagram type detected"))
+      .mockRejectedValueOnce(new Error("Parse error on line 2"));
+
+    await expect(
+      renderMermaidDiagram({
+        type: "mermaid",
+        source: "not a valid diagram",
+        theme: "light",
+      }),
+    ).rejects.toThrow("Parse error on line 2");
+
+    expect(mermaidMock.render).not.toHaveBeenCalled();
+  });
+
   it("uses Mermaid dark theme for dark diagram theme", async () => {
     await renderMermaidDiagram({
       type: "mermaid",
