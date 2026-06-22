@@ -1,6 +1,6 @@
 import { get, writable } from "svelte/store";
 import { apiFetch } from "../api/client";
-import type { Note } from "../api/types";
+import type { Note, ProtectionMode } from "../api/types";
 import { preferencesStore, t } from "./preferences";
 
 export type NoteFilter = "all" | "starred" | "trash";
@@ -34,6 +34,21 @@ type NoteUpdateFields = Partial<
     "title" | "content" | "color" | "is_starred" | "is_deleted" | "folder_id"
   >
 >;
+
+export type NoteProtectionUpdateFields = NoteUpdateFields &
+  Partial<
+    Pick<
+      Note,
+      | "encrypted_content"
+      | "encryption_alg"
+      | "encryption_kdf"
+      | "encryption_salt"
+      | "encryption_nonce"
+    >
+  > & {
+    protection_mode?: ProtectionMode;
+    protection_password?: string;
+  };
 
 const emptySearchFilters: NoteSearchFilters = {
   title: "",
@@ -109,7 +124,10 @@ function createNotesStore() {
     }));
   }
 
-  async function updateNote(noteId: string, fields: NoteUpdateFields): Promise<Note> {
+  async function updateNote(
+    noteId: string,
+    fields: NoteProtectionUpdateFields,
+  ): Promise<Note> {
     const updated = await apiFetch<Note>(`/notes/${noteId}`, {
       method: "PUT",
       body: JSON.stringify(fields),
@@ -257,6 +275,24 @@ function createNotesStore() {
       const selectedID = state.selected.id;
       update((current) => ({ ...current, error: "" }));
       await updateNote(selectedID, fields);
+    },
+    async updateProtection(fields: NoteProtectionUpdateFields): Promise<Note | null> {
+      const state = get({ subscribe });
+      if (!state.selected) return null;
+
+      update((current) => ({ ...current, error: "" }));
+      return updateNote(state.selected.id, fields);
+    },
+    async verifyPassword(noteId: string, password: string): Promise<Note> {
+      const response = await apiFetch<{ success: boolean; note: Note }>(
+        `/notes/${noteId}/verify-password`,
+        {
+          method: "POST",
+          body: JSON.stringify({ password }),
+        },
+      );
+      applyUpdatedNote(response.note);
+      return response.note;
     },
     async getByID(noteId: string): Promise<Note> {
       const state = get({ subscribe });

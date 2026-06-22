@@ -5,15 +5,22 @@
     CodeXml,
     FileCode,
     Image as ImageIcon,
+    LockKeyhole,
     Network,
     PencilRuler,
     Plus,
+    Shield,
     Tag as TagIcon,
     X,
   } from "@lucide/svelte";
   import { onDestroy, onMount, tick, type Component } from "svelte";
   import type { Note } from "../../api/types";
   import { createWhiteboard } from "../../api/whiteboards";
+  import {
+    decryptNoteContent,
+    encryptNoteContent,
+    type EncryptedNotePayload,
+  } from "../../crypto/noteEncryption";
   import { downloadMarkdownFile } from "../../editor/exportMarkdown";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
   import {
@@ -40,6 +47,8 @@
   import { tagsStore } from "../../stores/tags";
   import { whiteboardStore } from "../../stores/whiteboard";
   import EditorInspector from "./EditorInspector.svelte";
+  import NoteProtectionDialog from "./NoteProtectionDialog.svelte";
+  import PasswordField from "../common/PasswordField.svelte";
   import ShareImageDialog from "./ShareImageDialog.svelte";
 
   export let note: Note | null = null;
@@ -68,6 +77,17 @@
   let focusMode = false;
   let detailsOpen = false;
   let shareOpen = false;
+  let protectionOpen = false;
+  let protectionBusy = false;
+  let protectionError = "";
+  let unlockPassword = "";
+  let unlockBusy = false;
+  let unlockError = "";
+  let decryptPassword = "";
+  let decryptBusy = false;
+  let decryptError = "";
+  let decryptedNoteID = "";
+  let encryptionSessionPassword = "";
   let actionMenuOpen = false;
   let diagramMenuOpen = false;
   let diagramMenuView: "root" | "mermaid" = "root";
@@ -128,6 +148,16 @@
   $: noteTagIDs = new Set(note?.tags?.map((tag) => tag.id) ?? []);
   $: availableNoteTags = $tagsStore.filter((tag) => !noteTagIDs.has(tag.id));
   $: wordCount = draftContent.replace(/\s/g, "").length;
+  $: isPasswordLocked =
+    note?.protection_mode === "password" && note.content_redacted;
+  $: isEncryptedNote = note?.protection_mode === "encrypted";
+  $: isEncryptedUnlocked =
+    Boolean(note) &&
+    isEncryptedNote &&
+    decryptedNoteID === note?.id &&
+    Boolean(encryptionSessionPassword);
+  $: isEncryptedLocked = Boolean(note) && isEncryptedNote && !isEncryptedUnlocked;
+  $: contentLocked = isPasswordLocked || isEncryptedLocked;
   $: folderOptions = flattenFolderTree(buildFolderTree($foldersStore.folders));
   $: currentFolder = note?.folder_id
     ? $foldersStore.folders.find((folder) => folder.id === note?.folder_id)
@@ -152,7 +182,10 @@
     contentTimer = null;
     activeNoteID = nextNote?.id ?? "";
     draftTitle = nextNote?.title ?? "";
-    draftContent = nextNote?.content ?? "";
+    draftContent =
+      nextNote?.protection_mode === "encrypted" && nextNote.id !== decryptedNoteID
+        ? ""
+        : (nextNote?.content ?? "");
     saveStatus = nextNote ? "saved" : "idle";
     sourceMode = false;
     detailsOpen = false;
@@ -164,6 +197,19 @@
     tagMenuOpen = false;
     tagName = "";
     tagError = "";
+    protectionOpen = false;
+    protectionBusy = false;
+    protectionError = "";
+    unlockPassword = "";
+    unlockError = "";
+    unlockBusy = false;
+    decryptPassword = "";
+    decryptError = "";
+    decryptBusy = false;
+    if (nextNote?.id !== decryptedNoteID) {
+      decryptedNoteID = "";
+      encryptionSessionPassword = "";
+    }
     void tick().then(resizeTitleInput);
   }
 
@@ -198,6 +244,7 @@
   }
 
   function scheduleContentSave(value: string): void {
+    if (contentLocked) return;
     draftContent = value;
     void tick().then(resizeSourceInput);
     clearTimer(contentTimer);
@@ -205,6 +252,25 @@
     contentTimer = setTimeout(() => {
       void persistDraft(noteID, { content: value });
     }, 500);
+  }
+
+  function encryptedPayloadFor(currentNote: Note): EncryptedNotePayload | null {
+    if (
+      !currentNote.encrypted_content ||
+      !currentNote.encryption_alg ||
+      !currentNote.encryption_kdf ||
+      !currentNote.encryption_salt ||
+      !currentNote.encryption_nonce
+    ) {
+      return null;
+    }
+    return {
+      encrypted_content: currentNote.encrypted_content,
+      encryption_alg: currentNote.encryption_alg as EncryptedNotePayload["encryption_alg"],
+      encryption_kdf: currentNote.encryption_kdf,
+      encryption_salt: currentNote.encryption_salt,
+      encryption_nonce: currentNote.encryption_nonce,
+    };
   }
 
   async function persistDraft(
@@ -219,7 +285,20 @@
     saveStatus = "saving";
 
     try {
-      await notesStore.updateSelected(fields);
+      if (note?.protection_mode === "encrypted" && "content" in fields) {
+        if (!encryptionSessionPassword || decryptedNoteID !== note.id) {
+          throw new Error("Encrypted note is locked.");
+        }
+        const { content, ...plainFields } = fields;
+        const encrypted = await encryptNoteContent(content ?? "", encryptionSessionPassword);
+        await notesStore.updateProtection({
+          ...plainFields,
+          protection_mode: "encrypted",
+          ...encrypted,
+        });
+      } else {
+        await notesStore.updateSelected(fields);
+      }
       if (sequence === saveSequence) {
         saveStatus = "saved";
       }
@@ -237,7 +316,7 @@
       Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted" | "folder_id">
     > = {};
     if (draftTitle !== note.title) fields.title = draftTitle;
-    if (draftContent !== note.content) fields.content = draftContent;
+    if (!contentLocked && draftContent !== note.content) fields.content = draftContent;
 
     clearTimer(titleTimer);
     clearTimer(contentTimer);
@@ -257,8 +336,111 @@
     }
   }
 
+  async function unlockPasswordProtectedNote(): Promise<void> {
+    if (!note || unlockBusy) return;
+    const password = unlockPassword.trim();
+    if (!password) {
+      unlockError = t("noteProtectionPasswordRequired", $preferencesStore.language);
+      return;
+    }
+
+    unlockBusy = true;
+    unlockError = "";
+    try {
+      const unlocked = await notesStore.verifyPassword(note.id, password);
+      notesStore.replaceSelected(unlocked);
+      draftTitle = unlocked.title;
+      draftContent = unlocked.content ?? "";
+      unlockPassword = "";
+      notify(t("noteUnlocked", $preferencesStore.language), "success");
+    } catch {
+      unlockError = t("noteUnlockFailed", $preferencesStore.language);
+    } finally {
+      unlockBusy = false;
+    }
+  }
+
+  async function decryptEncryptedNote(): Promise<void> {
+    if (!note || decryptBusy) return;
+    const password = decryptPassword;
+    if (!password) {
+      decryptError = t("noteProtectionPasswordRequired", $preferencesStore.language);
+      return;
+    }
+    const payload = encryptedPayloadFor(note);
+    if (!payload) {
+      decryptError = t("noteDecryptFailed", $preferencesStore.language);
+      return;
+    }
+
+    decryptBusy = true;
+    decryptError = "";
+    try {
+      draftContent = await decryptNoteContent(payload, password);
+      decryptedNoteID = note.id;
+      encryptionSessionPassword = password;
+      decryptPassword = "";
+      saveStatus = "saved";
+      await tick();
+      resizeSourceInput();
+      notify(t("noteDecrypted", $preferencesStore.language), "success");
+    } catch {
+      decryptError = t("noteDecryptFailed", $preferencesStore.language);
+    } finally {
+      decryptBusy = false;
+    }
+  }
+
+  async function saveProtection(mode: Note["protection_mode"], password: string): Promise<void> {
+    if (!note || protectionBusy) return;
+    protectionBusy = true;
+    protectionError = "";
+    try {
+      if ((mode === "none" || mode === "password") && isEncryptedNote && !isEncryptedUnlocked) {
+        throw new Error(t("noteDecryptFailed", $preferencesStore.language));
+      }
+
+      await flushDraft();
+
+      if (mode === "encrypted") {
+        const encrypted = await encryptNoteContent(draftContent, password);
+        await notesStore.updateProtection({
+          protection_mode: "encrypted",
+          ...encrypted,
+        });
+        decryptedNoteID = note.id;
+        encryptionSessionPassword = password;
+      } else if (mode === "password") {
+        await notesStore.updateProtection({
+          protection_mode: "password",
+          protection_password: password,
+          ...(isEncryptedNote ? { content: draftContent } : {}),
+        });
+        decryptedNoteID = "";
+        encryptionSessionPassword = "";
+      } else {
+        await notesStore.updateProtection({
+          protection_mode: "none",
+          ...(isEncryptedNote ? { content: draftContent } : {}),
+        });
+        decryptedNoteID = "";
+        encryptionSessionPassword = "";
+      }
+
+      protectionOpen = false;
+      notify(t("noteProtectionSaved", $preferencesStore.language), "success");
+    } catch (error) {
+      protectionError =
+        error instanceof Error
+          ? error.message
+          : t("noteProtectionFailed", $preferencesStore.language);
+    } finally {
+      protectionBusy = false;
+    }
+  }
+
   function exportCurrentNoteMarkdown(): void {
-    if (!note) return;
+    if (!note || contentLocked) return;
     downloadMarkdownFile(
       draftTitle,
       draftContent,
@@ -290,6 +472,7 @@
   }
 
   function runImageInsert(): void {
+    if (contentLocked) return;
     imageFileInput?.click();
   }
 
@@ -297,7 +480,7 @@
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     input.value = "";
-    if (!file || !note) return;
+    if (!file || !note || contentLocked) return;
 
     try {
       const attachment = await uploadAttachment(note.id, file);
@@ -312,6 +495,7 @@
   }
 
   function insertImageMarkdown(markdown: string): void {
+    if (contentLocked) return;
     if (sourceMode) {
       insertIntoSource(markdown);
       return;
@@ -379,6 +563,7 @@
   }
 
   function insertBlockMarkdown(markdown: string): void {
+    if (contentLocked) return;
     if (sourceMode) {
       insertBlockIntoSource(markdown);
       return;
@@ -463,6 +648,7 @@
   }
 
   function toggleSourceMode(): void {
+    if (contentLocked) return;
     sourceMode = !sourceMode;
     actionMenuOpen = false;
     diagramMenuOpen = false;
@@ -478,7 +664,7 @@
   }
 
   function handleEditorKeydown(event: KeyboardEvent): void {
-    if (!note || shareOpen) return;
+    if (!note || shareOpen || contentLocked) return;
     if (!(event.metaKey || event.ctrlKey) || event.shiftKey) return;
     if (event.key !== "/" && event.code !== "Slash") return;
 
@@ -679,7 +865,7 @@
           type="button"
           title={t("insertImage", $preferencesStore.language)}
           aria-label={t("insertImage", $preferencesStore.language)}
-          disabled={!markdownEditor && !sourceMode}
+          disabled={contentLocked || (!markdownEditor && !sourceMode)}
           on:click={runImageInsert}
         >
           <ImageIcon aria-hidden="true" size={19} strokeWidth={2} />
@@ -700,7 +886,7 @@
             title={t("insertDiagram", $preferencesStore.language)}
             aria-label={t("insertDiagram", $preferencesStore.language)}
             aria-expanded={diagramMenuOpen}
-            disabled={!markdownEditor && !sourceMode}
+            disabled={contentLocked || (!markdownEditor && !sourceMode)}
             on:click={toggleDiagramMenu}
           >
             <Network aria-hidden="true" size={19} strokeWidth={2} />
@@ -796,6 +982,7 @@
             ? t("wysiwygMode", $preferencesStore.language)
             : t("sourceMode", $preferencesStore.language)}
           aria-pressed={sourceMode}
+          disabled={contentLocked}
           on:click={toggleSourceMode}
         >
           <FileCode aria-hidden="true" size={19} strokeWidth={2} />
@@ -809,7 +996,12 @@
             <span class="editor-action-label--compact">{t("deleteForeverShort", $preferencesStore.language)}</span>
           </button>
         {:else}
-          <button class="editor-share-button" type="button" on:click={() => (shareOpen = true)}>
+          <button
+            class="editor-share-button"
+            type="button"
+            disabled={contentLocked}
+            on:click={() => (shareOpen = true)}
+          >
             <span class="editor-share-label">{t("generateImage", $preferencesStore.language)}</span>
             <span class="editor-share-label--compact">{t("generateImageShort", $preferencesStore.language)}</span>
           </button>
@@ -864,13 +1056,26 @@
                 class="editor-action-button"
                 type="button"
                 on:click={() => void runMenuAction(exportCurrentNoteMarkdown)}
+                disabled={contentLocked}
               >
                 {t("exportMarkdown", $preferencesStore.language)}
+              </button>
+              <button
+                class="editor-action-button"
+                type="button"
+                on:click={() =>
+                  void runMenuAction(() => {
+                    protectionError = "";
+                    protectionOpen = true;
+                  })}
+              >
+                {t("noteProtection", $preferencesStore.language)}
               </button>
               {#if note.is_deleted}
                 <button
                   class="editor-action-button"
                   type="button"
+                  disabled={contentLocked}
                   on:click={() =>
                     void runMenuAction(() => {
                       shareOpen = true;
@@ -882,6 +1087,7 @@
                 <button
                   class="editor-action-button editor-menu-share"
                   type="button"
+                  disabled={contentLocked}
                   on:click={() =>
                     void runMenuAction(() => {
                       shareOpen = true;
@@ -1056,7 +1262,49 @@
           rows="1"
           on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
         ></textarea>
-        {#if sourceMode}
+        {#if isPasswordLocked}
+          <div class="editor-lock-state">
+            <LockKeyhole size={34} strokeWidth={1.8} aria-hidden="true" />
+            <h2>{t("noteLocked", $preferencesStore.language)}</h2>
+            <p>{t("noteUnlockHint", $preferencesStore.language)}</p>
+            <form on:submit|preventDefault={() => void unlockPasswordProtectedNote()}>
+              <PasswordField
+                bind:value={unlockPassword}
+                label={t("noteAccessPassword", $preferencesStore.language)}
+                placeholder={t("noteProtectionPasswordPlaceholder", $preferencesStore.language)}
+                error={unlockError}
+                disabled={unlockBusy}
+                autocomplete="current-password"
+                showPasswordLabel={t("showPassword", $preferencesStore.language)}
+                hidePasswordLabel={t("hidePassword", $preferencesStore.language)}
+              />
+              <button type="submit" disabled={unlockBusy}>
+                {unlockBusy ? t("loading", $preferencesStore.language) : t("noteUnlock", $preferencesStore.language)}
+              </button>
+            </form>
+          </div>
+        {:else if isEncryptedLocked}
+          <div class="editor-lock-state">
+            <Shield size={34} strokeWidth={1.8} aria-hidden="true" />
+            <h2>{t("noteEncryptedLocked", $preferencesStore.language)}</h2>
+            <p>{t("noteDecryptHint", $preferencesStore.language)}</p>
+            <form on:submit|preventDefault={() => void decryptEncryptedNote()}>
+              <PasswordField
+                bind:value={decryptPassword}
+                label={t("noteEncryptionPassword", $preferencesStore.language)}
+                placeholder={t("noteDecryptPasswordPlaceholder", $preferencesStore.language)}
+                error={decryptError}
+                disabled={decryptBusy}
+                autocomplete="current-password"
+                showPasswordLabel={t("showPassword", $preferencesStore.language)}
+                hidePasswordLabel={t("hidePassword", $preferencesStore.language)}
+              />
+              <button type="submit" disabled={decryptBusy}>
+                {decryptBusy ? t("loading", $preferencesStore.language) : t("noteDecrypt", $preferencesStore.language)}
+              </button>
+            </form>
+          </div>
+        {:else if sourceMode}
           <textarea
             bind:this={sourceTextarea}
             class="editor-source-input"
@@ -1089,6 +1337,17 @@
         content={draftContent}
         defaultSignature={$authStore.user?.share_signature ?? "Smarticky"}
         onClose={() => (shareOpen = false)}
+      />
+    {/if}
+    {#if protectionOpen}
+      <NoteProtectionDialog
+        currentMode={note.protection_mode}
+        busy={protectionBusy}
+        error={protectionError}
+        onClose={() => {
+          if (!protectionBusy) protectionOpen = false;
+        }}
+        onSave={saveProtection}
       />
     {/if}
   {:else}

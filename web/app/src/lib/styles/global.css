@@ -2169,6 +2169,17 @@ h6 {
   color: var(--color-brand);
 }
 
+.editor-action-button:disabled,
+.editor-share-button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.editor-action-button:disabled:hover {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
 .editor-action-button.danger:hover {
   color: var(--color-danger);
 }
@@ -2678,6 +2689,264 @@ h6 {
 
 .markdown-editor-host {
   min-height: calc(100dvh - 214px);
+}
+
+.editor-lock-state {
+  min-height: calc(100dvh - 260px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 40px 0 96px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.editor-lock-state > svg {
+  color: var(--color-brand);
+}
+
+.editor-lock-state h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.editor-lock-state p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.editor-lock-state form {
+  width: min(360px, 100%);
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.editor-lock-state form > button {
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.editor-lock-state form > button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.password-field {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.password-field__label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.password-field__control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: center;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-card);
+}
+
+.password-field__control:focus-within {
+  border-color: var(--color-brand);
+}
+
+.password-field__control.error {
+  border-color: var(--color-danger);
+}
+
+.password-field__control input {
+  min-width: 0;
+  height: 38px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.password-field__control input::placeholder {
+  color: var(--color-placeholder);
+}
+
+.password-field__toggle {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: 0;
+}
+
+.password-field__toggle:hover {
+  color: var(--color-brand);
+}
+
+.password-field__toggle:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.password-field__error,
+.note-protection-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.note-protection-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  background: var(--color-backdrop);
+  padding: 24px;
+}
+
+.note-protection-dialog {
+  width: min(480px, calc(100vw - 48px));
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  box-shadow: 0 18px 48px rgb(var(--color-shadow) / 18%);
+}
+
+.note-protection-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.note-protection-dialog__header h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.note-protection-dialog__header p {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.note-protection-dialog__header button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.note-protection-dialog__header button:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+}
+
+.note-protection-dialog__body {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px 18px;
+}
+
+.note-protection-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-page);
+  padding: 12px;
+}
+
+.note-protection-option.active {
+  border-color: color-mix(in srgb, var(--color-brand) 62%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 8%, var(--color-card));
+}
+
+.note-protection-option input {
+  margin: 2px 0 0;
+  accent-color: var(--color-brand);
+}
+
+.note-protection-option span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.note-protection-option strong {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.note-protection-option small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.note-protection-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.note-protection-dialog__footer button {
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 13px;
+  font-size: 13px;
+}
+
+.note-protection-dialog__footer button.primary {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  font-weight: 500;
+}
+
+.note-protection-dialog__footer button:disabled {
+  cursor: default;
+  opacity: 0.56;
 }
 
 .markdown-editor-host .milkdown {
