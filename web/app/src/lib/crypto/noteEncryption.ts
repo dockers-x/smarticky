@@ -25,6 +25,12 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
+function bufferSource(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
 async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
   const baseKey = await crypto.subtle.importKey(
     "raw",
@@ -38,7 +44,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
     {
       name: "PBKDF2",
       hash: "SHA-256",
-      salt,
+      salt: bufferSource(salt),
       iterations,
     },
     baseKey,
@@ -56,9 +62,9 @@ export async function encryptNoteContent(
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(password, salt);
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: nonce },
+    { name: "AES-GCM", iv: bufferSource(nonce) },
     key,
-    textEncoder.encode(content),
+    bufferSource(textEncoder.encode(content)),
   );
 
   return {
@@ -79,9 +85,9 @@ export async function decryptNoteContent(
     const nonce = base64ToBytes(payload.encryption_nonce);
     const key = await deriveKey(password, salt);
     const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: nonce },
+      { name: "AES-GCM", iv: bufferSource(nonce) },
       key,
-      base64ToBytes(payload.encrypted_content),
+      bufferSource(base64ToBytes(payload.encrypted_content)),
     );
     return textDecoder.decode(decrypted);
   } catch {
