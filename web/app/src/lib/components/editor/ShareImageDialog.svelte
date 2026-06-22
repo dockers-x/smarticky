@@ -1,9 +1,12 @@
 <script lang="ts">
   import { toBlob, toPng } from "html-to-image";
   import { onMount, tick } from "svelte";
+  import { waitForDiagramSettle } from "../../markdown/diagrams/wait";
+  import type { DiagramRuntimeState, DiagramTheme } from "../../markdown/diagrams/types";
   import { renderMarkdown, stripMarkdown } from "../../markdown/render";
   import { notify } from "../../stores/dialogs";
   import { preferencesStore, t, type MessageKey } from "../../stores/preferences";
+  import RenderedMarkdown from "../common/RenderedMarkdown.svelte";
 
   export let title = "";
   export let content = "";
@@ -84,11 +87,18 @@
   ];
   const exportScale = 2;
   const maxCanvasDimension = 32760;
+  const settledDiagramState: DiagramRuntimeState = {
+    pending: 0,
+    total: 0,
+    settled: true,
+  };
 
   let themeID: ShareThemeID = "classic";
   let ratioID: ShareRatio = "story";
   let exportTarget: HTMLDivElement | null = null;
   let imageBusy = false;
+  let exportDiagramState: DiagramRuntimeState = { ...settledDiagramState };
+  let diagramTheme: DiagramTheme = "light";
   let signature = "";
 
   $: activeTheme = themes.find((theme) => theme.id === themeID) ?? themes[0];
@@ -102,6 +112,8 @@
   $: wordCount = plainContent.replace(/\s/g, "").length;
   $: wordCountLabel = `${wordCount} ${t("wordUnit", $preferencesStore.language)}`;
   $: shareSignature = signature.trim() || "Smarticky";
+  $: diagramTheme = themeID === "night" ? "dark" : "light";
+  $: exportBlocked = imageBusy || !exportDiagramState.settled;
   $: themeStyle = [
     `--share-bg: ${activeTheme.background}`,
     `--share-surface: ${activeTheme.surface}`,
@@ -145,7 +157,13 @@
     return Math.min(exportScale, maxCanvasDimension / largestSide);
   }
 
+  function setExportDiagramState(state: DiagramRuntimeState): void {
+    exportDiagramState = state;
+  }
+
   async function exportOptions() {
+    await tick();
+    await waitForDiagramSettle(() => exportDiagramState);
     await tick();
     if (!exportTarget) throw new Error("Share image target unavailable");
 
@@ -239,9 +257,11 @@
           <article class:serif={activeTheme.serif} class="share-preview__paper">
             <div class="share-preview__mark"></div>
             <h3>{plainTitle}</h3>
-            <div class="share-preview__markdown">
-              {@html renderedContent}
-            </div>
+            <RenderedMarkdown
+              className="share-preview__markdown"
+              html={renderedContent}
+              theme={diagramTheme}
+            />
             <footer>
               <span>{shareSignature}</span>
               <span>{wordCountLabel}</span>
@@ -299,10 +319,10 @@
         </label>
 
         <div class="share-dialog__actions">
-          <button type="button" disabled={imageBusy} on:click={copyImage}>
+          <button type="button" disabled={exportBlocked} on:click={copyImage}>
             {t("copyImage", $preferencesStore.language)}
           </button>
-          <button class="primary" type="button" disabled={imageBusy} on:click={downloadImage}>
+          <button class="primary" type="button" disabled={exportBlocked} on:click={downloadImage}>
             {t("downloadPng", $preferencesStore.language)}
           </button>
         </div>
@@ -322,9 +342,12 @@
     <article class:serif={activeTheme.serif} class="share-preview__paper">
       <div class="share-preview__mark"></div>
       <h3>{plainTitle}</h3>
-      <div class="share-preview__markdown">
-        {@html renderedContent}
-      </div>
+      <RenderedMarkdown
+        className="share-preview__markdown"
+        html={renderedContent}
+        theme={diagramTheme}
+        onDiagramState={setExportDiagramState}
+      />
       <footer>
         <span>{shareSignature}</span>
         <span>{wordCountLabel}</span>
