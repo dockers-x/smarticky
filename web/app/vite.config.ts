@@ -1,9 +1,18 @@
+/// <reference types="vitest/config" />
+
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [svelte()],
   base: "/static/app/",
+  optimizeDeps: {
+    include: ["mermaid", "@markdown-viewer/drawio2svg"],
+  },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.ts"],
+  },
   build: {
     outDir: "../static/app",
     emptyOutDir: true,

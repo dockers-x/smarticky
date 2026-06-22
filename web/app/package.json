@@ -7,10 +7,13 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/normalize-generated-assets.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@lucide/svelte": "^1.21.0",
+    "@markdown-viewer/drawio2svg": "^1.5.1",
     "@milkdown/crepe": "^7.21.2",
     "@milkdown/kit": "^7.21.2",
     "dompurify": "^3.4.11",
@@ -18,12 +21,15 @@
     "katex": "^0.17.0",
     "marked": "^18.0.5",
     "marked-katex-extension": "^5.1.10",
+    "mermaid": "^11.15.0",
     "svelte": "^5.0.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "jsdom": "^29.1.1",
     "svelte-check": "^4.0.0",
     "typescript": "^5.6.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^4.1.9"
   }
 }
