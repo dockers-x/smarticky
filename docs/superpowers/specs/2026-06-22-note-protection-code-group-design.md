@@ -30,6 +30,7 @@ The clean target is to remove `is_locked` and legacy `password` from the note mo
 - No server-side PNG generation from encrypted note bodies.
 - No shared-note or multi-user key sharing model.
 - No password recovery for encrypted notes.
+- No full-folder encryption. Folder-level protection, if added, supports access password only.
 - No drag-and-drop or visual tab manager for code groups in this stage.
 
 ## Current Context
@@ -59,6 +60,10 @@ type NoteProtectionMode = "none" | "password" | "encrypted";
 - `encrypted`: body content is encrypted in the browser. The server stores ciphertext plus encryption metadata and does not receive the password or plaintext body.
 
 In the first stage, encrypted mode protects the note body only. Title, tags, folder, color, attachments metadata, whiteboard metadata, and timestamps remain visible to the server.
+
+### Folder Protection Boundary
+
+Folders must not support `encrypted` mode. If folder-level protection is exposed in this or a later pass, it is access-password only and must not encrypt every note in the folder. Full encryption remains an explicit per-note action.
 
 ## Database Shape
 
