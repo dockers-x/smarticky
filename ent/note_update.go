@@ -88,37 +88,137 @@ func (_u *NoteUpdate) ClearColor() *NoteUpdate {
 	return _u
 }
 
-// SetPassword sets the "password" field.
-func (_u *NoteUpdate) SetPassword(v string) *NoteUpdate {
-	_u.mutation.SetPassword(v)
+// SetProtectionMode sets the "protection_mode" field.
+func (_u *NoteUpdate) SetProtectionMode(v note.ProtectionMode) *NoteUpdate {
+	_u.mutation.SetProtectionMode(v)
 	return _u
 }
 
-// SetNillablePassword sets the "password" field if the given value is not nil.
-func (_u *NoteUpdate) SetNillablePassword(v *string) *NoteUpdate {
+// SetNillableProtectionMode sets the "protection_mode" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableProtectionMode(v *note.ProtectionMode) *NoteUpdate {
 	if v != nil {
-		_u.SetPassword(*v)
+		_u.SetProtectionMode(*v)
 	}
 	return _u
 }
 
-// ClearPassword clears the value of the "password" field.
-func (_u *NoteUpdate) ClearPassword() *NoteUpdate {
-	_u.mutation.ClearPassword()
+// SetProtectionPasswordHash sets the "protection_password_hash" field.
+func (_u *NoteUpdate) SetProtectionPasswordHash(v string) *NoteUpdate {
+	_u.mutation.SetProtectionPasswordHash(v)
 	return _u
 }
 
-// SetIsLocked sets the "is_locked" field.
-func (_u *NoteUpdate) SetIsLocked(v bool) *NoteUpdate {
-	_u.mutation.SetIsLocked(v)
-	return _u
-}
-
-// SetNillableIsLocked sets the "is_locked" field if the given value is not nil.
-func (_u *NoteUpdate) SetNillableIsLocked(v *bool) *NoteUpdate {
+// SetNillableProtectionPasswordHash sets the "protection_password_hash" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableProtectionPasswordHash(v *string) *NoteUpdate {
 	if v != nil {
-		_u.SetIsLocked(*v)
+		_u.SetProtectionPasswordHash(*v)
 	}
+	return _u
+}
+
+// ClearProtectionPasswordHash clears the value of the "protection_password_hash" field.
+func (_u *NoteUpdate) ClearProtectionPasswordHash() *NoteUpdate {
+	_u.mutation.ClearProtectionPasswordHash()
+	return _u
+}
+
+// SetEncryptedContent sets the "encrypted_content" field.
+func (_u *NoteUpdate) SetEncryptedContent(v string) *NoteUpdate {
+	_u.mutation.SetEncryptedContent(v)
+	return _u
+}
+
+// SetNillableEncryptedContent sets the "encrypted_content" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableEncryptedContent(v *string) *NoteUpdate {
+	if v != nil {
+		_u.SetEncryptedContent(*v)
+	}
+	return _u
+}
+
+// ClearEncryptedContent clears the value of the "encrypted_content" field.
+func (_u *NoteUpdate) ClearEncryptedContent() *NoteUpdate {
+	_u.mutation.ClearEncryptedContent()
+	return _u
+}
+
+// SetEncryptionAlg sets the "encryption_alg" field.
+func (_u *NoteUpdate) SetEncryptionAlg(v string) *NoteUpdate {
+	_u.mutation.SetEncryptionAlg(v)
+	return _u
+}
+
+// SetNillableEncryptionAlg sets the "encryption_alg" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableEncryptionAlg(v *string) *NoteUpdate {
+	if v != nil {
+		_u.SetEncryptionAlg(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionAlg clears the value of the "encryption_alg" field.
+func (_u *NoteUpdate) ClearEncryptionAlg() *NoteUpdate {
+	_u.mutation.ClearEncryptionAlg()
+	return _u
+}
+
+// SetEncryptionKdf sets the "encryption_kdf" field.
+func (_u *NoteUpdate) SetEncryptionKdf(v string) *NoteUpdate {
+	_u.mutation.SetEncryptionKdf(v)
+	return _u
+}
+
+// SetNillableEncryptionKdf sets the "encryption_kdf" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableEncryptionKdf(v *string) *NoteUpdate {
+	if v != nil {
+		_u.SetEncryptionKdf(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionKdf clears the value of the "encryption_kdf" field.
+func (_u *NoteUpdate) ClearEncryptionKdf() *NoteUpdate {
+	_u.mutation.ClearEncryptionKdf()
+	return _u
+}
+
+// SetEncryptionSalt sets the "encryption_salt" field.
+func (_u *NoteUpdate) SetEncryptionSalt(v string) *NoteUpdate {
+	_u.mutation.SetEncryptionSalt(v)
+	return _u
+}
+
+// SetNillableEncryptionSalt sets the "encryption_salt" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableEncryptionSalt(v *string) *NoteUpdate {
+	if v != nil {
+		_u.SetEncryptionSalt(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionSalt clears the value of the "encryption_salt" field.
+func (_u *NoteUpdate) ClearEncryptionSalt() *NoteUpdate {
+	_u.mutation.ClearEncryptionSalt()
+	return _u
+}
+
+// SetEncryptionNonce sets the "encryption_nonce" field.
+func (_u *NoteUpdate) SetEncryptionNonce(v string) *NoteUpdate {
+	_u.mutation.SetEncryptionNonce(v)
+	return _u
+}
+
+// SetNillableEncryptionNonce sets the "encryption_nonce" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableEncryptionNonce(v *string) *NoteUpdate {
+	if v != nil {
+		_u.SetEncryptionNonce(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionNonce clears the value of the "encryption_nonce" field.
+func (_u *NoteUpdate) ClearEncryptionNonce() *NoteUpdate {
+	_u.mutation.ClearEncryptionNonce()
 	return _u
 }
 
@@ -369,7 +469,20 @@ func (_u *NoteUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *NoteUpdate) check() error {
+	if v, ok := _u.mutation.ProtectionMode(); ok {
+		if err := note.ProtectionModeValidator(v); err != nil {
+			return &ValidationError{Name: "protection_mode", err: fmt.Errorf(`ent: validator failed for field "Note.protection_mode": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(note.Table, note.Columns, sqlgraph.NewFieldSpec(note.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -393,14 +506,44 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ColorCleared() {
 		_spec.ClearField(note.FieldColor, field.TypeString)
 	}
-	if value, ok := _u.mutation.Password(); ok {
-		_spec.SetField(note.FieldPassword, field.TypeString, value)
+	if value, ok := _u.mutation.ProtectionMode(); ok {
+		_spec.SetField(note.FieldProtectionMode, field.TypeEnum, value)
 	}
-	if _u.mutation.PasswordCleared() {
-		_spec.ClearField(note.FieldPassword, field.TypeString)
+	if value, ok := _u.mutation.ProtectionPasswordHash(); ok {
+		_spec.SetField(note.FieldProtectionPasswordHash, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.IsLocked(); ok {
-		_spec.SetField(note.FieldIsLocked, field.TypeBool, value)
+	if _u.mutation.ProtectionPasswordHashCleared() {
+		_spec.ClearField(note.FieldProtectionPasswordHash, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptedContent(); ok {
+		_spec.SetField(note.FieldEncryptedContent, field.TypeString, value)
+	}
+	if _u.mutation.EncryptedContentCleared() {
+		_spec.ClearField(note.FieldEncryptedContent, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionAlg(); ok {
+		_spec.SetField(note.FieldEncryptionAlg, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionAlgCleared() {
+		_spec.ClearField(note.FieldEncryptionAlg, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionKdf(); ok {
+		_spec.SetField(note.FieldEncryptionKdf, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionKdfCleared() {
+		_spec.ClearField(note.FieldEncryptionKdf, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionSalt(); ok {
+		_spec.SetField(note.FieldEncryptionSalt, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionSaltCleared() {
+		_spec.ClearField(note.FieldEncryptionSalt, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionNonce(); ok {
+		_spec.SetField(note.FieldEncryptionNonce, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionNonceCleared() {
+		_spec.ClearField(note.FieldEncryptionNonce, field.TypeString)
 	}
 	if value, ok := _u.mutation.IsStarred(); ok {
 		_spec.SetField(note.FieldIsStarred, field.TypeBool, value)
@@ -681,37 +824,137 @@ func (_u *NoteUpdateOne) ClearColor() *NoteUpdateOne {
 	return _u
 }
 
-// SetPassword sets the "password" field.
-func (_u *NoteUpdateOne) SetPassword(v string) *NoteUpdateOne {
-	_u.mutation.SetPassword(v)
+// SetProtectionMode sets the "protection_mode" field.
+func (_u *NoteUpdateOne) SetProtectionMode(v note.ProtectionMode) *NoteUpdateOne {
+	_u.mutation.SetProtectionMode(v)
 	return _u
 }
 
-// SetNillablePassword sets the "password" field if the given value is not nil.
-func (_u *NoteUpdateOne) SetNillablePassword(v *string) *NoteUpdateOne {
+// SetNillableProtectionMode sets the "protection_mode" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableProtectionMode(v *note.ProtectionMode) *NoteUpdateOne {
 	if v != nil {
-		_u.SetPassword(*v)
+		_u.SetProtectionMode(*v)
 	}
 	return _u
 }
 
-// ClearPassword clears the value of the "password" field.
-func (_u *NoteUpdateOne) ClearPassword() *NoteUpdateOne {
-	_u.mutation.ClearPassword()
+// SetProtectionPasswordHash sets the "protection_password_hash" field.
+func (_u *NoteUpdateOne) SetProtectionPasswordHash(v string) *NoteUpdateOne {
+	_u.mutation.SetProtectionPasswordHash(v)
 	return _u
 }
 
-// SetIsLocked sets the "is_locked" field.
-func (_u *NoteUpdateOne) SetIsLocked(v bool) *NoteUpdateOne {
-	_u.mutation.SetIsLocked(v)
-	return _u
-}
-
-// SetNillableIsLocked sets the "is_locked" field if the given value is not nil.
-func (_u *NoteUpdateOne) SetNillableIsLocked(v *bool) *NoteUpdateOne {
+// SetNillableProtectionPasswordHash sets the "protection_password_hash" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableProtectionPasswordHash(v *string) *NoteUpdateOne {
 	if v != nil {
-		_u.SetIsLocked(*v)
+		_u.SetProtectionPasswordHash(*v)
 	}
+	return _u
+}
+
+// ClearProtectionPasswordHash clears the value of the "protection_password_hash" field.
+func (_u *NoteUpdateOne) ClearProtectionPasswordHash() *NoteUpdateOne {
+	_u.mutation.ClearProtectionPasswordHash()
+	return _u
+}
+
+// SetEncryptedContent sets the "encrypted_content" field.
+func (_u *NoteUpdateOne) SetEncryptedContent(v string) *NoteUpdateOne {
+	_u.mutation.SetEncryptedContent(v)
+	return _u
+}
+
+// SetNillableEncryptedContent sets the "encrypted_content" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableEncryptedContent(v *string) *NoteUpdateOne {
+	if v != nil {
+		_u.SetEncryptedContent(*v)
+	}
+	return _u
+}
+
+// ClearEncryptedContent clears the value of the "encrypted_content" field.
+func (_u *NoteUpdateOne) ClearEncryptedContent() *NoteUpdateOne {
+	_u.mutation.ClearEncryptedContent()
+	return _u
+}
+
+// SetEncryptionAlg sets the "encryption_alg" field.
+func (_u *NoteUpdateOne) SetEncryptionAlg(v string) *NoteUpdateOne {
+	_u.mutation.SetEncryptionAlg(v)
+	return _u
+}
+
+// SetNillableEncryptionAlg sets the "encryption_alg" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableEncryptionAlg(v *string) *NoteUpdateOne {
+	if v != nil {
+		_u.SetEncryptionAlg(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionAlg clears the value of the "encryption_alg" field.
+func (_u *NoteUpdateOne) ClearEncryptionAlg() *NoteUpdateOne {
+	_u.mutation.ClearEncryptionAlg()
+	return _u
+}
+
+// SetEncryptionKdf sets the "encryption_kdf" field.
+func (_u *NoteUpdateOne) SetEncryptionKdf(v string) *NoteUpdateOne {
+	_u.mutation.SetEncryptionKdf(v)
+	return _u
+}
+
+// SetNillableEncryptionKdf sets the "encryption_kdf" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableEncryptionKdf(v *string) *NoteUpdateOne {
+	if v != nil {
+		_u.SetEncryptionKdf(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionKdf clears the value of the "encryption_kdf" field.
+func (_u *NoteUpdateOne) ClearEncryptionKdf() *NoteUpdateOne {
+	_u.mutation.ClearEncryptionKdf()
+	return _u
+}
+
+// SetEncryptionSalt sets the "encryption_salt" field.
+func (_u *NoteUpdateOne) SetEncryptionSalt(v string) *NoteUpdateOne {
+	_u.mutation.SetEncryptionSalt(v)
+	return _u
+}
+
+// SetNillableEncryptionSalt sets the "encryption_salt" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableEncryptionSalt(v *string) *NoteUpdateOne {
+	if v != nil {
+		_u.SetEncryptionSalt(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionSalt clears the value of the "encryption_salt" field.
+func (_u *NoteUpdateOne) ClearEncryptionSalt() *NoteUpdateOne {
+	_u.mutation.ClearEncryptionSalt()
+	return _u
+}
+
+// SetEncryptionNonce sets the "encryption_nonce" field.
+func (_u *NoteUpdateOne) SetEncryptionNonce(v string) *NoteUpdateOne {
+	_u.mutation.SetEncryptionNonce(v)
+	return _u
+}
+
+// SetNillableEncryptionNonce sets the "encryption_nonce" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableEncryptionNonce(v *string) *NoteUpdateOne {
+	if v != nil {
+		_u.SetEncryptionNonce(*v)
+	}
+	return _u
+}
+
+// ClearEncryptionNonce clears the value of the "encryption_nonce" field.
+func (_u *NoteUpdateOne) ClearEncryptionNonce() *NoteUpdateOne {
+	_u.mutation.ClearEncryptionNonce()
 	return _u
 }
 
@@ -975,7 +1218,20 @@ func (_u *NoteUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *NoteUpdateOne) check() error {
+	if v, ok := _u.mutation.ProtectionMode(); ok {
+		if err := note.ProtectionModeValidator(v); err != nil {
+			return &ValidationError{Name: "protection_mode", err: fmt.Errorf(`ent: validator failed for field "Note.protection_mode": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(note.Table, note.Columns, sqlgraph.NewFieldSpec(note.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -1016,14 +1272,44 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 	if _u.mutation.ColorCleared() {
 		_spec.ClearField(note.FieldColor, field.TypeString)
 	}
-	if value, ok := _u.mutation.Password(); ok {
-		_spec.SetField(note.FieldPassword, field.TypeString, value)
+	if value, ok := _u.mutation.ProtectionMode(); ok {
+		_spec.SetField(note.FieldProtectionMode, field.TypeEnum, value)
 	}
-	if _u.mutation.PasswordCleared() {
-		_spec.ClearField(note.FieldPassword, field.TypeString)
+	if value, ok := _u.mutation.ProtectionPasswordHash(); ok {
+		_spec.SetField(note.FieldProtectionPasswordHash, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.IsLocked(); ok {
-		_spec.SetField(note.FieldIsLocked, field.TypeBool, value)
+	if _u.mutation.ProtectionPasswordHashCleared() {
+		_spec.ClearField(note.FieldProtectionPasswordHash, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptedContent(); ok {
+		_spec.SetField(note.FieldEncryptedContent, field.TypeString, value)
+	}
+	if _u.mutation.EncryptedContentCleared() {
+		_spec.ClearField(note.FieldEncryptedContent, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionAlg(); ok {
+		_spec.SetField(note.FieldEncryptionAlg, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionAlgCleared() {
+		_spec.ClearField(note.FieldEncryptionAlg, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionKdf(); ok {
+		_spec.SetField(note.FieldEncryptionKdf, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionKdfCleared() {
+		_spec.ClearField(note.FieldEncryptionKdf, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionSalt(); ok {
+		_spec.SetField(note.FieldEncryptionSalt, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionSaltCleared() {
+		_spec.ClearField(note.FieldEncryptionSalt, field.TypeString)
+	}
+	if value, ok := _u.mutation.EncryptionNonce(); ok {
+		_spec.SetField(note.FieldEncryptionNonce, field.TypeString, value)
+	}
+	if _u.mutation.EncryptionNonceCleared() {
+		_spec.ClearField(note.FieldEncryptionNonce, field.TypeString)
 	}
 	if value, ok := _u.mutation.IsStarred(); ok {
 		_spec.SetField(note.FieldIsStarred, field.TypeBool, value)

@@ -45,6 +45,26 @@ func listNoteTitlesForTest(t *testing.T, h *Handler, userID int, target string) 
 	return titles
 }
 
+func TestNoteProtectionModeDefaultsToNone(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestNoteProtectionModeDefaultsToNone?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	n := client.Note.Create().
+		SetTitle("Plain note").
+		SetContent("plain").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	if string(n.ProtectionMode) != "none" {
+		t.Fatalf("expected protection_mode none, got %q", n.ProtectionMode)
+	}
+}
+
 func TestListNotesSearchesFullTextButTitleFilterOnlyMatchesTitle(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:TestListNotesSearchesFullTextButTitleFilterOnlyMatchesTitle?mode=memory&cache=shared&_pragma=foreign_keys(1)")

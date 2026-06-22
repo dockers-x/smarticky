@@ -264,24 +264,20 @@ func init() {
 	noteDescColor := noteFields[3].Descriptor()
 	// note.DefaultColor holds the default value on creation for the color field.
 	note.DefaultColor = noteDescColor.Default.(string)
-	// noteDescIsLocked is the schema descriptor for is_locked field.
-	noteDescIsLocked := noteFields[5].Descriptor()
-	// note.DefaultIsLocked holds the default value on creation for the is_locked field.
-	note.DefaultIsLocked = noteDescIsLocked.Default.(bool)
 	// noteDescIsStarred is the schema descriptor for is_starred field.
-	noteDescIsStarred := noteFields[6].Descriptor()
+	noteDescIsStarred := noteFields[11].Descriptor()
 	// note.DefaultIsStarred holds the default value on creation for the is_starred field.
 	note.DefaultIsStarred = noteDescIsStarred.Default.(bool)
 	// noteDescIsDeleted is the schema descriptor for is_deleted field.
-	noteDescIsDeleted := noteFields[7].Descriptor()
+	noteDescIsDeleted := noteFields[12].Descriptor()
 	// note.DefaultIsDeleted holds the default value on creation for the is_deleted field.
 	note.DefaultIsDeleted = noteDescIsDeleted.Default.(bool)
 	// noteDescCreatedAt is the schema descriptor for created_at field.
-	noteDescCreatedAt := noteFields[8].Descriptor()
+	noteDescCreatedAt := noteFields[13].Descriptor()
 	// note.DefaultCreatedAt holds the default value on creation for the created_at field.
 	note.DefaultCreatedAt = noteDescCreatedAt.Default.(func() time.Time)
 	// noteDescUpdatedAt is the schema descriptor for updated_at field.
-	noteDescUpdatedAt := noteFields[9].Descriptor()
+	noteDescUpdatedAt := noteFields[14].Descriptor()
 	// note.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	note.DefaultUpdatedAt = noteDescUpdatedAt.Default.(func() time.Time)
 	// note.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -7511,35 +7511,40 @@ func (m *MCPTokenMutation) ResetEdge(name string) error {
 // NoteMutation represents an operation that mutates the Note nodes in the graph.
 type NoteMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *uuid.UUID
-	title              *string
-	content            *string
-	color              *string
-	password           *string
-	is_locked          *bool
-	is_starred         *bool
-	is_deleted         *bool
-	created_at         *time.Time
-	updated_at         *time.Time
-	clearedFields      map[string]struct{}
-	user               *int
-	cleareduser        bool
-	folder             *uuid.UUID
-	clearedfolder      bool
-	attachments        map[int]struct{}
-	removedattachments map[int]struct{}
-	clearedattachments bool
-	whiteboards        map[uuid.UUID]struct{}
-	removedwhiteboards map[uuid.UUID]struct{}
-	clearedwhiteboards bool
-	tags               map[uuid.UUID]struct{}
-	removedtags        map[uuid.UUID]struct{}
-	clearedtags        bool
-	done               bool
-	oldValue           func(context.Context) (*Note, error)
-	predicates         []predicate.Note
+	op                       Op
+	typ                      string
+	id                       *uuid.UUID
+	title                    *string
+	content                  *string
+	color                    *string
+	protection_mode          *note.ProtectionMode
+	protection_password_hash *string
+	encrypted_content        *string
+	encryption_alg           *string
+	encryption_kdf           *string
+	encryption_salt          *string
+	encryption_nonce         *string
+	is_starred               *bool
+	is_deleted               *bool
+	created_at               *time.Time
+	updated_at               *time.Time
+	clearedFields            map[string]struct{}
+	user                     *int
+	cleareduser              bool
+	folder                   *uuid.UUID
+	clearedfolder            bool
+	attachments              map[int]struct{}
+	removedattachments       map[int]struct{}
+	clearedattachments       bool
+	whiteboards              map[uuid.UUID]struct{}
+	removedwhiteboards       map[uuid.UUID]struct{}
+	clearedwhiteboards       bool
+	tags                     map[uuid.UUID]struct{}
+	removedtags              map[uuid.UUID]struct{}
+	clearedtags              bool
+	done                     bool
+	oldValue                 func(context.Context) (*Note, error)
+	predicates               []predicate.Note
 }
 
 var _ ent.Mutation = (*NoteMutation)(nil)
@@ -7780,89 +7785,334 @@ func (m *NoteMutation) ResetColor() {
 	delete(m.clearedFields, note.FieldColor)
 }
 
-// SetPassword sets the "password" field.
-func (m *NoteMutation) SetPassword(s string) {
-	m.password = &s
+// SetProtectionMode sets the "protection_mode" field.
+func (m *NoteMutation) SetProtectionMode(nm note.ProtectionMode) {
+	m.protection_mode = &nm
 }
 
-// Password returns the value of the "password" field in the mutation.
-func (m *NoteMutation) Password() (r string, exists bool) {
-	v := m.password
+// ProtectionMode returns the value of the "protection_mode" field in the mutation.
+func (m *NoteMutation) ProtectionMode() (r note.ProtectionMode, exists bool) {
+	v := m.protection_mode
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldPassword returns the old "password" field's value of the Note entity.
+// OldProtectionMode returns the old "protection_mode" field's value of the Note entity.
 // If the Note object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NoteMutation) OldPassword(ctx context.Context) (v string, err error) {
+func (m *NoteMutation) OldProtectionMode(ctx context.Context) (v note.ProtectionMode, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPassword is only allowed on UpdateOne operations")
+		return v, errors.New("OldProtectionMode is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPassword requires an ID field in the mutation")
+		return v, errors.New("OldProtectionMode requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPassword: %w", err)
+		return v, fmt.Errorf("querying old value for OldProtectionMode: %w", err)
 	}
-	return oldValue.Password, nil
+	return oldValue.ProtectionMode, nil
 }
 
-// ClearPassword clears the value of the "password" field.
-func (m *NoteMutation) ClearPassword() {
-	m.password = nil
-	m.clearedFields[note.FieldPassword] = struct{}{}
+// ResetProtectionMode resets all changes to the "protection_mode" field.
+func (m *NoteMutation) ResetProtectionMode() {
+	m.protection_mode = nil
 }
 
-// PasswordCleared returns if the "password" field was cleared in this mutation.
-func (m *NoteMutation) PasswordCleared() bool {
-	_, ok := m.clearedFields[note.FieldPassword]
+// SetProtectionPasswordHash sets the "protection_password_hash" field.
+func (m *NoteMutation) SetProtectionPasswordHash(s string) {
+	m.protection_password_hash = &s
+}
+
+// ProtectionPasswordHash returns the value of the "protection_password_hash" field in the mutation.
+func (m *NoteMutation) ProtectionPasswordHash() (r string, exists bool) {
+	v := m.protection_password_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProtectionPasswordHash returns the old "protection_password_hash" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldProtectionPasswordHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProtectionPasswordHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProtectionPasswordHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProtectionPasswordHash: %w", err)
+	}
+	return oldValue.ProtectionPasswordHash, nil
+}
+
+// ClearProtectionPasswordHash clears the value of the "protection_password_hash" field.
+func (m *NoteMutation) ClearProtectionPasswordHash() {
+	m.protection_password_hash = nil
+	m.clearedFields[note.FieldProtectionPasswordHash] = struct{}{}
+}
+
+// ProtectionPasswordHashCleared returns if the "protection_password_hash" field was cleared in this mutation.
+func (m *NoteMutation) ProtectionPasswordHashCleared() bool {
+	_, ok := m.clearedFields[note.FieldProtectionPasswordHash]
 	return ok
 }
 
-// ResetPassword resets all changes to the "password" field.
-func (m *NoteMutation) ResetPassword() {
-	m.password = nil
-	delete(m.clearedFields, note.FieldPassword)
+// ResetProtectionPasswordHash resets all changes to the "protection_password_hash" field.
+func (m *NoteMutation) ResetProtectionPasswordHash() {
+	m.protection_password_hash = nil
+	delete(m.clearedFields, note.FieldProtectionPasswordHash)
 }
 
-// SetIsLocked sets the "is_locked" field.
-func (m *NoteMutation) SetIsLocked(b bool) {
-	m.is_locked = &b
+// SetEncryptedContent sets the "encrypted_content" field.
+func (m *NoteMutation) SetEncryptedContent(s string) {
+	m.encrypted_content = &s
 }
 
-// IsLocked returns the value of the "is_locked" field in the mutation.
-func (m *NoteMutation) IsLocked() (r bool, exists bool) {
-	v := m.is_locked
+// EncryptedContent returns the value of the "encrypted_content" field in the mutation.
+func (m *NoteMutation) EncryptedContent() (r string, exists bool) {
+	v := m.encrypted_content
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldIsLocked returns the old "is_locked" field's value of the Note entity.
+// OldEncryptedContent returns the old "encrypted_content" field's value of the Note entity.
 // If the Note object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NoteMutation) OldIsLocked(ctx context.Context) (v bool, err error) {
+func (m *NoteMutation) OldEncryptedContent(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldIsLocked is only allowed on UpdateOne operations")
+		return v, errors.New("OldEncryptedContent is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldIsLocked requires an ID field in the mutation")
+		return v, errors.New("OldEncryptedContent requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldIsLocked: %w", err)
+		return v, fmt.Errorf("querying old value for OldEncryptedContent: %w", err)
 	}
-	return oldValue.IsLocked, nil
+	return oldValue.EncryptedContent, nil
 }
 
-// ResetIsLocked resets all changes to the "is_locked" field.
-func (m *NoteMutation) ResetIsLocked() {
-	m.is_locked = nil
+// ClearEncryptedContent clears the value of the "encrypted_content" field.
+func (m *NoteMutation) ClearEncryptedContent() {
+	m.encrypted_content = nil
+	m.clearedFields[note.FieldEncryptedContent] = struct{}{}
+}
+
+// EncryptedContentCleared returns if the "encrypted_content" field was cleared in this mutation.
+func (m *NoteMutation) EncryptedContentCleared() bool {
+	_, ok := m.clearedFields[note.FieldEncryptedContent]
+	return ok
+}
+
+// ResetEncryptedContent resets all changes to the "encrypted_content" field.
+func (m *NoteMutation) ResetEncryptedContent() {
+	m.encrypted_content = nil
+	delete(m.clearedFields, note.FieldEncryptedContent)
+}
+
+// SetEncryptionAlg sets the "encryption_alg" field.
+func (m *NoteMutation) SetEncryptionAlg(s string) {
+	m.encryption_alg = &s
+}
+
+// EncryptionAlg returns the value of the "encryption_alg" field in the mutation.
+func (m *NoteMutation) EncryptionAlg() (r string, exists bool) {
+	v := m.encryption_alg
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptionAlg returns the old "encryption_alg" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldEncryptionAlg(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptionAlg is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptionAlg requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptionAlg: %w", err)
+	}
+	return oldValue.EncryptionAlg, nil
+}
+
+// ClearEncryptionAlg clears the value of the "encryption_alg" field.
+func (m *NoteMutation) ClearEncryptionAlg() {
+	m.encryption_alg = nil
+	m.clearedFields[note.FieldEncryptionAlg] = struct{}{}
+}
+
+// EncryptionAlgCleared returns if the "encryption_alg" field was cleared in this mutation.
+func (m *NoteMutation) EncryptionAlgCleared() bool {
+	_, ok := m.clearedFields[note.FieldEncryptionAlg]
+	return ok
+}
+
+// ResetEncryptionAlg resets all changes to the "encryption_alg" field.
+func (m *NoteMutation) ResetEncryptionAlg() {
+	m.encryption_alg = nil
+	delete(m.clearedFields, note.FieldEncryptionAlg)
+}
+
+// SetEncryptionKdf sets the "encryption_kdf" field.
+func (m *NoteMutation) SetEncryptionKdf(s string) {
+	m.encryption_kdf = &s
+}
+
+// EncryptionKdf returns the value of the "encryption_kdf" field in the mutation.
+func (m *NoteMutation) EncryptionKdf() (r string, exists bool) {
+	v := m.encryption_kdf
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptionKdf returns the old "encryption_kdf" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldEncryptionKdf(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptionKdf is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptionKdf requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptionKdf: %w", err)
+	}
+	return oldValue.EncryptionKdf, nil
+}
+
+// ClearEncryptionKdf clears the value of the "encryption_kdf" field.
+func (m *NoteMutation) ClearEncryptionKdf() {
+	m.encryption_kdf = nil
+	m.clearedFields[note.FieldEncryptionKdf] = struct{}{}
+}
+
+// EncryptionKdfCleared returns if the "encryption_kdf" field was cleared in this mutation.
+func (m *NoteMutation) EncryptionKdfCleared() bool {
+	_, ok := m.clearedFields[note.FieldEncryptionKdf]
+	return ok
+}
+
+// ResetEncryptionKdf resets all changes to the "encryption_kdf" field.
+func (m *NoteMutation) ResetEncryptionKdf() {
+	m.encryption_kdf = nil
+	delete(m.clearedFields, note.FieldEncryptionKdf)
+}
+
+// SetEncryptionSalt sets the "encryption_salt" field.
+func (m *NoteMutation) SetEncryptionSalt(s string) {
+	m.encryption_salt = &s
+}
+
+// EncryptionSalt returns the value of the "encryption_salt" field in the mutation.
+func (m *NoteMutation) EncryptionSalt() (r string, exists bool) {
+	v := m.encryption_salt
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptionSalt returns the old "encryption_salt" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldEncryptionSalt(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptionSalt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptionSalt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptionSalt: %w", err)
+	}
+	return oldValue.EncryptionSalt, nil
+}
+
+// ClearEncryptionSalt clears the value of the "encryption_salt" field.
+func (m *NoteMutation) ClearEncryptionSalt() {
+	m.encryption_salt = nil
+	m.clearedFields[note.FieldEncryptionSalt] = struct{}{}
+}
+
+// EncryptionSaltCleared returns if the "encryption_salt" field was cleared in this mutation.
+func (m *NoteMutation) EncryptionSaltCleared() bool {
+	_, ok := m.clearedFields[note.FieldEncryptionSalt]
+	return ok
+}
+
+// ResetEncryptionSalt resets all changes to the "encryption_salt" field.
+func (m *NoteMutation) ResetEncryptionSalt() {
+	m.encryption_salt = nil
+	delete(m.clearedFields, note.FieldEncryptionSalt)
+}
+
+// SetEncryptionNonce sets the "encryption_nonce" field.
+func (m *NoteMutation) SetEncryptionNonce(s string) {
+	m.encryption_nonce = &s
+}
+
+// EncryptionNonce returns the value of the "encryption_nonce" field in the mutation.
+func (m *NoteMutation) EncryptionNonce() (r string, exists bool) {
+	v := m.encryption_nonce
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptionNonce returns the old "encryption_nonce" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldEncryptionNonce(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptionNonce is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptionNonce requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptionNonce: %w", err)
+	}
+	return oldValue.EncryptionNonce, nil
+}
+
+// ClearEncryptionNonce clears the value of the "encryption_nonce" field.
+func (m *NoteMutation) ClearEncryptionNonce() {
+	m.encryption_nonce = nil
+	m.clearedFields[note.FieldEncryptionNonce] = struct{}{}
+}
+
+// EncryptionNonceCleared returns if the "encryption_nonce" field was cleared in this mutation.
+func (m *NoteMutation) EncryptionNonceCleared() bool {
+	_, ok := m.clearedFields[note.FieldEncryptionNonce]
+	return ok
+}
+
+// ResetEncryptionNonce resets all changes to the "encryption_nonce" field.
+func (m *NoteMutation) ResetEncryptionNonce() {
+	m.encryption_nonce = nil
+	delete(m.clearedFields, note.FieldEncryptionNonce)
 }
 
 // SetIsStarred sets the "is_starred" field.
@@ -8283,7 +8533,7 @@ func (m *NoteMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NoteMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 14)
 	if m.title != nil {
 		fields = append(fields, note.FieldTitle)
 	}
@@ -8293,11 +8543,26 @@ func (m *NoteMutation) Fields() []string {
 	if m.color != nil {
 		fields = append(fields, note.FieldColor)
 	}
-	if m.password != nil {
-		fields = append(fields, note.FieldPassword)
+	if m.protection_mode != nil {
+		fields = append(fields, note.FieldProtectionMode)
 	}
-	if m.is_locked != nil {
-		fields = append(fields, note.FieldIsLocked)
+	if m.protection_password_hash != nil {
+		fields = append(fields, note.FieldProtectionPasswordHash)
+	}
+	if m.encrypted_content != nil {
+		fields = append(fields, note.FieldEncryptedContent)
+	}
+	if m.encryption_alg != nil {
+		fields = append(fields, note.FieldEncryptionAlg)
+	}
+	if m.encryption_kdf != nil {
+		fields = append(fields, note.FieldEncryptionKdf)
+	}
+	if m.encryption_salt != nil {
+		fields = append(fields, note.FieldEncryptionSalt)
+	}
+	if m.encryption_nonce != nil {
+		fields = append(fields, note.FieldEncryptionNonce)
 	}
 	if m.is_starred != nil {
 		fields = append(fields, note.FieldIsStarred)
@@ -8325,10 +8590,20 @@ func (m *NoteMutation) Field(name string) (ent.Value, bool) {
 		return m.Content()
 	case note.FieldColor:
 		return m.Color()
-	case note.FieldPassword:
-		return m.Password()
-	case note.FieldIsLocked:
-		return m.IsLocked()
+	case note.FieldProtectionMode:
+		return m.ProtectionMode()
+	case note.FieldProtectionPasswordHash:
+		return m.ProtectionPasswordHash()
+	case note.FieldEncryptedContent:
+		return m.EncryptedContent()
+	case note.FieldEncryptionAlg:
+		return m.EncryptionAlg()
+	case note.FieldEncryptionKdf:
+		return m.EncryptionKdf()
+	case note.FieldEncryptionSalt:
+		return m.EncryptionSalt()
+	case note.FieldEncryptionNonce:
+		return m.EncryptionNonce()
 	case note.FieldIsStarred:
 		return m.IsStarred()
 	case note.FieldIsDeleted:
@@ -8352,10 +8627,20 @@ func (m *NoteMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldContent(ctx)
 	case note.FieldColor:
 		return m.OldColor(ctx)
-	case note.FieldPassword:
-		return m.OldPassword(ctx)
-	case note.FieldIsLocked:
-		return m.OldIsLocked(ctx)
+	case note.FieldProtectionMode:
+		return m.OldProtectionMode(ctx)
+	case note.FieldProtectionPasswordHash:
+		return m.OldProtectionPasswordHash(ctx)
+	case note.FieldEncryptedContent:
+		return m.OldEncryptedContent(ctx)
+	case note.FieldEncryptionAlg:
+		return m.OldEncryptionAlg(ctx)
+	case note.FieldEncryptionKdf:
+		return m.OldEncryptionKdf(ctx)
+	case note.FieldEncryptionSalt:
+		return m.OldEncryptionSalt(ctx)
+	case note.FieldEncryptionNonce:
+		return m.OldEncryptionNonce(ctx)
 	case note.FieldIsStarred:
 		return m.OldIsStarred(ctx)
 	case note.FieldIsDeleted:
@@ -8394,19 +8679,54 @@ func (m *NoteMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetColor(v)
 		return nil
-	case note.FieldPassword:
+	case note.FieldProtectionMode:
+		v, ok := value.(note.ProtectionMode)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProtectionMode(v)
+		return nil
+	case note.FieldProtectionPasswordHash:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetPassword(v)
+		m.SetProtectionPasswordHash(v)
 		return nil
-	case note.FieldIsLocked:
-		v, ok := value.(bool)
+	case note.FieldEncryptedContent:
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetIsLocked(v)
+		m.SetEncryptedContent(v)
+		return nil
+	case note.FieldEncryptionAlg:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptionAlg(v)
+		return nil
+	case note.FieldEncryptionKdf:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptionKdf(v)
+		return nil
+	case note.FieldEncryptionSalt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptionSalt(v)
+		return nil
+	case note.FieldEncryptionNonce:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptionNonce(v)
 		return nil
 	case note.FieldIsStarred:
 		v, ok := value.(bool)
@@ -8472,8 +8792,23 @@ func (m *NoteMutation) ClearedFields() []string {
 	if m.FieldCleared(note.FieldColor) {
 		fields = append(fields, note.FieldColor)
 	}
-	if m.FieldCleared(note.FieldPassword) {
-		fields = append(fields, note.FieldPassword)
+	if m.FieldCleared(note.FieldProtectionPasswordHash) {
+		fields = append(fields, note.FieldProtectionPasswordHash)
+	}
+	if m.FieldCleared(note.FieldEncryptedContent) {
+		fields = append(fields, note.FieldEncryptedContent)
+	}
+	if m.FieldCleared(note.FieldEncryptionAlg) {
+		fields = append(fields, note.FieldEncryptionAlg)
+	}
+	if m.FieldCleared(note.FieldEncryptionKdf) {
+		fields = append(fields, note.FieldEncryptionKdf)
+	}
+	if m.FieldCleared(note.FieldEncryptionSalt) {
+		fields = append(fields, note.FieldEncryptionSalt)
+	}
+	if m.FieldCleared(note.FieldEncryptionNonce) {
+		fields = append(fields, note.FieldEncryptionNonce)
 	}
 	return fields
 }
@@ -8495,8 +8830,23 @@ func (m *NoteMutation) ClearField(name string) error {
 	case note.FieldColor:
 		m.ClearColor()
 		return nil
-	case note.FieldPassword:
-		m.ClearPassword()
+	case note.FieldProtectionPasswordHash:
+		m.ClearProtectionPasswordHash()
+		return nil
+	case note.FieldEncryptedContent:
+		m.ClearEncryptedContent()
+		return nil
+	case note.FieldEncryptionAlg:
+		m.ClearEncryptionAlg()
+		return nil
+	case note.FieldEncryptionKdf:
+		m.ClearEncryptionKdf()
+		return nil
+	case note.FieldEncryptionSalt:
+		m.ClearEncryptionSalt()
+		return nil
+	case note.FieldEncryptionNonce:
+		m.ClearEncryptionNonce()
 		return nil
 	}
 	return fmt.Errorf("unknown Note nullable field %s", name)
@@ -8515,11 +8865,26 @@ func (m *NoteMutation) ResetField(name string) error {
 	case note.FieldColor:
 		m.ResetColor()
 		return nil
-	case note.FieldPassword:
-		m.ResetPassword()
+	case note.FieldProtectionMode:
+		m.ResetProtectionMode()
 		return nil
-	case note.FieldIsLocked:
-		m.ResetIsLocked()
+	case note.FieldProtectionPasswordHash:
+		m.ResetProtectionPasswordHash()
+		return nil
+	case note.FieldEncryptedContent:
+		m.ResetEncryptedContent()
+		return nil
+	case note.FieldEncryptionAlg:
+		m.ResetEncryptionAlg()
+		return nil
+	case note.FieldEncryptionKdf:
+		m.ResetEncryptionKdf()
+		return nil
+	case note.FieldEncryptionSalt:
+		m.ResetEncryptionSalt()
+		return nil
+	case note.FieldEncryptionNonce:
+		m.ResetEncryptionNonce()
 		return nil
 	case note.FieldIsStarred:
 		m.ResetIsStarred()

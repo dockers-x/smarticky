@@ -71,14 +71,34 @@ func Color(v string) predicate.Note {
 	return predicate.Note(sql.FieldEQ(FieldColor, v))
 }
 
-// Password applies equality check predicate on the "password" field. It's identical to PasswordEQ.
-func Password(v string) predicate.Note {
-	return predicate.Note(sql.FieldEQ(FieldPassword, v))
+// ProtectionPasswordHash applies equality check predicate on the "protection_password_hash" field. It's identical to ProtectionPasswordHashEQ.
+func ProtectionPasswordHash(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldProtectionPasswordHash, v))
 }
 
-// IsLocked applies equality check predicate on the "is_locked" field. It's identical to IsLockedEQ.
-func IsLocked(v bool) predicate.Note {
-	return predicate.Note(sql.FieldEQ(FieldIsLocked, v))
+// EncryptedContent applies equality check predicate on the "encrypted_content" field. It's identical to EncryptedContentEQ.
+func EncryptedContent(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptedContent, v))
+}
+
+// EncryptionAlg applies equality check predicate on the "encryption_alg" field. It's identical to EncryptionAlgEQ.
+func EncryptionAlg(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionAlg, v))
+}
+
+// EncryptionKdf applies equality check predicate on the "encryption_kdf" field. It's identical to EncryptionKdfEQ.
+func EncryptionKdf(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionKdf, v))
+}
+
+// EncryptionSalt applies equality check predicate on the "encryption_salt" field. It's identical to EncryptionSaltEQ.
+func EncryptionSalt(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionSalt, v))
+}
+
+// EncryptionNonce applies equality check predicate on the "encryption_nonce" field. It's identical to EncryptionNonceEQ.
+func EncryptionNonce(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionNonce, v))
 }
 
 // IsStarred applies equality check predicate on the "is_starred" field. It's identical to IsStarredEQ.
@@ -316,89 +336,474 @@ func ColorContainsFold(v string) predicate.Note {
 	return predicate.Note(sql.FieldContainsFold(FieldColor, v))
 }
 
-// PasswordEQ applies the EQ predicate on the "password" field.
-func PasswordEQ(v string) predicate.Note {
-	return predicate.Note(sql.FieldEQ(FieldPassword, v))
+// ProtectionModeEQ applies the EQ predicate on the "protection_mode" field.
+func ProtectionModeEQ(v ProtectionMode) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldProtectionMode, v))
 }
 
-// PasswordNEQ applies the NEQ predicate on the "password" field.
-func PasswordNEQ(v string) predicate.Note {
-	return predicate.Note(sql.FieldNEQ(FieldPassword, v))
+// ProtectionModeNEQ applies the NEQ predicate on the "protection_mode" field.
+func ProtectionModeNEQ(v ProtectionMode) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldProtectionMode, v))
 }
 
-// PasswordIn applies the In predicate on the "password" field.
-func PasswordIn(vs ...string) predicate.Note {
-	return predicate.Note(sql.FieldIn(FieldPassword, vs...))
+// ProtectionModeIn applies the In predicate on the "protection_mode" field.
+func ProtectionModeIn(vs ...ProtectionMode) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldProtectionMode, vs...))
 }
 
-// PasswordNotIn applies the NotIn predicate on the "password" field.
-func PasswordNotIn(vs ...string) predicate.Note {
-	return predicate.Note(sql.FieldNotIn(FieldPassword, vs...))
+// ProtectionModeNotIn applies the NotIn predicate on the "protection_mode" field.
+func ProtectionModeNotIn(vs ...ProtectionMode) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldProtectionMode, vs...))
 }
 
-// PasswordGT applies the GT predicate on the "password" field.
-func PasswordGT(v string) predicate.Note {
-	return predicate.Note(sql.FieldGT(FieldPassword, v))
+// ProtectionPasswordHashEQ applies the EQ predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldProtectionPasswordHash, v))
 }
 
-// PasswordGTE applies the GTE predicate on the "password" field.
-func PasswordGTE(v string) predicate.Note {
-	return predicate.Note(sql.FieldGTE(FieldPassword, v))
+// ProtectionPasswordHashNEQ applies the NEQ predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashNEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldProtectionPasswordHash, v))
 }
 
-// PasswordLT applies the LT predicate on the "password" field.
-func PasswordLT(v string) predicate.Note {
-	return predicate.Note(sql.FieldLT(FieldPassword, v))
+// ProtectionPasswordHashIn applies the In predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldProtectionPasswordHash, vs...))
 }
 
-// PasswordLTE applies the LTE predicate on the "password" field.
-func PasswordLTE(v string) predicate.Note {
-	return predicate.Note(sql.FieldLTE(FieldPassword, v))
+// ProtectionPasswordHashNotIn applies the NotIn predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashNotIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldProtectionPasswordHash, vs...))
 }
 
-// PasswordContains applies the Contains predicate on the "password" field.
-func PasswordContains(v string) predicate.Note {
-	return predicate.Note(sql.FieldContains(FieldPassword, v))
+// ProtectionPasswordHashGT applies the GT predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashGT(v string) predicate.Note {
+	return predicate.Note(sql.FieldGT(FieldProtectionPasswordHash, v))
 }
 
-// PasswordHasPrefix applies the HasPrefix predicate on the "password" field.
-func PasswordHasPrefix(v string) predicate.Note {
-	return predicate.Note(sql.FieldHasPrefix(FieldPassword, v))
+// ProtectionPasswordHashGTE applies the GTE predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashGTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldGTE(FieldProtectionPasswordHash, v))
 }
 
-// PasswordHasSuffix applies the HasSuffix predicate on the "password" field.
-func PasswordHasSuffix(v string) predicate.Note {
-	return predicate.Note(sql.FieldHasSuffix(FieldPassword, v))
+// ProtectionPasswordHashLT applies the LT predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashLT(v string) predicate.Note {
+	return predicate.Note(sql.FieldLT(FieldProtectionPasswordHash, v))
 }
 
-// PasswordIsNil applies the IsNil predicate on the "password" field.
-func PasswordIsNil() predicate.Note {
-	return predicate.Note(sql.FieldIsNull(FieldPassword))
+// ProtectionPasswordHashLTE applies the LTE predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashLTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldLTE(FieldProtectionPasswordHash, v))
 }
 
-// PasswordNotNil applies the NotNil predicate on the "password" field.
-func PasswordNotNil() predicate.Note {
-	return predicate.Note(sql.FieldNotNull(FieldPassword))
+// ProtectionPasswordHashContains applies the Contains predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashContains(v string) predicate.Note {
+	return predicate.Note(sql.FieldContains(FieldProtectionPasswordHash, v))
 }
 
-// PasswordEqualFold applies the EqualFold predicate on the "password" field.
-func PasswordEqualFold(v string) predicate.Note {
-	return predicate.Note(sql.FieldEqualFold(FieldPassword, v))
+// ProtectionPasswordHashHasPrefix applies the HasPrefix predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashHasPrefix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasPrefix(FieldProtectionPasswordHash, v))
 }
 
-// PasswordContainsFold applies the ContainsFold predicate on the "password" field.
-func PasswordContainsFold(v string) predicate.Note {
-	return predicate.Note(sql.FieldContainsFold(FieldPassword, v))
+// ProtectionPasswordHashHasSuffix applies the HasSuffix predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashHasSuffix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasSuffix(FieldProtectionPasswordHash, v))
 }
 
-// IsLockedEQ applies the EQ predicate on the "is_locked" field.
-func IsLockedEQ(v bool) predicate.Note {
-	return predicate.Note(sql.FieldEQ(FieldIsLocked, v))
+// ProtectionPasswordHashIsNil applies the IsNil predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldProtectionPasswordHash))
 }
 
-// IsLockedNEQ applies the NEQ predicate on the "is_locked" field.
-func IsLockedNEQ(v bool) predicate.Note {
-	return predicate.Note(sql.FieldNEQ(FieldIsLocked, v))
+// ProtectionPasswordHashNotNil applies the NotNil predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldProtectionPasswordHash))
+}
+
+// ProtectionPasswordHashEqualFold applies the EqualFold predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashEqualFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldEqualFold(FieldProtectionPasswordHash, v))
+}
+
+// ProtectionPasswordHashContainsFold applies the ContainsFold predicate on the "protection_password_hash" field.
+func ProtectionPasswordHashContainsFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldContainsFold(FieldProtectionPasswordHash, v))
+}
+
+// EncryptedContentEQ applies the EQ predicate on the "encrypted_content" field.
+func EncryptedContentEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptedContent, v))
+}
+
+// EncryptedContentNEQ applies the NEQ predicate on the "encrypted_content" field.
+func EncryptedContentNEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldEncryptedContent, v))
+}
+
+// EncryptedContentIn applies the In predicate on the "encrypted_content" field.
+func EncryptedContentIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldEncryptedContent, vs...))
+}
+
+// EncryptedContentNotIn applies the NotIn predicate on the "encrypted_content" field.
+func EncryptedContentNotIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldEncryptedContent, vs...))
+}
+
+// EncryptedContentGT applies the GT predicate on the "encrypted_content" field.
+func EncryptedContentGT(v string) predicate.Note {
+	return predicate.Note(sql.FieldGT(FieldEncryptedContent, v))
+}
+
+// EncryptedContentGTE applies the GTE predicate on the "encrypted_content" field.
+func EncryptedContentGTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldGTE(FieldEncryptedContent, v))
+}
+
+// EncryptedContentLT applies the LT predicate on the "encrypted_content" field.
+func EncryptedContentLT(v string) predicate.Note {
+	return predicate.Note(sql.FieldLT(FieldEncryptedContent, v))
+}
+
+// EncryptedContentLTE applies the LTE predicate on the "encrypted_content" field.
+func EncryptedContentLTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldLTE(FieldEncryptedContent, v))
+}
+
+// EncryptedContentContains applies the Contains predicate on the "encrypted_content" field.
+func EncryptedContentContains(v string) predicate.Note {
+	return predicate.Note(sql.FieldContains(FieldEncryptedContent, v))
+}
+
+// EncryptedContentHasPrefix applies the HasPrefix predicate on the "encrypted_content" field.
+func EncryptedContentHasPrefix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasPrefix(FieldEncryptedContent, v))
+}
+
+// EncryptedContentHasSuffix applies the HasSuffix predicate on the "encrypted_content" field.
+func EncryptedContentHasSuffix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasSuffix(FieldEncryptedContent, v))
+}
+
+// EncryptedContentIsNil applies the IsNil predicate on the "encrypted_content" field.
+func EncryptedContentIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldEncryptedContent))
+}
+
+// EncryptedContentNotNil applies the NotNil predicate on the "encrypted_content" field.
+func EncryptedContentNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldEncryptedContent))
+}
+
+// EncryptedContentEqualFold applies the EqualFold predicate on the "encrypted_content" field.
+func EncryptedContentEqualFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldEqualFold(FieldEncryptedContent, v))
+}
+
+// EncryptedContentContainsFold applies the ContainsFold predicate on the "encrypted_content" field.
+func EncryptedContentContainsFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldContainsFold(FieldEncryptedContent, v))
+}
+
+// EncryptionAlgEQ applies the EQ predicate on the "encryption_alg" field.
+func EncryptionAlgEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgNEQ applies the NEQ predicate on the "encryption_alg" field.
+func EncryptionAlgNEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgIn applies the In predicate on the "encryption_alg" field.
+func EncryptionAlgIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldEncryptionAlg, vs...))
+}
+
+// EncryptionAlgNotIn applies the NotIn predicate on the "encryption_alg" field.
+func EncryptionAlgNotIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldEncryptionAlg, vs...))
+}
+
+// EncryptionAlgGT applies the GT predicate on the "encryption_alg" field.
+func EncryptionAlgGT(v string) predicate.Note {
+	return predicate.Note(sql.FieldGT(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgGTE applies the GTE predicate on the "encryption_alg" field.
+func EncryptionAlgGTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldGTE(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgLT applies the LT predicate on the "encryption_alg" field.
+func EncryptionAlgLT(v string) predicate.Note {
+	return predicate.Note(sql.FieldLT(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgLTE applies the LTE predicate on the "encryption_alg" field.
+func EncryptionAlgLTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldLTE(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgContains applies the Contains predicate on the "encryption_alg" field.
+func EncryptionAlgContains(v string) predicate.Note {
+	return predicate.Note(sql.FieldContains(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgHasPrefix applies the HasPrefix predicate on the "encryption_alg" field.
+func EncryptionAlgHasPrefix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasPrefix(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgHasSuffix applies the HasSuffix predicate on the "encryption_alg" field.
+func EncryptionAlgHasSuffix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasSuffix(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgIsNil applies the IsNil predicate on the "encryption_alg" field.
+func EncryptionAlgIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldEncryptionAlg))
+}
+
+// EncryptionAlgNotNil applies the NotNil predicate on the "encryption_alg" field.
+func EncryptionAlgNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldEncryptionAlg))
+}
+
+// EncryptionAlgEqualFold applies the EqualFold predicate on the "encryption_alg" field.
+func EncryptionAlgEqualFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldEqualFold(FieldEncryptionAlg, v))
+}
+
+// EncryptionAlgContainsFold applies the ContainsFold predicate on the "encryption_alg" field.
+func EncryptionAlgContainsFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldContainsFold(FieldEncryptionAlg, v))
+}
+
+// EncryptionKdfEQ applies the EQ predicate on the "encryption_kdf" field.
+func EncryptionKdfEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfNEQ applies the NEQ predicate on the "encryption_kdf" field.
+func EncryptionKdfNEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfIn applies the In predicate on the "encryption_kdf" field.
+func EncryptionKdfIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldEncryptionKdf, vs...))
+}
+
+// EncryptionKdfNotIn applies the NotIn predicate on the "encryption_kdf" field.
+func EncryptionKdfNotIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldEncryptionKdf, vs...))
+}
+
+// EncryptionKdfGT applies the GT predicate on the "encryption_kdf" field.
+func EncryptionKdfGT(v string) predicate.Note {
+	return predicate.Note(sql.FieldGT(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfGTE applies the GTE predicate on the "encryption_kdf" field.
+func EncryptionKdfGTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldGTE(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfLT applies the LT predicate on the "encryption_kdf" field.
+func EncryptionKdfLT(v string) predicate.Note {
+	return predicate.Note(sql.FieldLT(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfLTE applies the LTE predicate on the "encryption_kdf" field.
+func EncryptionKdfLTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldLTE(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfContains applies the Contains predicate on the "encryption_kdf" field.
+func EncryptionKdfContains(v string) predicate.Note {
+	return predicate.Note(sql.FieldContains(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfHasPrefix applies the HasPrefix predicate on the "encryption_kdf" field.
+func EncryptionKdfHasPrefix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasPrefix(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfHasSuffix applies the HasSuffix predicate on the "encryption_kdf" field.
+func EncryptionKdfHasSuffix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasSuffix(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfIsNil applies the IsNil predicate on the "encryption_kdf" field.
+func EncryptionKdfIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldEncryptionKdf))
+}
+
+// EncryptionKdfNotNil applies the NotNil predicate on the "encryption_kdf" field.
+func EncryptionKdfNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldEncryptionKdf))
+}
+
+// EncryptionKdfEqualFold applies the EqualFold predicate on the "encryption_kdf" field.
+func EncryptionKdfEqualFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldEqualFold(FieldEncryptionKdf, v))
+}
+
+// EncryptionKdfContainsFold applies the ContainsFold predicate on the "encryption_kdf" field.
+func EncryptionKdfContainsFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldContainsFold(FieldEncryptionKdf, v))
+}
+
+// EncryptionSaltEQ applies the EQ predicate on the "encryption_salt" field.
+func EncryptionSaltEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltNEQ applies the NEQ predicate on the "encryption_salt" field.
+func EncryptionSaltNEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltIn applies the In predicate on the "encryption_salt" field.
+func EncryptionSaltIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldEncryptionSalt, vs...))
+}
+
+// EncryptionSaltNotIn applies the NotIn predicate on the "encryption_salt" field.
+func EncryptionSaltNotIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldEncryptionSalt, vs...))
+}
+
+// EncryptionSaltGT applies the GT predicate on the "encryption_salt" field.
+func EncryptionSaltGT(v string) predicate.Note {
+	return predicate.Note(sql.FieldGT(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltGTE applies the GTE predicate on the "encryption_salt" field.
+func EncryptionSaltGTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldGTE(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltLT applies the LT predicate on the "encryption_salt" field.
+func EncryptionSaltLT(v string) predicate.Note {
+	return predicate.Note(sql.FieldLT(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltLTE applies the LTE predicate on the "encryption_salt" field.
+func EncryptionSaltLTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldLTE(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltContains applies the Contains predicate on the "encryption_salt" field.
+func EncryptionSaltContains(v string) predicate.Note {
+	return predicate.Note(sql.FieldContains(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltHasPrefix applies the HasPrefix predicate on the "encryption_salt" field.
+func EncryptionSaltHasPrefix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasPrefix(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltHasSuffix applies the HasSuffix predicate on the "encryption_salt" field.
+func EncryptionSaltHasSuffix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasSuffix(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltIsNil applies the IsNil predicate on the "encryption_salt" field.
+func EncryptionSaltIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldEncryptionSalt))
+}
+
+// EncryptionSaltNotNil applies the NotNil predicate on the "encryption_salt" field.
+func EncryptionSaltNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldEncryptionSalt))
+}
+
+// EncryptionSaltEqualFold applies the EqualFold predicate on the "encryption_salt" field.
+func EncryptionSaltEqualFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldEqualFold(FieldEncryptionSalt, v))
+}
+
+// EncryptionSaltContainsFold applies the ContainsFold predicate on the "encryption_salt" field.
+func EncryptionSaltContainsFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldContainsFold(FieldEncryptionSalt, v))
+}
+
+// EncryptionNonceEQ applies the EQ predicate on the "encryption_nonce" field.
+func EncryptionNonceEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceNEQ applies the NEQ predicate on the "encryption_nonce" field.
+func EncryptionNonceNEQ(v string) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceIn applies the In predicate on the "encryption_nonce" field.
+func EncryptionNonceIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldEncryptionNonce, vs...))
+}
+
+// EncryptionNonceNotIn applies the NotIn predicate on the "encryption_nonce" field.
+func EncryptionNonceNotIn(vs ...string) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldEncryptionNonce, vs...))
+}
+
+// EncryptionNonceGT applies the GT predicate on the "encryption_nonce" field.
+func EncryptionNonceGT(v string) predicate.Note {
+	return predicate.Note(sql.FieldGT(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceGTE applies the GTE predicate on the "encryption_nonce" field.
+func EncryptionNonceGTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldGTE(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceLT applies the LT predicate on the "encryption_nonce" field.
+func EncryptionNonceLT(v string) predicate.Note {
+	return predicate.Note(sql.FieldLT(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceLTE applies the LTE predicate on the "encryption_nonce" field.
+func EncryptionNonceLTE(v string) predicate.Note {
+	return predicate.Note(sql.FieldLTE(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceContains applies the Contains predicate on the "encryption_nonce" field.
+func EncryptionNonceContains(v string) predicate.Note {
+	return predicate.Note(sql.FieldContains(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceHasPrefix applies the HasPrefix predicate on the "encryption_nonce" field.
+func EncryptionNonceHasPrefix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasPrefix(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceHasSuffix applies the HasSuffix predicate on the "encryption_nonce" field.
+func EncryptionNonceHasSuffix(v string) predicate.Note {
+	return predicate.Note(sql.FieldHasSuffix(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceIsNil applies the IsNil predicate on the "encryption_nonce" field.
+func EncryptionNonceIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldEncryptionNonce))
+}
+
+// EncryptionNonceNotNil applies the NotNil predicate on the "encryption_nonce" field.
+func EncryptionNonceNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldEncryptionNonce))
+}
+
+// EncryptionNonceEqualFold applies the EqualFold predicate on the "encryption_nonce" field.
+func EncryptionNonceEqualFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldEqualFold(FieldEncryptionNonce, v))
+}
+
+// EncryptionNonceContainsFold applies the ContainsFold predicate on the "encryption_nonce" field.
+func EncryptionNonceContainsFold(v string) predicate.Note {
+	return predicate.Note(sql.FieldContainsFold(FieldEncryptionNonce, v))
 }
 
 // IsStarredEQ applies the EQ predicate on the "is_starred" field.

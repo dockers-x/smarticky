@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"smarticky/ent"
+	"smarticky/ent/migrate"
 	"smarticky/internal/handler"
 	"smarticky/internal/logger"
 	mcpserver "smarticky/internal/mcp"
@@ -75,7 +76,7 @@ func main() {
 	defer client.Close()
 
 	// Run the auto migration tool
-	if err := client.Schema.Create(context.Background()); err != nil {
+	if err := client.Schema.Create(context.Background(), migrate.WithDropColumn(true)); err != nil {
 		zap.L().Warn("Schema migration failed, trying to continue", zap.Error(err))
 	}
 

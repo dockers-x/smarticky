@@ -68,30 +68,100 @@ func (_c *NoteCreate) SetNillableColor(v *string) *NoteCreate {
 	return _c
 }
 
-// SetPassword sets the "password" field.
-func (_c *NoteCreate) SetPassword(v string) *NoteCreate {
-	_c.mutation.SetPassword(v)
+// SetProtectionMode sets the "protection_mode" field.
+func (_c *NoteCreate) SetProtectionMode(v note.ProtectionMode) *NoteCreate {
+	_c.mutation.SetProtectionMode(v)
 	return _c
 }
 
-// SetNillablePassword sets the "password" field if the given value is not nil.
-func (_c *NoteCreate) SetNillablePassword(v *string) *NoteCreate {
+// SetNillableProtectionMode sets the "protection_mode" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableProtectionMode(v *note.ProtectionMode) *NoteCreate {
 	if v != nil {
-		_c.SetPassword(*v)
+		_c.SetProtectionMode(*v)
 	}
 	return _c
 }
 
-// SetIsLocked sets the "is_locked" field.
-func (_c *NoteCreate) SetIsLocked(v bool) *NoteCreate {
-	_c.mutation.SetIsLocked(v)
+// SetProtectionPasswordHash sets the "protection_password_hash" field.
+func (_c *NoteCreate) SetProtectionPasswordHash(v string) *NoteCreate {
+	_c.mutation.SetProtectionPasswordHash(v)
 	return _c
 }
 
-// SetNillableIsLocked sets the "is_locked" field if the given value is not nil.
-func (_c *NoteCreate) SetNillableIsLocked(v *bool) *NoteCreate {
+// SetNillableProtectionPasswordHash sets the "protection_password_hash" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableProtectionPasswordHash(v *string) *NoteCreate {
 	if v != nil {
-		_c.SetIsLocked(*v)
+		_c.SetProtectionPasswordHash(*v)
+	}
+	return _c
+}
+
+// SetEncryptedContent sets the "encrypted_content" field.
+func (_c *NoteCreate) SetEncryptedContent(v string) *NoteCreate {
+	_c.mutation.SetEncryptedContent(v)
+	return _c
+}
+
+// SetNillableEncryptedContent sets the "encrypted_content" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableEncryptedContent(v *string) *NoteCreate {
+	if v != nil {
+		_c.SetEncryptedContent(*v)
+	}
+	return _c
+}
+
+// SetEncryptionAlg sets the "encryption_alg" field.
+func (_c *NoteCreate) SetEncryptionAlg(v string) *NoteCreate {
+	_c.mutation.SetEncryptionAlg(v)
+	return _c
+}
+
+// SetNillableEncryptionAlg sets the "encryption_alg" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableEncryptionAlg(v *string) *NoteCreate {
+	if v != nil {
+		_c.SetEncryptionAlg(*v)
+	}
+	return _c
+}
+
+// SetEncryptionKdf sets the "encryption_kdf" field.
+func (_c *NoteCreate) SetEncryptionKdf(v string) *NoteCreate {
+	_c.mutation.SetEncryptionKdf(v)
+	return _c
+}
+
+// SetNillableEncryptionKdf sets the "encryption_kdf" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableEncryptionKdf(v *string) *NoteCreate {
+	if v != nil {
+		_c.SetEncryptionKdf(*v)
+	}
+	return _c
+}
+
+// SetEncryptionSalt sets the "encryption_salt" field.
+func (_c *NoteCreate) SetEncryptionSalt(v string) *NoteCreate {
+	_c.mutation.SetEncryptionSalt(v)
+	return _c
+}
+
+// SetNillableEncryptionSalt sets the "encryption_salt" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableEncryptionSalt(v *string) *NoteCreate {
+	if v != nil {
+		_c.SetEncryptionSalt(*v)
+	}
+	return _c
+}
+
+// SetEncryptionNonce sets the "encryption_nonce" field.
+func (_c *NoteCreate) SetEncryptionNonce(v string) *NoteCreate {
+	_c.mutation.SetEncryptionNonce(v)
+	return _c
+}
+
+// SetNillableEncryptionNonce sets the "encryption_nonce" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableEncryptionNonce(v *string) *NoteCreate {
+	if v != nil {
+		_c.SetEncryptionNonce(*v)
 	}
 	return _c
 }
@@ -292,9 +362,9 @@ func (_c *NoteCreate) defaults() {
 		v := note.DefaultColor
 		_c.mutation.SetColor(v)
 	}
-	if _, ok := _c.mutation.IsLocked(); !ok {
-		v := note.DefaultIsLocked
-		_c.mutation.SetIsLocked(v)
+	if _, ok := _c.mutation.ProtectionMode(); !ok {
+		v := note.DefaultProtectionMode
+		_c.mutation.SetProtectionMode(v)
 	}
 	if _, ok := _c.mutation.IsStarred(); !ok {
 		v := note.DefaultIsStarred
@@ -323,8 +393,13 @@ func (_c *NoteCreate) check() error {
 	if _, ok := _c.mutation.Title(); !ok {
 		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "Note.title"`)}
 	}
-	if _, ok := _c.mutation.IsLocked(); !ok {
-		return &ValidationError{Name: "is_locked", err: errors.New(`ent: missing required field "Note.is_locked"`)}
+	if _, ok := _c.mutation.ProtectionMode(); !ok {
+		return &ValidationError{Name: "protection_mode", err: errors.New(`ent: missing required field "Note.protection_mode"`)}
+	}
+	if v, ok := _c.mutation.ProtectionMode(); ok {
+		if err := note.ProtectionModeValidator(v); err != nil {
+			return &ValidationError{Name: "protection_mode", err: fmt.Errorf(`ent: validator failed for field "Note.protection_mode": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.IsStarred(); !ok {
 		return &ValidationError{Name: "is_starred", err: errors.New(`ent: missing required field "Note.is_starred"`)}
@@ -385,13 +460,33 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 		_spec.SetField(note.FieldColor, field.TypeString, value)
 		_node.Color = value
 	}
-	if value, ok := _c.mutation.Password(); ok {
-		_spec.SetField(note.FieldPassword, field.TypeString, value)
-		_node.Password = value
+	if value, ok := _c.mutation.ProtectionMode(); ok {
+		_spec.SetField(note.FieldProtectionMode, field.TypeEnum, value)
+		_node.ProtectionMode = value
 	}
-	if value, ok := _c.mutation.IsLocked(); ok {
-		_spec.SetField(note.FieldIsLocked, field.TypeBool, value)
-		_node.IsLocked = value
+	if value, ok := _c.mutation.ProtectionPasswordHash(); ok {
+		_spec.SetField(note.FieldProtectionPasswordHash, field.TypeString, value)
+		_node.ProtectionPasswordHash = value
+	}
+	if value, ok := _c.mutation.EncryptedContent(); ok {
+		_spec.SetField(note.FieldEncryptedContent, field.TypeString, value)
+		_node.EncryptedContent = value
+	}
+	if value, ok := _c.mutation.EncryptionAlg(); ok {
+		_spec.SetField(note.FieldEncryptionAlg, field.TypeString, value)
+		_node.EncryptionAlg = value
+	}
+	if value, ok := _c.mutation.EncryptionKdf(); ok {
+		_spec.SetField(note.FieldEncryptionKdf, field.TypeString, value)
+		_node.EncryptionKdf = value
+	}
+	if value, ok := _c.mutation.EncryptionSalt(); ok {
+		_spec.SetField(note.FieldEncryptionSalt, field.TypeString, value)
+		_node.EncryptionSalt = value
+	}
+	if value, ok := _c.mutation.EncryptionNonce(); ok {
+		_spec.SetField(note.FieldEncryptionNonce, field.TypeString, value)
+		_node.EncryptionNonce = value
 	}
 	if value, ok := _c.mutation.IsStarred(); ok {
 		_spec.SetField(note.FieldIsStarred, field.TypeBool, value)

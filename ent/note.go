@@ -26,10 +26,20 @@ type Note struct {
 	Content string `json:"content,omitempty"`
 	// Color holds the value of the "color" field.
 	Color string `json:"color,omitempty"`
-	// Password holds the value of the "password" field.
-	Password string `json:"-"`
-	// IsLocked holds the value of the "is_locked" field.
-	IsLocked bool `json:"is_locked,omitempty"`
+	// ProtectionMode holds the value of the "protection_mode" field.
+	ProtectionMode note.ProtectionMode `json:"protection_mode,omitempty"`
+	// ProtectionPasswordHash holds the value of the "protection_password_hash" field.
+	ProtectionPasswordHash string `json:"-"`
+	// EncryptedContent holds the value of the "encrypted_content" field.
+	EncryptedContent string `json:"-"`
+	// EncryptionAlg holds the value of the "encryption_alg" field.
+	EncryptionAlg string `json:"encryption_alg,omitempty"`
+	// EncryptionKdf holds the value of the "encryption_kdf" field.
+	EncryptionKdf string `json:"encryption_kdf,omitempty"`
+	// EncryptionSalt holds the value of the "encryption_salt" field.
+	EncryptionSalt string `json:"encryption_salt,omitempty"`
+	// EncryptionNonce holds the value of the "encryption_nonce" field.
+	EncryptionNonce string `json:"encryption_nonce,omitempty"`
 	// IsStarred holds the value of the "is_starred" field.
 	IsStarred bool `json:"is_starred,omitempty"`
 	// IsDeleted holds the value of the "is_deleted" field.
@@ -117,9 +127,9 @@ func (*Note) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case note.FieldIsLocked, note.FieldIsStarred, note.FieldIsDeleted:
+		case note.FieldIsStarred, note.FieldIsDeleted:
 			values[i] = new(sql.NullBool)
-		case note.FieldTitle, note.FieldContent, note.FieldColor, note.FieldPassword:
+		case note.FieldTitle, note.FieldContent, note.FieldColor, note.FieldProtectionMode, note.FieldProtectionPasswordHash, note.FieldEncryptedContent, note.FieldEncryptionAlg, note.FieldEncryptionKdf, note.FieldEncryptionSalt, note.FieldEncryptionNonce:
 			values[i] = new(sql.NullString)
 		case note.FieldCreatedAt, note.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -168,17 +178,47 @@ func (_m *Note) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Color = value.String
 			}
-		case note.FieldPassword:
+		case note.FieldProtectionMode:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field password", values[i])
+				return fmt.Errorf("unexpected type %T for field protection_mode", values[i])
 			} else if value.Valid {
-				_m.Password = value.String
+				_m.ProtectionMode = note.ProtectionMode(value.String)
 			}
-		case note.FieldIsLocked:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field is_locked", values[i])
+		case note.FieldProtectionPasswordHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field protection_password_hash", values[i])
 			} else if value.Valid {
-				_m.IsLocked = value.Bool
+				_m.ProtectionPasswordHash = value.String
+			}
+		case note.FieldEncryptedContent:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encrypted_content", values[i])
+			} else if value.Valid {
+				_m.EncryptedContent = value.String
+			}
+		case note.FieldEncryptionAlg:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encryption_alg", values[i])
+			} else if value.Valid {
+				_m.EncryptionAlg = value.String
+			}
+		case note.FieldEncryptionKdf:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encryption_kdf", values[i])
+			} else if value.Valid {
+				_m.EncryptionKdf = value.String
+			}
+		case note.FieldEncryptionSalt:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encryption_salt", values[i])
+			} else if value.Valid {
+				_m.EncryptionSalt = value.String
+			}
+		case note.FieldEncryptionNonce:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encryption_nonce", values[i])
+			} else if value.Valid {
+				_m.EncryptionNonce = value.String
 			}
 		case note.FieldIsStarred:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -288,10 +328,24 @@ func (_m *Note) String() string {
 	builder.WriteString("color=")
 	builder.WriteString(_m.Color)
 	builder.WriteString(", ")
-	builder.WriteString("password=<sensitive>")
+	builder.WriteString("protection_mode=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ProtectionMode))
 	builder.WriteString(", ")
-	builder.WriteString("is_locked=")
-	builder.WriteString(fmt.Sprintf("%v", _m.IsLocked))
+	builder.WriteString("protection_password_hash=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("encrypted_content=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("encryption_alg=")
+	builder.WriteString(_m.EncryptionAlg)
+	builder.WriteString(", ")
+	builder.WriteString("encryption_kdf=")
+	builder.WriteString(_m.EncryptionKdf)
+	builder.WriteString(", ")
+	builder.WriteString("encryption_salt=")
+	builder.WriteString(_m.EncryptionSalt)
+	builder.WriteString(", ")
+	builder.WriteString("encryption_nonce=")
+	builder.WriteString(_m.EncryptionNonce)
 	builder.WriteString(", ")
 	builder.WriteString("is_starred=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsStarred))

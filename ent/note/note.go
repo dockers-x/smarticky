@@ -3,6 +3,7 @@
 package note
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -21,10 +22,20 @@ const (
 	FieldContent = "content"
 	// FieldColor holds the string denoting the color field in the database.
 	FieldColor = "color"
-	// FieldPassword holds the string denoting the password field in the database.
-	FieldPassword = "password"
-	// FieldIsLocked holds the string denoting the is_locked field in the database.
-	FieldIsLocked = "is_locked"
+	// FieldProtectionMode holds the string denoting the protection_mode field in the database.
+	FieldProtectionMode = "protection_mode"
+	// FieldProtectionPasswordHash holds the string denoting the protection_password_hash field in the database.
+	FieldProtectionPasswordHash = "protection_password_hash"
+	// FieldEncryptedContent holds the string denoting the encrypted_content field in the database.
+	FieldEncryptedContent = "encrypted_content"
+	// FieldEncryptionAlg holds the string denoting the encryption_alg field in the database.
+	FieldEncryptionAlg = "encryption_alg"
+	// FieldEncryptionKdf holds the string denoting the encryption_kdf field in the database.
+	FieldEncryptionKdf = "encryption_kdf"
+	// FieldEncryptionSalt holds the string denoting the encryption_salt field in the database.
+	FieldEncryptionSalt = "encryption_salt"
+	// FieldEncryptionNonce holds the string denoting the encryption_nonce field in the database.
+	FieldEncryptionNonce = "encryption_nonce"
 	// FieldIsStarred holds the string denoting the is_starred field in the database.
 	FieldIsStarred = "is_starred"
 	// FieldIsDeleted holds the string denoting the is_deleted field in the database.
@@ -86,8 +97,13 @@ var Columns = []string{
 	FieldTitle,
 	FieldContent,
 	FieldColor,
-	FieldPassword,
-	FieldIsLocked,
+	FieldProtectionMode,
+	FieldProtectionPasswordHash,
+	FieldEncryptedContent,
+	FieldEncryptionAlg,
+	FieldEncryptionKdf,
+	FieldEncryptionSalt,
+	FieldEncryptionNonce,
 	FieldIsStarred,
 	FieldIsDeleted,
 	FieldCreatedAt,
@@ -127,8 +143,6 @@ var (
 	DefaultTitle string
 	// DefaultColor holds the default value on creation for the "color" field.
 	DefaultColor string
-	// DefaultIsLocked holds the default value on creation for the "is_locked" field.
-	DefaultIsLocked bool
 	// DefaultIsStarred holds the default value on creation for the "is_starred" field.
 	DefaultIsStarred bool
 	// DefaultIsDeleted holds the default value on creation for the "is_deleted" field.
@@ -142,6 +156,33 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// ProtectionMode defines the type for the "protection_mode" enum field.
+type ProtectionMode string
+
+// ProtectionModeNone is the default value of the ProtectionMode enum.
+const DefaultProtectionMode = ProtectionModeNone
+
+// ProtectionMode values.
+const (
+	ProtectionModeNone      ProtectionMode = "none"
+	ProtectionModePassword  ProtectionMode = "password"
+	ProtectionModeEncrypted ProtectionMode = "encrypted"
+)
+
+func (pm ProtectionMode) String() string {
+	return string(pm)
+}
+
+// ProtectionModeValidator is a validator for the "protection_mode" field enum values. It is called by the builders before save.
+func ProtectionModeValidator(pm ProtectionMode) error {
+	switch pm {
+	case ProtectionModeNone, ProtectionModePassword, ProtectionModeEncrypted:
+		return nil
+	default:
+		return fmt.Errorf("note: invalid enum value for protection_mode field: %q", pm)
+	}
+}
 
 // OrderOption defines the ordering options for the Note queries.
 type OrderOption func(*sql.Selector)
@@ -166,14 +207,39 @@ func ByColor(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldColor, opts...).ToFunc()
 }
 
-// ByPassword orders the results by the password field.
-func ByPassword(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPassword, opts...).ToFunc()
+// ByProtectionMode orders the results by the protection_mode field.
+func ByProtectionMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProtectionMode, opts...).ToFunc()
 }
 
-// ByIsLocked orders the results by the is_locked field.
-func ByIsLocked(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldIsLocked, opts...).ToFunc()
+// ByProtectionPasswordHash orders the results by the protection_password_hash field.
+func ByProtectionPasswordHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProtectionPasswordHash, opts...).ToFunc()
+}
+
+// ByEncryptedContent orders the results by the encrypted_content field.
+func ByEncryptedContent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptedContent, opts...).ToFunc()
+}
+
+// ByEncryptionAlg orders the results by the encryption_alg field.
+func ByEncryptionAlg(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptionAlg, opts...).ToFunc()
+}
+
+// ByEncryptionKdf orders the results by the encryption_kdf field.
+func ByEncryptionKdf(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptionKdf, opts...).ToFunc()
+}
+
+// ByEncryptionSalt orders the results by the encryption_salt field.
+func ByEncryptionSalt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptionSalt, opts...).ToFunc()
+}
+
+// ByEncryptionNonce orders the results by the encryption_nonce field.
+func ByEncryptionNonce(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptionNonce, opts...).ToFunc()
 }
 
 // ByIsStarred orders the results by the is_starred field.

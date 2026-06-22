@@ -26,11 +26,23 @@ func (Note) Fields() []ent.Field {
 		field.String("color").
 			Optional().
 			Default(""), // yellow, green, blue, pink, purple, etc.
-		field.String("password").
+		field.Enum("protection_mode").
+			Values("none", "password", "encrypted").
+			Default("none"),
+		field.String("protection_password_hash").
 			Optional().
-			Sensitive(), // Encrypted password for note protection
-		field.Bool("is_locked").
-			Default(false), // Is password protected
+			Sensitive(),
+		field.Text("encrypted_content").
+			Optional().
+			Sensitive(),
+		field.String("encryption_alg").
+			Optional(),
+		field.String("encryption_kdf").
+			Optional(),
+		field.String("encryption_salt").
+			Optional(),
+		field.String("encryption_nonce").
+			Optional(),
 		field.Bool("is_starred").
 			Default(false),
 		field.Bool("is_deleted").
