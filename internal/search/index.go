@@ -102,13 +102,25 @@ func (s *Service) Rebuild(ctx context.Context, client *ent.Client) error {
 		return err
 	}
 
+	var old bleve.Index
+	if !s.inMemory {
+		s.mu.Lock()
+		old = s.index
+		s.index = nil
+		s.mu.Unlock()
+		if old != nil {
+			_ = old.Close()
+			old = nil
+		}
+	}
+
 	idx, err := s.newEmptyIndex()
 	if err != nil {
 		return err
 	}
 
 	s.mu.Lock()
-	old := s.index
+	old = s.index
 	s.index = idx
 	s.mu.Unlock()
 	if old != nil {
@@ -191,12 +203,6 @@ func (s *Service) newEmptyIndex() (bleve.Index, error) {
 	if s.inMemory {
 		return bleve.NewMemOnly(newMapping())
 	}
-
-	s.mu.Lock()
-	if s.index != nil {
-		_ = s.index.Close()
-	}
-	s.mu.Unlock()
 
 	if err := os.RemoveAll(s.path); err != nil {
 		return nil, err

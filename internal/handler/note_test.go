@@ -392,7 +392,7 @@ func TestListNotesIndexedSearchCombinesStructuredFiltersWithoutCandidateCutoff(t
 		SetUserID(u.ID).
 		SetFolderID(targetFolder.ID).
 		SaveX(ctx)
-	target = target.Update().AddTags(workTag, urgentTag).SaveX(ctx)
+	target = target.Update().AddTags(workTag, urgentTag).SetUpdatedAt(targetTime).SaveX(ctx)
 	if err := index.IndexNote(ctx, target); err != nil {
 		t.Fatalf("IndexNote target: %v", err)
 	}

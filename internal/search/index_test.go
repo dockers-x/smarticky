@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -116,5 +117,36 @@ func TestSearchRebuildUsesDatabaseRows(t *testing.T) {
 	}
 	if !slices.Contains(titleMatches, encrypted.ID) {
 		t.Fatalf("expected encrypted title to match, got %v", titleMatches)
+	}
+}
+
+func TestSearchRebuildDiskIndexDoesNotDoubleClose(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestSearchRebuildDiskIndexDoesNotDoubleClose?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	row := client.Note.Create().
+		SetTitle("Disk Rebuild").
+		SetContent("disk rebuild needle").
+		SetUserID(owner.ID).
+		SaveX(ctx)
+
+	svc, err := Open(filepath.Join(t.TempDir(), "search.bleve"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer svc.Close()
+
+	if err := svc.Rebuild(ctx, client); err != nil {
+		t.Fatalf("Rebuild: %v", err)
+	}
+
+	matches, err := svc.Search(ctx, SearchOptions{UserID: owner.ID, Query: "needle", Limit: 10})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if !slices.Contains(matches, row.ID) {
+		t.Fatalf("expected rebuilt disk index to match %s, got %v", row.ID, matches)
 	}
 }
