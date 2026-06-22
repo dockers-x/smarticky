@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"smarticky/ent/attachment"
+	"smarticky/ent/folder"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -182,6 +183,25 @@ func (_c *NoteCreate) SetNillableUserID(id *int) *NoteCreate {
 // SetUser sets the "user" edge to the User entity.
 func (_c *NoteCreate) SetUser(v *User) *NoteCreate {
 	return _c.SetUserID(v.ID)
+}
+
+// SetFolderID sets the "folder" edge to the Folder entity by ID.
+func (_c *NoteCreate) SetFolderID(id uuid.UUID) *NoteCreate {
+	_c.mutation.SetFolderID(id)
+	return _c
+}
+
+// SetNillableFolderID sets the "folder" edge to the Folder entity by ID if the given value is not nil.
+func (_c *NoteCreate) SetNillableFolderID(id *uuid.UUID) *NoteCreate {
+	if id != nil {
+		_c = _c.SetFolderID(*id)
+	}
+	return _c
+}
+
+// SetFolder sets the "folder" edge to the Folder entity.
+func (_c *NoteCreate) SetFolder(v *Folder) *NoteCreate {
+	return _c.SetFolderID(v.ID)
 }
 
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by IDs.
@@ -404,6 +424,23 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.user_notes = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.FolderIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   note.FolderTable,
+			Columns: []string{note.FolderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.folder_notes = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.AttachmentsIDs(); len(nodes) > 0 {

@@ -14,6 +14,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/excalidrawlibrary"
+	"smarticky/ent/folder"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -42,6 +43,8 @@ type Client struct {
 	BackupConfig *BackupConfigClient
 	// ExcalidrawLibrary is the client for interacting with the ExcalidrawLibrary builders.
 	ExcalidrawLibrary *ExcalidrawLibraryClient
+	// Folder is the client for interacting with the Folder builders.
+	Folder *FolderClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
 	// ImportItem is the client for interacting with the ImportItem builders.
@@ -74,6 +77,7 @@ func (c *Client) init() {
 	c.Attachment = NewAttachmentClient(c.config)
 	c.BackupConfig = NewBackupConfigClient(c.config)
 	c.ExcalidrawLibrary = NewExcalidrawLibraryClient(c.config)
+	c.Folder = NewFolderClient(c.config)
 	c.Font = NewFontClient(c.config)
 	c.ImportItem = NewImportItemClient(c.config)
 	c.ImportJob = NewImportJobClient(c.config)
@@ -178,6 +182,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Attachment:        NewAttachmentClient(cfg),
 		BackupConfig:      NewBackupConfigClient(cfg),
 		ExcalidrawLibrary: NewExcalidrawLibraryClient(cfg),
+		Folder:            NewFolderClient(cfg),
 		Font:              NewFontClient(cfg),
 		ImportItem:        NewImportItemClient(cfg),
 		ImportJob:         NewImportJobClient(cfg),
@@ -209,6 +214,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Attachment:        NewAttachmentClient(cfg),
 		BackupConfig:      NewBackupConfigClient(cfg),
 		ExcalidrawLibrary: NewExcalidrawLibraryClient(cfg),
+		Folder:            NewFolderClient(cfg),
 		Font:              NewFontClient(cfg),
 		ImportItem:        NewImportItemClient(cfg),
 		ImportJob:         NewImportJobClient(cfg),
@@ -247,8 +253,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Font, c.ImportItem,
-		c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User, c.Whiteboard,
+		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Folder, c.Font,
+		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User,
+		c.Whiteboard,
 	} {
 		n.Use(hooks...)
 	}
@@ -258,8 +265,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Font, c.ImportItem,
-		c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User, c.Whiteboard,
+		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Folder, c.Font,
+		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.Tag, c.User,
+		c.Whiteboard,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -274,6 +282,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.BackupConfig.mutate(ctx, m)
 	case *ExcalidrawLibraryMutation:
 		return c.ExcalidrawLibrary.mutate(ctx, m)
+	case *FolderMutation:
+		return c.Folder.mutate(ctx, m)
 	case *FontMutation:
 		return c.Font.mutate(ctx, m)
 	case *ImportItemMutation:
@@ -741,6 +751,203 @@ func (c *ExcalidrawLibraryClient) mutate(ctx context.Context, m *ExcalidrawLibra
 		return (&ExcalidrawLibraryDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ExcalidrawLibrary mutation op: %q", m.Op())
+	}
+}
+
+// FolderClient is a client for the Folder schema.
+type FolderClient struct {
+	config
+}
+
+// NewFolderClient returns a client for the Folder from the given config.
+func NewFolderClient(c config) *FolderClient {
+	return &FolderClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `folder.Hooks(f(g(h())))`.
+func (c *FolderClient) Use(hooks ...Hook) {
+	c.hooks.Folder = append(c.hooks.Folder, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `folder.Intercept(f(g(h())))`.
+func (c *FolderClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Folder = append(c.inters.Folder, interceptors...)
+}
+
+// Create returns a builder for creating a Folder entity.
+func (c *FolderClient) Create() *FolderCreate {
+	mutation := newFolderMutation(c.config, OpCreate)
+	return &FolderCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Folder entities.
+func (c *FolderClient) CreateBulk(builders ...*FolderCreate) *FolderCreateBulk {
+	return &FolderCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FolderClient) MapCreateBulk(slice any, setFunc func(*FolderCreate, int)) *FolderCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FolderCreateBulk{err: fmt.Errorf("calling to FolderClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FolderCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FolderCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Folder.
+func (c *FolderClient) Update() *FolderUpdate {
+	mutation := newFolderMutation(c.config, OpUpdate)
+	return &FolderUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FolderClient) UpdateOne(_m *Folder) *FolderUpdateOne {
+	mutation := newFolderMutation(c.config, OpUpdateOne, withFolder(_m))
+	return &FolderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FolderClient) UpdateOneID(id uuid.UUID) *FolderUpdateOne {
+	mutation := newFolderMutation(c.config, OpUpdateOne, withFolderID(id))
+	return &FolderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Folder.
+func (c *FolderClient) Delete() *FolderDelete {
+	mutation := newFolderMutation(c.config, OpDelete)
+	return &FolderDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FolderClient) DeleteOne(_m *Folder) *FolderDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FolderClient) DeleteOneID(id uuid.UUID) *FolderDeleteOne {
+	builder := c.Delete().Where(folder.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FolderDeleteOne{builder}
+}
+
+// Query returns a query builder for Folder.
+func (c *FolderClient) Query() *FolderQuery {
+	return &FolderQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFolder},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Folder entity by its id.
+func (c *FolderClient) Get(ctx context.Context, id uuid.UUID) (*Folder, error) {
+	return c.Query().Where(folder.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FolderClient) GetX(ctx context.Context, id uuid.UUID) *Folder {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a Folder.
+func (c *FolderClient) QueryUser(_m *Folder) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(folder.Table, folder.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, folder.UserTable, folder.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryParent queries the parent edge of a Folder.
+func (c *FolderClient) QueryParent(_m *Folder) *FolderQuery {
+	query := (&FolderClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(folder.Table, folder.FieldID, id),
+			sqlgraph.To(folder.Table, folder.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, folder.ParentTable, folder.ParentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChildren queries the children edge of a Folder.
+func (c *FolderClient) QueryChildren(_m *Folder) *FolderQuery {
+	query := (&FolderClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(folder.Table, folder.FieldID, id),
+			sqlgraph.To(folder.Table, folder.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, folder.ChildrenTable, folder.ChildrenColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNotes queries the notes edge of a Folder.
+func (c *FolderClient) QueryNotes(_m *Folder) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(folder.Table, folder.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, folder.NotesTable, folder.NotesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FolderClient) Hooks() []Hook {
+	return c.hooks.Folder
+}
+
+// Interceptors returns the client interceptors.
+func (c *FolderClient) Interceptors() []Interceptor {
+	return c.inters.Folder
+}
+
+func (c *FolderClient) mutate(ctx context.Context, m *FolderMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FolderCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FolderUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FolderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FolderDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Folder mutation op: %q", m.Op())
 	}
 }
 
@@ -1629,6 +1836,22 @@ func (c *NoteClient) QueryUser(_m *Note) *UserQuery {
 	return query
 }
 
+// QueryFolder queries the folder edge of a Note.
+func (c *NoteClient) QueryFolder(_m *Note) *FolderQuery {
+	query := (&FolderClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(folder.Table, folder.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, note.FolderTable, note.FolderColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAttachments queries the attachments edge of a Note.
 func (c *NoteClient) QueryAttachments(_m *Note) *AttachmentQuery {
 	query := (&AttachmentClient{config: c.config}).Query()
@@ -1991,6 +2214,22 @@ func (c *UserClient) QueryNotes(_m *User) *NoteQuery {
 	return query
 }
 
+// QueryFolders queries the folders edge of a User.
+func (c *UserClient) QueryFolders(_m *User) *FolderQuery {
+	query := (&FolderClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(folder.Table, folder.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.FoldersTable, user.FoldersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAttachments queries the attachments edge of a User.
 func (c *UserClient) QueryAttachments(_m *User) *AttachmentQuery {
 	query := (&AttachmentClient{config: c.config}).Query()
@@ -2312,11 +2551,11 @@ func (c *WhiteboardClient) mutate(ctx context.Context, m *WhiteboardMutation) (V
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Attachment, BackupConfig, ExcalidrawLibrary, Font, ImportItem, ImportJob,
-		MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Hook
+		Attachment, BackupConfig, ExcalidrawLibrary, Folder, Font, ImportItem,
+		ImportJob, MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Hook
 	}
 	inters struct {
-		Attachment, BackupConfig, ExcalidrawLibrary, Font, ImportItem, ImportJob,
-		MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Interceptor
+		Attachment, BackupConfig, ExcalidrawLibrary, Folder, Font, ImportItem,
+		ImportJob, MCPImage, MCPToken, Note, Tag, User, Whiteboard []ent.Interceptor
 	}
 )

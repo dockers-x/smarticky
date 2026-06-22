@@ -15,6 +15,9 @@ type BackupConfig func(*sql.Selector)
 // ExcalidrawLibrary is the predicate function for excalidrawlibrary builders.
 type ExcalidrawLibrary func(*sql.Selector)
 
+// Folder is the predicate function for folder builders.
+type Folder func(*sql.Selector)
+
 // Font is the predicate function for font builders.
 type Font func(*sql.Selector)
 

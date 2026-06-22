@@ -39,17 +39,18 @@ type CreateInput struct {
 }
 
 type NoteView struct {
-	ID              uuid.UUID `json:"id"`
-	Title           string    `json:"title"`
-	Content         string    `json:"content,omitempty"`
-	Color           string    `json:"color"`
-	IsLocked        bool      `json:"is_locked"`
-	IsStarred       bool      `json:"is_starred"`
-	IsDeleted       bool      `json:"is_deleted"`
-	ContentRedacted bool      `json:"content_redacted"`
-	Tags            []string  `json:"tags,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              uuid.UUID  `json:"id"`
+	Title           string     `json:"title"`
+	Content         string     `json:"content,omitempty"`
+	Color           string     `json:"color"`
+	IsLocked        bool       `json:"is_locked"`
+	IsStarred       bool       `json:"is_starred"`
+	IsDeleted       bool       `json:"is_deleted"`
+	ContentRedacted bool       `json:"content_redacted"`
+	FolderID        *uuid.UUID `json:"folder_id"`
+	Tags            []string   `json:"tags,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 func NewService(client *ent.Client) *Service {
@@ -153,6 +154,10 @@ func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bo
 		content = ""
 		redacted = true
 	}
+	folderID, err := noteFolderID(ctx, row)
+	if err != nil {
+		return NoteView{}, err
+	}
 
 	return NoteView{
 		ID:              row.ID,
@@ -163,10 +168,23 @@ func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bo
 		IsStarred:       row.IsStarred,
 		IsDeleted:       row.IsDeleted,
 		ContentRedacted: redacted,
+		FolderID:        folderID,
 		Tags:            tags,
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
 	}, nil
+}
+
+func noteFolderID(ctx context.Context, row *ent.Note) (*uuid.UUID, error) {
+	folderRow, err := row.QueryFolder().Only(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	id := folderRow.ID
+	return &id, nil
 }
 
 func clampLimit(limit int) int {

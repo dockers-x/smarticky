@@ -49,6 +49,9 @@ func (Note) Edges() []ent.Edge {
 		edge.From("user", User.Type).
 			Ref("notes").
 			Unique(),
+		edge.From("folder", Folder.Type).
+			Ref("notes").
+			Unique(),
 		edge.To("attachments", Attachment.Type),
 		edge.To("whiteboards", Whiteboard.Type),
 		edge.To("tags", Tag.Type), // Many-to-many relationship with tags

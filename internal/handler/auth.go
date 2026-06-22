@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"smarticky/ent/user"
@@ -67,6 +68,7 @@ func (h *Handler) Setup(c echo.Context) error {
 		Email          string `json:"email"`
 		Nickname       string `json:"nickname"`
 		ShareSignature string `json:"share_signature"`
+		TimeZone       string `json:"time_zone"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -110,6 +112,13 @@ func (h *Handler) Setup(c echo.Context) error {
 	}
 	if req.ShareSignature != "" {
 		createUser.SetShareSignature(normalizeShareSignature(req.ShareSignature))
+	}
+	if strings.TrimSpace(req.TimeZone) != "" {
+		timeZone, err := normalizeUserTimeZone(req.TimeZone)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid time zone"})
+		}
+		createUser.SetTimeZone(timeZone)
 	}
 
 	newUser, err := createUser.Save(context.Background())

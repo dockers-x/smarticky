@@ -85,3 +85,91 @@ func TestUpdateUserPersistsShareSignature(t *testing.T) {
 		t.Fatalf("expected current user share signature, got %q", current.ShareSignature)
 	}
 }
+
+func TestUpdateUserPersistsTimeZone(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestUpdateUserPersistsTimeZone?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	h := NewHandler(client, nil)
+	e := echo.New()
+
+	req := httptest.NewRequest(
+		http.MethodPut,
+		"/api/users/1",
+		strings.NewReader(`{"time_zone":"Asia/Shanghai"}`),
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.Set("role", "user")
+	c.SetParamNames("id")
+	c.SetParamValues(strconv.Itoa(u.ID))
+
+	if err := h.UpdateUser(c); err != nil {
+		t.Fatalf("UpdateUser returned error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var updated struct {
+		TimeZone string `json:"time_zone"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode update response: %v", err)
+	}
+	if updated.TimeZone != "Asia/Shanghai" {
+		t.Fatalf("expected response time zone Asia/Shanghai, got %q", updated.TimeZone)
+	}
+
+	fromDB := client.User.GetX(ctx, u.ID)
+	if fromDB.TimeZone != "Asia/Shanghai" {
+		t.Fatalf("expected DB time zone to be persisted, got %q", fromDB.TimeZone)
+	}
+}
+
+func TestUpdateUserRejectsInvalidTimeZone(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestUpdateUserRejectsInvalidTimeZone?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	h := NewHandler(client, nil)
+	e := echo.New()
+
+	req := httptest.NewRequest(
+		http.MethodPut,
+		"/api/users/1",
+		strings.NewReader(`{"time_zone":"Mars/Base"}`),
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.Set("role", "user")
+	c.SetParamNames("id")
+	c.SetParamValues(strconv.Itoa(u.ID))
+
+	if err := h.UpdateUser(c); err != nil {
+		t.Fatalf("UpdateUser returned error: %v", err)
+	}
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+
+	fromDB := client.User.GetX(ctx, u.ID)
+	if fromDB.TimeZone != "UTC" {
+		t.Fatalf("expected invalid update to leave default UTC, got %q", fromDB.TimeZone)
+	}
+}

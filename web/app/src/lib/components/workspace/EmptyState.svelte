@@ -3,18 +3,23 @@
   import { preferencesStore, t, type MessageKey } from "../../stores/preferences";
 
   export let filter: NoteFilter = "all";
+  export let folderActive = false;
 
   let titleKey: MessageKey = "emptyNoteList";
   let subtitleKey: MessageKey = "emptyNoteListSubtitle";
 
   $: titleKey =
-    filter === "trash"
+    folderActive
+      ? "folderEmptyTitle"
+      : filter === "trash"
       ? "emptyTrashTitle"
       : filter === "starred"
         ? "emptyStarredTitle"
         : "emptyNoteList";
   $: subtitleKey =
-    filter === "trash"
+    folderActive
+      ? "folderEmptySubtitle"
+      : filter === "trash"
       ? "emptyTrashSubtitle"
       : filter === "starred"
         ? "emptyStarredSubtitle"

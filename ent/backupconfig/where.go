@@ -114,6 +114,11 @@ func BackupMaxCount(v int) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldEQ(FieldBackupMaxCount, v))
 }
 
+// FolderMaxDepth applies equality check predicate on the "folder_max_depth" field. It's identical to FolderMaxDepthEQ.
+func FolderMaxDepth(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldFolderMaxDepth, v))
+}
+
 // LastBackupAt applies equality check predicate on the "last_backup_at" field. It's identical to LastBackupAtEQ.
 func LastBackupAt(v time.Time) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldEQ(FieldLastBackupAt, v))
@@ -882,6 +887,46 @@ func BackupMaxCountLT(v int) predicate.BackupConfig {
 // BackupMaxCountLTE applies the LTE predicate on the "backup_max_count" field.
 func BackupMaxCountLTE(v int) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldLTE(FieldBackupMaxCount, v))
+}
+
+// FolderMaxDepthEQ applies the EQ predicate on the "folder_max_depth" field.
+func FolderMaxDepthEQ(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldFolderMaxDepth, v))
+}
+
+// FolderMaxDepthNEQ applies the NEQ predicate on the "folder_max_depth" field.
+func FolderMaxDepthNEQ(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNEQ(FieldFolderMaxDepth, v))
+}
+
+// FolderMaxDepthIn applies the In predicate on the "folder_max_depth" field.
+func FolderMaxDepthIn(vs ...int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldIn(FieldFolderMaxDepth, vs...))
+}
+
+// FolderMaxDepthNotIn applies the NotIn predicate on the "folder_max_depth" field.
+func FolderMaxDepthNotIn(vs ...int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNotIn(FieldFolderMaxDepth, vs...))
+}
+
+// FolderMaxDepthGT applies the GT predicate on the "folder_max_depth" field.
+func FolderMaxDepthGT(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldGT(FieldFolderMaxDepth, v))
+}
+
+// FolderMaxDepthGTE applies the GTE predicate on the "folder_max_depth" field.
+func FolderMaxDepthGTE(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldGTE(FieldFolderMaxDepth, v))
+}
+
+// FolderMaxDepthLT applies the LT predicate on the "folder_max_depth" field.
+func FolderMaxDepthLT(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldLT(FieldFolderMaxDepth, v))
+}
+
+// FolderMaxDepthLTE applies the LTE predicate on the "folder_max_depth" field.
+func FolderMaxDepthLTE(v int) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldLTE(FieldFolderMaxDepth, v))
 }
 
 // LastBackupAtEQ applies the EQ predicate on the "last_backup_at" field.

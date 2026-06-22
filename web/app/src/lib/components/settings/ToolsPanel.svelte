@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     DatabaseBackup,
+    FolderTree,
     FileUp,
     LogOut,
     Type,
@@ -15,6 +16,7 @@
   import ImportCenter from "../import/ImportCenter.svelte";
   import BackupPanel from "./BackupPanel.svelte";
   import FontPanel from "./FontPanel.svelte";
+  import FolderSettingsPanel from "./FolderSettingsPanel.svelte";
   import ProfilePanel from "./ProfilePanel.svelte";
   import UserManagementPanel from "./UserManagementPanel.svelte";
   import { authStore } from "../../stores/auth";
@@ -26,7 +28,7 @@
   export let user: User | null = null;
   export let onClose: () => void = () => {};
 
-  type ToolsView = "import" | "backup" | "fonts" | "profile" | "users";
+  type ToolsView = "import" | "backup" | "folders" | "fonts" | "profile" | "users";
 
   interface ToolNavItem {
     labelKey: MessageKey;
@@ -128,6 +130,11 @@
       view: "backup",
     },
     {
+      labelKey: "folderSettings",
+      adminOnly: true,
+      view: "folders",
+    },
+    {
       labelKey: "fontManagement",
       view: "fonts",
     },
@@ -148,11 +155,13 @@
       ? t("import", $preferencesStore.language)
       : view === "backup"
         ? t("backupTitle", $preferencesStore.language)
-        : view === "fonts"
-          ? t("fontManagement", $preferencesStore.language)
-          : view === "profile"
-            ? t("personalProfile", $preferencesStore.language)
-            : t("userManagement", $preferencesStore.language);
+        : view === "folders"
+          ? t("folderSettings", $preferencesStore.language)
+          : view === "fonts"
+            ? t("fontManagement", $preferencesStore.language)
+            : view === "profile"
+              ? t("personalProfile", $preferencesStore.language)
+              : t("userManagement", $preferencesStore.language);
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -198,6 +207,8 @@
               <FileUp size={17} strokeWidth={1.8} aria-hidden="true" />
             {:else if item.view === "backup"}
               <DatabaseBackup size={17} strokeWidth={1.8} aria-hidden="true" />
+            {:else if item.view === "folders"}
+              <FolderTree size={17} strokeWidth={1.8} aria-hidden="true" />
             {:else if item.view === "fonts"}
               <Type size={17} strokeWidth={1.8} aria-hidden="true" />
             {:else if item.view === "profile"}
@@ -248,6 +259,8 @@
           <ImportCenter showBack={false} onBack={() => selectView("profile")} onImported={handleImported} />
         {:else if view === "backup"}
           <BackupPanel />
+        {:else if view === "folders"}
+          <FolderSettingsPanel />
         {:else if view === "fonts"}
           <FontPanel {user} />
         {:else if view === "profile"}

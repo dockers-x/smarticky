@@ -106,6 +106,7 @@
     if (!value) return "-";
     return new Date(value).toLocaleDateString(
       $preferencesStore.language === "zh" ? "zh-CN" : "en-US",
+      { timeZone: $preferencesStore.timeZone },
     );
   }
 

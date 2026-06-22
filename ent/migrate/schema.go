@@ -54,6 +54,7 @@ var (
 		{Name: "backup_schedule", Type: field.TypeString, Default: "daily"},
 		{Name: "backup_retention_days", Type: field.TypeInt, Default: 30},
 		{Name: "backup_max_count", Type: field.TypeInt, Default: 10},
+		{Name: "folder_max_depth", Type: field.TypeInt, Default: 3},
 		{Name: "last_backup_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -81,6 +82,37 @@ var (
 			{
 				Symbol:     "excalidraw_libraries_users_excalidraw_library",
 				Columns:    []*schema.Column{ExcalidrawLibrariesColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// FoldersColumns holds the columns for the "folders" table.
+	FoldersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "sort_order", Type: field.TypeInt, Default: 0},
+		{Name: "is_starred", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "folder_children", Type: field.TypeUUID, Nullable: true},
+		{Name: "user_folders", Type: field.TypeInt},
+	}
+	// FoldersTable holds the schema information for the "folders" table.
+	FoldersTable = &schema.Table{
+		Name:       "folders",
+		Columns:    FoldersColumns,
+		PrimaryKey: []*schema.Column{FoldersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "folders_folders_children",
+				Columns:    []*schema.Column{FoldersColumns[6]},
+				RefColumns: []*schema.Column{FoldersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "folders_users_folders",
+				Columns:    []*schema.Column{FoldersColumns[7]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -227,6 +259,7 @@ var (
 		{Name: "is_deleted", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "folder_notes", Type: field.TypeUUID, Nullable: true},
 		{Name: "user_notes", Type: field.TypeInt, Nullable: true},
 	}
 	// NotesTable holds the schema information for the "notes" table.
@@ -236,8 +269,14 @@ var (
 		PrimaryKey: []*schema.Column{NotesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "notes_users_notes",
+				Symbol:     "notes_folders_notes",
 				Columns:    []*schema.Column{NotesColumns[10]},
+				RefColumns: []*schema.Column{FoldersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "notes_users_notes",
+				Columns:    []*schema.Column{NotesColumns[11]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -276,6 +315,7 @@ var (
 		{Name: "role", Type: field.TypeEnum, Enums: []string{"admin", "user"}, Default: "user"},
 		{Name: "avatar", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "share_signature", Type: field.TypeString, Default: "Smarticky"},
+		{Name: "time_zone", Type: field.TypeString, Default: "UTC"},
 		{Name: "lazycat_uid", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -347,6 +387,7 @@ var (
 		AttachmentsTable,
 		BackupConfigsTable,
 		ExcalidrawLibrariesTable,
+		FoldersTable,
 		FontsTable,
 		ImportItemsTable,
 		ImportJobsTable,
@@ -364,12 +405,15 @@ func init() {
 	AttachmentsTable.ForeignKeys[0].RefTable = NotesTable
 	AttachmentsTable.ForeignKeys[1].RefTable = UsersTable
 	ExcalidrawLibrariesTable.ForeignKeys[0].RefTable = UsersTable
+	FoldersTable.ForeignKeys[0].RefTable = FoldersTable
+	FoldersTable.ForeignKeys[1].RefTable = UsersTable
 	FontsTable.ForeignKeys[0].RefTable = UsersTable
 	ImportItemsTable.ForeignKeys[0].RefTable = ImportJobsTable
 	ImportJobsTable.ForeignKeys[0].RefTable = UsersTable
 	McpImagesTable.ForeignKeys[0].RefTable = UsersTable
 	McpTokensTable.ForeignKeys[0].RefTable = UsersTable
-	NotesTable.ForeignKeys[0].RefTable = UsersTable
+	NotesTable.ForeignKeys[0].RefTable = FoldersTable
+	NotesTable.ForeignKeys[1].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
 	WhiteboardsTable.ForeignKeys[0].RefTable = NotesTable
 	WhiteboardsTable.ForeignKeys[1].RefTable = UsersTable

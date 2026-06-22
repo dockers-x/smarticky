@@ -9,7 +9,11 @@
   import { updatePassword, updateUser, uploadAvatar } from "../../api/users";
   import { authStore } from "../../stores/auth";
   import { notify } from "../../stores/dialogs";
-  import { preferencesStore, t } from "../../stores/preferences";
+  import {
+    preferencesStore,
+    supportedTimeZones,
+    t,
+  } from "../../stores/preferences";
 
   export let user: User | null = null;
 
@@ -18,6 +22,7 @@
   let nickname = "";
   let lazycatUID = "";
   let shareSignature = "";
+  let timeZone = "";
   let oldPassword = "";
   let newPassword = "";
   let confirmPassword = "";
@@ -29,6 +34,7 @@
   let mcpTokenName = "";
   let mcpPlainToken = "";
   let mcpTokens: MCPToken[] = [];
+  $: timeZoneOptions = supportedTimeZones(timeZone || user?.time_zone);
 
   $: if (user && user.id !== activeUserID) {
     activeUserID = user.id;
@@ -36,6 +42,7 @@
     nickname = user.nickname ?? "";
     lazycatUID = user.lazycat_uid ?? "";
     shareSignature = user.share_signature ?? "Smarticky";
+    timeZone = user.time_zone || $preferencesStore.timeZone || "UTC";
     oldPassword = "";
     newPassword = "";
     confirmPassword = "";
@@ -105,6 +112,7 @@
         nickname: nickname.trim(),
         lazycat_uid: lazycatUID.trim(),
         share_signature: shareSignature.trim() || "Smarticky",
+        time_zone: timeZone || "UTC",
       });
       authStore.setUser(updated);
       notify(t("profileSaved", $preferencesStore.language), "success");
@@ -238,6 +246,7 @@
       {
         dateStyle: "medium",
         timeStyle: "short",
+        timeZone: $preferencesStore.timeZone,
       },
     ).format(new Date(value));
   }
@@ -306,6 +315,15 @@
             placeholder={t("shareSignaturePlaceholder", $preferencesStore.language)}
           />
           <small>{t("shareSignatureHint", $preferencesStore.language)}</small>
+        </label>
+        <label>
+          <span>{t("timeZone", $preferencesStore.language)}</span>
+          <select bind:value={timeZone}>
+            {#each timeZoneOptions as option}
+              <option value={option}>{option}</option>
+            {/each}
+          </select>
+          <small>{t("timeZoneHint", $preferencesStore.language)}</small>
         </label>
         <div class="settings-actions">
           <button class="primary" type="button" disabled={profileBusy} on:click={saveProfile}>

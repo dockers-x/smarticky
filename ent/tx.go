@@ -18,6 +18,8 @@ type Tx struct {
 	BackupConfig *BackupConfigClient
 	// ExcalidrawLibrary is the client for interacting with the ExcalidrawLibrary builders.
 	ExcalidrawLibrary *ExcalidrawLibraryClient
+	// Folder is the client for interacting with the Folder builders.
+	Folder *FolderClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
 	// ImportItem is the client for interacting with the ImportItem builders.
@@ -170,6 +172,7 @@ func (tx *Tx) init() {
 	tx.Attachment = NewAttachmentClient(tx.config)
 	tx.BackupConfig = NewBackupConfigClient(tx.config)
 	tx.ExcalidrawLibrary = NewExcalidrawLibraryClient(tx.config)
+	tx.Folder = NewFolderClient(tx.config)
 	tx.Font = NewFontClient(tx.config)
 	tx.ImportItem = NewImportItemClient(tx.config)
 	tx.ImportJob = NewImportJobClient(tx.config)

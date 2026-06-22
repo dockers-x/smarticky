@@ -26,8 +26,14 @@ export async function addToNote(noteId: UUID, tagName: string): Promise<void> {
   await loadTags();
 }
 
+export async function removeFromNote(noteId: UUID, tagId: UUID): Promise<void> {
+  await apiFetch(`/notes/${noteId}/tags/${tagId}`, { method: "DELETE" });
+  await loadTags();
+}
+
 export const tagsStore = {
   subscribe: allTags.subscribe,
   load: loadTags,
   addToNote,
+  removeFromNote,
 };

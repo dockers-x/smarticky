@@ -258,6 +258,27 @@ func (_u *BackupConfigUpdate) AddBackupMaxCount(v int) *BackupConfigUpdate {
 	return _u
 }
 
+// SetFolderMaxDepth sets the "folder_max_depth" field.
+func (_u *BackupConfigUpdate) SetFolderMaxDepth(v int) *BackupConfigUpdate {
+	_u.mutation.ResetFolderMaxDepth()
+	_u.mutation.SetFolderMaxDepth(v)
+	return _u
+}
+
+// SetNillableFolderMaxDepth sets the "folder_max_depth" field if the given value is not nil.
+func (_u *BackupConfigUpdate) SetNillableFolderMaxDepth(v *int) *BackupConfigUpdate {
+	if v != nil {
+		_u.SetFolderMaxDepth(*v)
+	}
+	return _u
+}
+
+// AddFolderMaxDepth adds value to the "folder_max_depth" field.
+func (_u *BackupConfigUpdate) AddFolderMaxDepth(v int) *BackupConfigUpdate {
+	_u.mutation.AddFolderMaxDepth(v)
+	return _u
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_u *BackupConfigUpdate) SetLastBackupAt(v time.Time) *BackupConfigUpdate {
 	_u.mutation.SetLastBackupAt(v)
@@ -413,6 +434,12 @@ func (_u *BackupConfigUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.AddedBackupMaxCount(); ok {
 		_spec.AddField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.FolderMaxDepth(); ok {
+		_spec.SetField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFolderMaxDepth(); ok {
+		_spec.AddField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)
@@ -676,6 +703,27 @@ func (_u *BackupConfigUpdateOne) AddBackupMaxCount(v int) *BackupConfigUpdateOne
 	return _u
 }
 
+// SetFolderMaxDepth sets the "folder_max_depth" field.
+func (_u *BackupConfigUpdateOne) SetFolderMaxDepth(v int) *BackupConfigUpdateOne {
+	_u.mutation.ResetFolderMaxDepth()
+	_u.mutation.SetFolderMaxDepth(v)
+	return _u
+}
+
+// SetNillableFolderMaxDepth sets the "folder_max_depth" field if the given value is not nil.
+func (_u *BackupConfigUpdateOne) SetNillableFolderMaxDepth(v *int) *BackupConfigUpdateOne {
+	if v != nil {
+		_u.SetFolderMaxDepth(*v)
+	}
+	return _u
+}
+
+// AddFolderMaxDepth adds value to the "folder_max_depth" field.
+func (_u *BackupConfigUpdateOne) AddFolderMaxDepth(v int) *BackupConfigUpdateOne {
+	_u.mutation.AddFolderMaxDepth(v)
+	return _u
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_u *BackupConfigUpdateOne) SetLastBackupAt(v time.Time) *BackupConfigUpdateOne {
 	_u.mutation.SetLastBackupAt(v)
@@ -861,6 +909,12 @@ func (_u *BackupConfigUpdateOne) sqlSave(ctx context.Context) (_node *BackupConf
 	}
 	if value, ok := _u.mutation.AddedBackupMaxCount(); ok {
 		_spec.AddField(backupconfig.FieldBackupMaxCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.FolderMaxDepth(); ok {
+		_spec.SetField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFolderMaxDepth(); ok {
+		_spec.AddField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)

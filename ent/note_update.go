@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"smarticky/ent/attachment"
+	"smarticky/ent/folder"
 	"smarticky/ent/note"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -188,6 +189,25 @@ func (_u *NoteUpdate) SetUser(v *User) *NoteUpdate {
 	return _u.SetUserID(v.ID)
 }
 
+// SetFolderID sets the "folder" edge to the Folder entity by ID.
+func (_u *NoteUpdate) SetFolderID(id uuid.UUID) *NoteUpdate {
+	_u.mutation.SetFolderID(id)
+	return _u
+}
+
+// SetNillableFolderID sets the "folder" edge to the Folder entity by ID if the given value is not nil.
+func (_u *NoteUpdate) SetNillableFolderID(id *uuid.UUID) *NoteUpdate {
+	if id != nil {
+		_u = _u.SetFolderID(*id)
+	}
+	return _u
+}
+
+// SetFolder sets the "folder" edge to the Folder entity.
+func (_u *NoteUpdate) SetFolder(v *Folder) *NoteUpdate {
+	return _u.SetFolderID(v.ID)
+}
+
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by IDs.
 func (_u *NoteUpdate) AddAttachmentIDs(ids ...int) *NoteUpdate {
 	_u.mutation.AddAttachmentIDs(ids...)
@@ -241,6 +261,12 @@ func (_u *NoteUpdate) Mutation() *NoteMutation {
 // ClearUser clears the "user" edge to the User entity.
 func (_u *NoteUpdate) ClearUser() *NoteUpdate {
 	_u.mutation.ClearUser()
+	return _u
+}
+
+// ClearFolder clears the "folder" edge to the Folder entity.
+func (_u *NoteUpdate) ClearFolder() *NoteUpdate {
+	_u.mutation.ClearFolder()
 	return _u
 }
 
@@ -410,6 +436,35 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FolderCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   note.FolderTable,
+			Columns: []string{note.FolderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FolderIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   note.FolderTable,
+			Columns: []string{note.FolderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -727,6 +782,25 @@ func (_u *NoteUpdateOne) SetUser(v *User) *NoteUpdateOne {
 	return _u.SetUserID(v.ID)
 }
 
+// SetFolderID sets the "folder" edge to the Folder entity by ID.
+func (_u *NoteUpdateOne) SetFolderID(id uuid.UUID) *NoteUpdateOne {
+	_u.mutation.SetFolderID(id)
+	return _u
+}
+
+// SetNillableFolderID sets the "folder" edge to the Folder entity by ID if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableFolderID(id *uuid.UUID) *NoteUpdateOne {
+	if id != nil {
+		_u = _u.SetFolderID(*id)
+	}
+	return _u
+}
+
+// SetFolder sets the "folder" edge to the Folder entity.
+func (_u *NoteUpdateOne) SetFolder(v *Folder) *NoteUpdateOne {
+	return _u.SetFolderID(v.ID)
+}
+
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by IDs.
 func (_u *NoteUpdateOne) AddAttachmentIDs(ids ...int) *NoteUpdateOne {
 	_u.mutation.AddAttachmentIDs(ids...)
@@ -780,6 +854,12 @@ func (_u *NoteUpdateOne) Mutation() *NoteMutation {
 // ClearUser clears the "user" edge to the User entity.
 func (_u *NoteUpdateOne) ClearUser() *NoteUpdateOne {
 	_u.mutation.ClearUser()
+	return _u
+}
+
+// ClearFolder clears the "folder" edge to the Folder entity.
+func (_u *NoteUpdateOne) ClearFolder() *NoteUpdateOne {
+	_u.mutation.ClearFolder()
 	return _u
 }
 
@@ -979,6 +1059,35 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FolderCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   note.FolderTable,
+			Columns: []string{note.FolderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FolderIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   note.FolderTable,
+			Columns: []string{note.FolderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

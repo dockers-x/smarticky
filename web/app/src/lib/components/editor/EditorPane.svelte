@@ -7,10 +7,14 @@
     Image as ImageIcon,
     Network,
     PencilRuler,
+    Plus,
+    Tag as TagIcon,
+    X,
   } from "@lucide/svelte";
   import { onDestroy, onMount, tick, type Component } from "svelte";
   import type { Note } from "../../api/types";
   import { createWhiteboard } from "../../api/whiteboards";
+  import { downloadMarkdownFile } from "../../editor/exportMarkdown";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
   import {
     createMermaidDiagramFence,
@@ -25,6 +29,12 @@
   } from "../../markdown/whiteboards";
   import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
+  import { uploadAttachment } from "../../stores/attachments";
+  import {
+    buildFolderTree,
+    flattenFolderTree,
+    foldersStore,
+  } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t, type Language } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
@@ -37,6 +47,7 @@
   type SaveStatus = "idle" | "saving" | "saved" | "error";
   type MarkdownEditorComponent = Component<{
     value: string;
+    noteId: string;
     onChange: (value: string) => void;
     bindEditor: (editor: MarkdownEditorHandle | null) => void;
   }>;
@@ -46,6 +57,7 @@
   let activeNoteID = "";
   let draftTitle = "";
   let draftContent = "";
+  let imageFileInput: HTMLInputElement | null = null;
   let titleInput: HTMLTextAreaElement | null = null;
   let sourceTextarea: HTMLTextAreaElement | null = null;
   let titleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,8 +72,10 @@
   let diagramMenuOpen = false;
   let diagramMenuView: "root" | "mermaid" = "root";
   let folderMenuOpen = false;
-  let quickTagName = "";
+  let tagMenuOpen = false;
+  let tagName = "";
   let tagBusy = false;
+  let tagError = "";
   let unregisterWhiteboardReferenceRemoval: (() => void) | null = null;
 
   const mermaidGroupOrder: MermaidDiagramVariantGroup[] = [
@@ -102,18 +116,23 @@
           year: "numeric",
           month: "2-digit",
           day: "2-digit",
+          timeZone: $preferencesStore.timeZone,
         },
       )
     : "";
-  $: wordCount = draftContent.replace(/\s/g, "").length;
-  $: currentTagNames = note?.tags?.map((tag) => tag.name) ?? [];
-  $: folderLabel = currentTagNames[0] || t("allNotes", $preferencesStore.language);
-  $: availableTags = $tagsStore.filter(
-    (tag) =>
-      !currentTagNames.some(
-        (name) => name.toLowerCase() === tag.name.toLowerCase(),
-      ),
+  $: visibleNoteTags = note?.tags?.slice(0, 4) ?? [];
+  $: hiddenNoteTagCount = Math.max(
+    (note?.tags?.length ?? 0) - visibleNoteTags.length,
+    0,
   );
+  $: noteTagIDs = new Set(note?.tags?.map((tag) => tag.id) ?? []);
+  $: availableNoteTags = $tagsStore.filter((tag) => !noteTagIDs.has(tag.id));
+  $: wordCount = draftContent.replace(/\s/g, "").length;
+  $: folderOptions = flattenFolderTree(buildFolderTree($foldersStore.folders));
+  $: currentFolder = note?.folder_id
+    ? $foldersStore.folders.find((folder) => folder.id === note?.folder_id)
+    : null;
+  $: folderLabel = currentFolder?.name || t("unfiledNotes", $preferencesStore.language);
   $: mermaidVariantGroups = mermaidGroupOrder
     .map((group) => ({
       group,
@@ -142,7 +161,9 @@
     diagramMenuOpen = false;
     diagramMenuView = "root";
     folderMenuOpen = false;
-    quickTagName = "";
+    tagMenuOpen = false;
+    tagName = "";
+    tagError = "";
     void tick().then(resizeTitleInput);
   }
 
@@ -189,7 +210,7 @@
   async function persistDraft(
     noteID: string,
     fields: Partial<
-      Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted">
+      Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted" | "folder_id">
     >,
   ): Promise<void> {
     if (!noteID || noteID !== activeNoteID) return;
@@ -213,7 +234,7 @@
     if (!note || !activeNoteID) return;
 
     const fields: Partial<
-      Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted">
+      Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted" | "folder_id">
     > = {};
     if (draftTitle !== note.title) fields.title = draftTitle;
     if (draftContent !== note.content) fields.content = draftContent;
@@ -236,6 +257,17 @@
     }
   }
 
+  function exportCurrentNoteMarkdown(): void {
+    if (!note) return;
+    downloadMarkdownFile(
+      draftTitle,
+      draftContent,
+      t("untitled", $preferencesStore.language),
+    );
+    notify(t("markdownDownloaded", $preferencesStore.language), "success");
+    void flushDraft();
+  }
+
   async function toggleStar(): Promise<void> {
     if (!note) return;
 
@@ -252,8 +284,34 @@
     }
   }
 
+  function markdownForAttachmentImage(file: File, downloadURL: string): string {
+    const alt = file.name.replace(/\.[^.]+$/, "").trim() || t("imageInsertAlt", $preferencesStore.language);
+    return `![${alt}](${downloadURL})`;
+  }
+
   function runImageInsert(): void {
-    const markdown = `![${t("imageInsertAlt", $preferencesStore.language)}]()`;
+    imageFileInput?.click();
+  }
+
+  async function handleImageFileSelected(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file || !note) return;
+
+    try {
+      const attachment = await uploadAttachment(note.id, file);
+      const markdown = markdownForAttachmentImage(
+        file,
+        attachment.download_url || `/api/attachments/${attachment.id}/download`,
+      );
+      insertImageMarkdown(markdown);
+    } catch {
+      notify(t("uploadAttachmentFailed", $preferencesStore.language), "error");
+    }
+  }
+
+  function insertImageMarkdown(markdown: string): void {
     if (sourceMode) {
       insertIntoSource(markdown);
       return;
@@ -428,27 +486,17 @@
     toggleSourceMode();
   }
 
-  async function addQuickTag(name = quickTagName): Promise<void> {
-    if (!note || tagBusy) return;
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    if (
-      note.tags?.some((tag) => tag.name.toLowerCase() === trimmed.toLowerCase())
-    ) {
-      quickTagName = "";
-      return;
-    }
-
-    tagBusy = true;
+  async function moveCurrentNoteToFolder(folderID: string | null): Promise<void> {
+    if (!note) return;
     try {
-      await tagsStore.addToNote(note.id, trimmed);
-      await notesStore.load();
-      quickTagName = "";
+      await notesStore.moveToFolder([note.id], folderID);
+      await Promise.all([notesStore.load(), foldersStore.load()]);
+      const refreshed = await notesStore.getByID(note.id);
+      notesStore.replaceSelected(refreshed);
       folderMenuOpen = false;
+      notify(t("movedNotes", $preferencesStore.language), "success");
     } catch {
-      notify(t("addTagFailed", $preferencesStore.language), "error");
-    } finally {
-      tagBusy = false;
+      notify(t("moveNotesFailed", $preferencesStore.language), "error");
     }
   }
 
@@ -523,10 +571,61 @@
     if (diagramMenuOpen) {
       actionMenuOpen = false;
       folderMenuOpen = false;
+      tagMenuOpen = false;
       diagramMenuView = "root";
       return;
     }
     diagramMenuView = "root";
+  }
+
+  async function refreshSelectedNote(): Promise<void> {
+    if (!note) return;
+    await notesStore.load();
+    const refreshed = await notesStore.getByID(note.id);
+    notesStore.replaceSelected(refreshed);
+  }
+
+  async function addTagToCurrentNote(name: string): Promise<void> {
+    if (!note) return;
+    const trimmed = name.trim();
+    if (!trimmed || tagBusy) return;
+    if (note.tags?.some((tag) => tag.name.toLowerCase() === trimmed.toLowerCase())) {
+      tagName = "";
+      return;
+    }
+
+    tagBusy = true;
+    tagError = "";
+    try {
+      await tagsStore.addToNote(note.id, trimmed);
+      await refreshSelectedNote();
+      tagName = "";
+    } catch (error) {
+      tagError =
+        error instanceof Error
+          ? error.message
+          : t("addTagFailed", $preferencesStore.language);
+    } finally {
+      tagBusy = false;
+    }
+  }
+
+  async function removeTagFromCurrentNote(tagID: string): Promise<void> {
+    if (!note || tagBusy) return;
+
+    tagBusy = true;
+    tagError = "";
+    try {
+      await tagsStore.removeFromNote(note.id, tagID);
+      await refreshSelectedNote();
+    } catch (error) {
+      tagError =
+        error instanceof Error
+          ? error.message
+          : t("addTagFailed", $preferencesStore.language);
+    } finally {
+      tagBusy = false;
+    }
   }
 
   async function runMenuAction(action: () => void | Promise<void>): Promise<void> {
@@ -535,6 +634,7 @@
   }
 
   onMount(() => {
+    void foldersStore.load();
     void tagsStore.load();
     void import("./MarkdownEditor.svelte").then((module) => {
       MarkdownEditor = module.default as MarkdownEditorComponent;
@@ -584,6 +684,15 @@
         >
           <ImageIcon aria-hidden="true" size={19} strokeWidth={2} />
         </button>
+        <input
+          bind:this={imageFileInput}
+          class="visually-hidden"
+          type="file"
+          accept="image/*"
+          tabindex="-1"
+          aria-hidden="true"
+          on:change={(event) => void handleImageFileSelected(event)}
+        />
         <div class="editor-diagram-menu">
           <button
             class="editor-icon-button"
@@ -751,6 +860,13 @@
                   ? t("exitFocus", $preferencesStore.language)
                   : t("enterFocus", $preferencesStore.language)}
               </button>
+              <button
+                class="editor-action-button"
+                type="button"
+                on:click={() => void runMenuAction(exportCurrentNoteMarkdown)}
+              >
+                {t("exportMarkdown", $preferencesStore.language)}
+              </button>
               {#if note.is_deleted}
                 <button
                   class="editor-action-button"
@@ -773,13 +889,6 @@
                 >
                   {t("generateImage", $preferencesStore.language)}
                 </button>
-                <button
-                  class="editor-action-button danger"
-                  type="button"
-                  on:click={() => void runMenuAction(toggleTrash)}
-                >
-                  {t("trashNote", $preferencesStore.language)}
-                </button>
               {/if}
             </div>
           {/if}
@@ -789,12 +898,13 @@
     <div class="editor-meta-bar">
       <div class="editor-meta-popover-anchor">
         <button
-          class="editor-meta-button"
+          class="editor-meta-button editor-folder-button"
           type="button"
           aria-label={`${t("noteLocation", $preferencesStore.language)}: ${folderLabel}`}
           aria-expanded={folderMenuOpen}
           on:click={() => {
             folderMenuOpen = !folderMenuOpen;
+            tagMenuOpen = false;
           }}
         >
           <span>{folderLabel}</span>
@@ -802,51 +912,120 @@
         </button>
         {#if folderMenuOpen}
           <div class="editor-popover editor-folder-popover">
-            <p class="editor-popover-title">{t("assignTag", $preferencesStore.language)}</p>
-            <button class="editor-popover-row active" type="button" disabled>
-              <span>{t("allNotes", $preferencesStore.language)}</span>
-              <span aria-hidden="true">✓</span>
+            <p class="editor-popover-title">{t("moveToNotebookGroup", $preferencesStore.language)}</p>
+            <button
+              class:active={!note.folder_id}
+              class="editor-popover-row"
+              type="button"
+              on:click={() => void moveCurrentNoteToFolder(null)}
+            >
+              <span>{t("unfiledNotes", $preferencesStore.language)}</span>
+              {#if !note.folder_id}
+                <span aria-hidden="true">✓</span>
+              {/if}
             </button>
-            {#if currentTagNames.length}
-              <p class="editor-popover-label">{t("currentTags", $preferencesStore.language)}</p>
-              {#each currentTagNames as tagName}
-                <button class="editor-popover-row active" type="button" disabled>
-                  <span>{tagName}</span>
-                  <span aria-hidden="true">✓</span>
-                </button>
-              {/each}
-            {/if}
-            {#if availableTags.length}
-              <p class="editor-popover-label">{t("availableTags", $preferencesStore.language)}</p>
-              {#each availableTags as tag (tag.id)}
+            {#if folderOptions.length}
+              <p class="editor-popover-label">{t("notebookGroups", $preferencesStore.language)}</p>
+              {#each folderOptions as option (option.id)}
                 <button
-                  class="editor-popover-row"
+                  class:active={note.folder_id === option.id}
+                  class="editor-popover-row editor-folder-option"
                   type="button"
-                  disabled={tagBusy}
-                  on:click={() => void addQuickTag(tag.name)}
+                  style={`--folder-depth: ${option.depth - 1}`}
+                  on:click={() => void moveCurrentNoteToFolder(option.id)}
                 >
-                  <span>{tag.name}</span>
-                  <span aria-hidden="true">＋</span>
+                  <span>{option.name}</span>
+                  {#if note.folder_id === option.id}
+                    <span aria-hidden="true">✓</span>
+                  {/if}
                 </button>
               {/each}
+            {:else}
+              <p class="editor-popover-label">{t("folderEmptyTitle", $preferencesStore.language)}</p>
             {/if}
-            <form class="editor-popover-form" on:submit|preventDefault={() => void addQuickTag()}>
-              <input
-                bind:value={quickTagName}
-                type="text"
-                placeholder={t("addTag", $preferencesStore.language)}
-                aria-label={t("addTag", $preferencesStore.language)}
-                disabled={tagBusy}
-              />
-              <button type="submit" disabled={tagBusy || !quickTagName.trim()}>
-                {t("add", $preferencesStore.language)}
-              </button>
-            </form>
           </div>
         {/if}
       </div>
       <time class="editor-meta-text" datetime={note.updated_at}>{noteDate}</time>
       <span class="editor-meta-text">{wordCount} {t("wordUnit", $preferencesStore.language)}</span>
+      <div class="editor-meta-popover-anchor editor-tag-anchor">
+        <button
+          class="editor-meta-button editor-tags-button"
+          type="button"
+          aria-label={t("tags", $preferencesStore.language)}
+          aria-expanded={tagMenuOpen}
+          on:click={() => {
+            tagMenuOpen = !tagMenuOpen;
+            folderMenuOpen = false;
+          }}
+        >
+          <TagIcon size={14} strokeWidth={1.8} aria-hidden="true" />
+          <span>
+            {visibleNoteTags.length
+              ? `${visibleNoteTags[0].name}${hiddenNoteTagCount > 0 ? ` +${hiddenNoteTagCount}` : ""}`
+              : t("tags", $preferencesStore.language)}
+          </span>
+        </button>
+        {#if tagMenuOpen}
+          <div class="editor-popover editor-tag-popover">
+            <p class="editor-popover-title">{t("tags", $preferencesStore.language)}</p>
+            {#if note.tags?.length}
+              <div class="editor-tag-chip-list" aria-label={t("currentTags", $preferencesStore.language)}>
+                {#each note.tags as tag (tag.id)}
+                  <button
+                    type="button"
+                    disabled={tagBusy}
+                    title={tag.name}
+                    on:click={() => void removeTagFromCurrentNote(tag.id)}
+                  >
+                    <span>{tag.name}</span>
+                    <X size={12} strokeWidth={2} aria-hidden="true" />
+                  </button>
+                {/each}
+              </div>
+            {:else}
+              <p class="editor-popover-label">{t("noTags", $preferencesStore.language)}</p>
+            {/if}
+            {#if availableNoteTags.length}
+              <p class="editor-popover-label">{t("availableTags", $preferencesStore.language)}</p>
+              <div class="editor-tag-options">
+                {#each availableNoteTags as tag (tag.id)}
+                  <button
+                    type="button"
+                    disabled={tagBusy}
+                    title={tag.name}
+                    on:click={() => void addTagToCurrentNote(tag.name)}
+                  >
+                    {tag.name}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            <form
+              class="editor-tag-add-row"
+              on:submit|preventDefault={() => void addTagToCurrentNote(tagName)}
+            >
+              <input
+                bind:value={tagName}
+                type="text"
+                placeholder={t("addTag", $preferencesStore.language)}
+                aria-label={t("addTag", $preferencesStore.language)}
+                disabled={tagBusy}
+              />
+              <button
+                type="submit"
+                aria-label={t("addTag", $preferencesStore.language)}
+                disabled={tagBusy || !tagName.trim()}
+              >
+                <Plus size={14} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </form>
+            {#if tagError}
+              <p class="editor-tag-error" role="alert">{tagError}</p>
+            {/if}
+          </div>
+        {/if}
+      </div>
       <span class="editor-meta-spacer"></span>
       <button
         class="editor-meta-star"
@@ -891,6 +1070,7 @@
             <svelte:component
               this={MarkdownEditor}
               value={draftContent}
+              noteId={note.id}
               onChange={scheduleContentSave}
               bindEditor={bindMarkdownEditor}
             />

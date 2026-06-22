@@ -1,28 +1,75 @@
 import { get, writable } from "svelte/store";
 import { apiFetch } from "../api/client";
 import type { Note } from "../api/types";
-import { t } from "./preferences";
+import { preferencesStore, t } from "./preferences";
 
 export type NoteFilter = "all" | "starred" | "trash";
+
+export interface NoteSearchFilters {
+  title: string;
+  tags: string[];
+  createdFrom: string;
+  createdTo: string;
+  updatedFrom: string;
+  updatedTo: string;
+}
 
 interface NotesState {
   notes: Note[];
   selected: Note | null;
   filter: NoteFilter;
+  folderID: string | null;
+  folderBrowserOpen: boolean;
   search: string;
+  searchFilters: NoteSearchFilters;
   loading: boolean;
   error: string;
 }
 
 type NoteUpdateFields = Partial<
-  Pick<Note, "title" | "content" | "color" | "is_starred" | "is_deleted">
+  Pick<
+    Note,
+    "title" | "content" | "color" | "is_starred" | "is_deleted" | "folder_id"
+  >
 >;
+
+const emptySearchFilters: NoteSearchFilters = {
+  title: "",
+  tags: [],
+  createdFrom: "",
+  createdTo: "",
+  updatedFrom: "",
+  updatedTo: "",
+};
 
 function queryFor(state: NotesState): string {
   const params = new URLSearchParams();
   if (state.filter === "starred") params.set("starred", "true");
   if (state.filter === "trash") params.set("trash", "true");
+  if (state.filter === "all" && state.folderID) {
+    params.set("folder_id", state.folderID);
+  }
   if (state.search.trim()) params.set("q", state.search.trim());
+  if (state.searchFilters.title.trim()) {
+    params.set("title", state.searchFilters.title.trim());
+  }
+  if (state.searchFilters.tags.length) {
+    params.set("tags", state.searchFilters.tags.join(","));
+  }
+  if (state.searchFilters.createdFrom) {
+    params.set("created_from", state.searchFilters.createdFrom);
+  }
+  if (state.searchFilters.createdTo) {
+    params.set("created_to", state.searchFilters.createdTo);
+  }
+  if (state.searchFilters.updatedFrom) {
+    params.set("updated_from", state.searchFilters.updatedFrom);
+  }
+  if (state.searchFilters.updatedTo) {
+    params.set("updated_to", state.searchFilters.updatedTo);
+  }
+  const timeZone = get(preferencesStore).timeZone;
+  if (timeZone) params.set("timezone", timeZone);
   return params.toString();
 }
 
@@ -32,7 +79,10 @@ function createNotesStore() {
     notes: [],
     selected: null,
     filter: "all",
+    folderID: null,
+    folderBrowserOpen: false,
     search: "",
+    searchFilters: { ...emptySearchFilters },
     loading: false,
     error: "",
   });
@@ -40,9 +90,18 @@ function createNotesStore() {
   function applyUpdatedNote(updated: Note): void {
     update((current) => ({
       ...current,
-      selected: current.selected?.id === updated.id ? updated : current.selected,
+      selected:
+        current.selected?.id === updated.id
+          ? {
+              ...current.selected,
+              ...updated,
+              tags: updated.tags ?? current.selected.tags,
+            }
+          : current.selected,
       notes: current.notes.map((note) =>
-        note.id === updated.id ? { ...note, ...updated } : note,
+        note.id === updated.id
+          ? { ...note, ...updated, tags: updated.tags ?? note.tags }
+          : note,
       ),
     }));
   }
@@ -93,15 +152,28 @@ function createNotesStore() {
   return {
     subscribe,
     load,
-    async create() {
+    async create(folderID?: string | null) {
+      const state = get({ subscribe });
+      const targetFolderID =
+        folderID === undefined && state.filter === "all"
+          ? state.folderID
+          : (folderID ?? null);
       const note = await apiFetch<Note>("/notes", {
         method: "POST",
-        body: JSON.stringify({ title: t("untitled"), content: "", color: "" }),
+        body: JSON.stringify({
+          title: t("untitled"),
+          content: "",
+          color: "",
+          folder_id: targetFolderID,
+        }),
       });
       update((state) => ({
         ...state,
         filter: "all",
+        folderID: targetFolderID,
+        folderBrowserOpen: false,
         search: "",
+        searchFilters: { ...emptySearchFilters },
         selected: note,
       }));
       await load();
@@ -114,11 +186,53 @@ function createNotesStore() {
       update((state) => ({ ...state, selected: null }));
     },
     async setFilter(filter: NoteFilter) {
-      update((state) => ({ ...state, filter, selected: null }));
+      update((state) => ({
+        ...state,
+        filter,
+        folderID: null,
+        folderBrowserOpen: false,
+        selected: null,
+      }));
       await load();
     },
+    async setFolder(folderID: string | null) {
+      update((state) => ({
+        ...state,
+        filter: "all",
+        folderID,
+        folderBrowserOpen: false,
+        selected: null,
+      }));
+      await load();
+    },
+    showFolderBrowser() {
+      update((state) => ({
+        ...state,
+        filter: "all",
+        folderBrowserOpen: true,
+      }));
+    },
     async setSearch(search: string) {
-      update((state) => ({ ...state, search }));
+      update((state) => ({ ...state, search, folderBrowserOpen: false }));
+      await load();
+    },
+    async setSearchFilters(fields: Partial<NoteSearchFilters>) {
+      update((state) => ({
+        ...state,
+        searchFilters: {
+          ...state.searchFilters,
+          ...fields,
+          tags: fields.tags ?? state.searchFilters.tags,
+        },
+      }));
+      await load();
+    },
+    async clearSearchFilters() {
+      update((state) => ({
+        ...state,
+        search: "",
+        searchFilters: { ...emptySearchFilters },
+      }));
       await load();
     },
     async updateSelected(fields: NoteUpdateFields) {
@@ -137,6 +251,31 @@ function createNotesStore() {
       return apiFetch<Note>(`/notes/${noteId}`);
     },
     updateNote,
+    async moveToFolder(noteIDs: string[], folderID: string | null) {
+      const uniqueNoteIDs = [...new Set(noteIDs)];
+      if (uniqueNoteIDs.length === 0) return;
+
+      await apiFetch<{ updated_count: number }>("/notes/move", {
+        method: "POST",
+        body: JSON.stringify({
+          note_ids: uniqueNoteIDs,
+          folder_id: folderID,
+        }),
+      });
+
+      update((state) => ({
+        ...state,
+        selected:
+          state.selected && uniqueNoteIDs.includes(state.selected.id)
+            ? { ...state.selected, folder_id: folderID }
+            : state.selected,
+        notes: state.notes.map((note) =>
+          uniqueNoteIDs.includes(note.id)
+            ? { ...note, folder_id: folderID, updated_at: new Date().toISOString() }
+            : note,
+        ),
+      }));
+    },
     replaceSelected(note: Note) {
       update((state) => ({
         ...state,

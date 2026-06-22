@@ -10,6 +10,18 @@ interface ConfirmRequest {
   resolve: (value: boolean) => void;
 }
 
+interface InputRequest {
+  title: string;
+  label: string;
+  message?: string;
+  initialValue?: string;
+  placeholder?: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  requiredMessage: string;
+  resolve: (value: string | null) => void;
+}
+
 interface Notification {
   id: number;
   message: string;
@@ -19,6 +31,7 @@ interface Notification {
 let notificationID = 0;
 
 export const confirmRequest = writable<ConfirmRequest | null>(null);
+export const inputRequest = writable<InputRequest | null>(null);
 export const notifications = writable<Notification[]>([]);
 
 export function confirmDialog(
@@ -26,6 +39,14 @@ export function confirmDialog(
 ): Promise<boolean> {
   return new Promise((resolve) => {
     confirmRequest.set({ ...options, resolve });
+  });
+}
+
+export function inputDialog(
+  options: Omit<InputRequest, "resolve">,
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    inputRequest.set({ ...options, resolve });
   });
 }
 

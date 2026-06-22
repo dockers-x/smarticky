@@ -9,6 +9,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/excalidrawlibrary"
+	"smarticky/ent/folder"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -39,6 +40,7 @@ const (
 	TypeAttachment        = "Attachment"
 	TypeBackupConfig      = "BackupConfig"
 	TypeExcalidrawLibrary = "ExcalidrawLibrary"
+	TypeFolder            = "Folder"
 	TypeFont              = "Font"
 	TypeImportItem        = "ImportItem"
 	TypeImportJob         = "ImportJob"
@@ -796,6 +798,8 @@ type BackupConfigMutation struct {
 	addbackup_retention_days *int
 	backup_max_count         *int
 	addbackup_max_count      *int
+	folder_max_depth         *int
+	addfolder_max_depth      *int
 	last_backup_at           *time.Time
 	created_at               *time.Time
 	updated_at               *time.Time
@@ -1479,6 +1483,62 @@ func (m *BackupConfigMutation) ResetBackupMaxCount() {
 	m.addbackup_max_count = nil
 }
 
+// SetFolderMaxDepth sets the "folder_max_depth" field.
+func (m *BackupConfigMutation) SetFolderMaxDepth(i int) {
+	m.folder_max_depth = &i
+	m.addfolder_max_depth = nil
+}
+
+// FolderMaxDepth returns the value of the "folder_max_depth" field in the mutation.
+func (m *BackupConfigMutation) FolderMaxDepth() (r int, exists bool) {
+	v := m.folder_max_depth
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFolderMaxDepth returns the old "folder_max_depth" field's value of the BackupConfig entity.
+// If the BackupConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupConfigMutation) OldFolderMaxDepth(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFolderMaxDepth is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFolderMaxDepth requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFolderMaxDepth: %w", err)
+	}
+	return oldValue.FolderMaxDepth, nil
+}
+
+// AddFolderMaxDepth adds i to the "folder_max_depth" field.
+func (m *BackupConfigMutation) AddFolderMaxDepth(i int) {
+	if m.addfolder_max_depth != nil {
+		*m.addfolder_max_depth += i
+	} else {
+		m.addfolder_max_depth = &i
+	}
+}
+
+// AddedFolderMaxDepth returns the value that was added to the "folder_max_depth" field in this mutation.
+func (m *BackupConfigMutation) AddedFolderMaxDepth() (r int, exists bool) {
+	v := m.addfolder_max_depth
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFolderMaxDepth resets all changes to the "folder_max_depth" field.
+func (m *BackupConfigMutation) ResetFolderMaxDepth() {
+	m.folder_max_depth = nil
+	m.addfolder_max_depth = nil
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (m *BackupConfigMutation) SetLastBackupAt(t time.Time) {
 	m.last_backup_at = &t
@@ -1634,7 +1694,7 @@ func (m *BackupConfigMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BackupConfigMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.webdav_url != nil {
 		fields = append(fields, backupconfig.FieldWebdavURL)
 	}
@@ -1670,6 +1730,9 @@ func (m *BackupConfigMutation) Fields() []string {
 	}
 	if m.backup_max_count != nil {
 		fields = append(fields, backupconfig.FieldBackupMaxCount)
+	}
+	if m.folder_max_depth != nil {
+		fields = append(fields, backupconfig.FieldFolderMaxDepth)
 	}
 	if m.last_backup_at != nil {
 		fields = append(fields, backupconfig.FieldLastBackupAt)
@@ -1712,6 +1775,8 @@ func (m *BackupConfigMutation) Field(name string) (ent.Value, bool) {
 		return m.BackupRetentionDays()
 	case backupconfig.FieldBackupMaxCount:
 		return m.BackupMaxCount()
+	case backupconfig.FieldFolderMaxDepth:
+		return m.FolderMaxDepth()
 	case backupconfig.FieldLastBackupAt:
 		return m.LastBackupAt()
 	case backupconfig.FieldCreatedAt:
@@ -1751,6 +1816,8 @@ func (m *BackupConfigMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldBackupRetentionDays(ctx)
 	case backupconfig.FieldBackupMaxCount:
 		return m.OldBackupMaxCount(ctx)
+	case backupconfig.FieldFolderMaxDepth:
+		return m.OldFolderMaxDepth(ctx)
 	case backupconfig.FieldLastBackupAt:
 		return m.OldLastBackupAt(ctx)
 	case backupconfig.FieldCreatedAt:
@@ -1850,6 +1917,13 @@ func (m *BackupConfigMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetBackupMaxCount(v)
 		return nil
+	case backupconfig.FieldFolderMaxDepth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFolderMaxDepth(v)
+		return nil
 	case backupconfig.FieldLastBackupAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -1885,6 +1959,9 @@ func (m *BackupConfigMutation) AddedFields() []string {
 	if m.addbackup_max_count != nil {
 		fields = append(fields, backupconfig.FieldBackupMaxCount)
 	}
+	if m.addfolder_max_depth != nil {
+		fields = append(fields, backupconfig.FieldFolderMaxDepth)
+	}
 	return fields
 }
 
@@ -1897,6 +1974,8 @@ func (m *BackupConfigMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedBackupRetentionDays()
 	case backupconfig.FieldBackupMaxCount:
 		return m.AddedBackupMaxCount()
+	case backupconfig.FieldFolderMaxDepth:
+		return m.AddedFolderMaxDepth()
 	}
 	return nil, false
 }
@@ -1919,6 +1998,13 @@ func (m *BackupConfigMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddBackupMaxCount(v)
+		return nil
+	case backupconfig.FieldFolderMaxDepth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFolderMaxDepth(v)
 		return nil
 	}
 	return fmt.Errorf("unknown BackupConfig numeric field %s", name)
@@ -2039,6 +2125,9 @@ func (m *BackupConfigMutation) ResetField(name string) error {
 		return nil
 	case backupconfig.FieldBackupMaxCount:
 		m.ResetBackupMaxCount()
+		return nil
+	case backupconfig.FieldFolderMaxDepth:
+		m.ResetFolderMaxDepth()
 		return nil
 	case backupconfig.FieldLastBackupAt:
 		m.ResetLastBackupAt()
@@ -2606,6 +2695,884 @@ func (m *ExcalidrawLibraryMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ExcalidrawLibrary edge %s", name)
+}
+
+// FolderMutation represents an operation that mutates the Folder nodes in the graph.
+type FolderMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *uuid.UUID
+	name            *string
+	sort_order      *int
+	addsort_order   *int
+	is_starred      *bool
+	created_at      *time.Time
+	updated_at      *time.Time
+	clearedFields   map[string]struct{}
+	user            *int
+	cleareduser     bool
+	parent          *uuid.UUID
+	clearedparent   bool
+	children        map[uuid.UUID]struct{}
+	removedchildren map[uuid.UUID]struct{}
+	clearedchildren bool
+	notes           map[uuid.UUID]struct{}
+	removednotes    map[uuid.UUID]struct{}
+	clearednotes    bool
+	done            bool
+	oldValue        func(context.Context) (*Folder, error)
+	predicates      []predicate.Folder
+}
+
+var _ ent.Mutation = (*FolderMutation)(nil)
+
+// folderOption allows management of the mutation configuration using functional options.
+type folderOption func(*FolderMutation)
+
+// newFolderMutation creates new mutation for the Folder entity.
+func newFolderMutation(c config, op Op, opts ...folderOption) *FolderMutation {
+	m := &FolderMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeFolder,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withFolderID sets the ID field of the mutation.
+func withFolderID(id uuid.UUID) folderOption {
+	return func(m *FolderMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Folder
+		)
+		m.oldValue = func(ctx context.Context) (*Folder, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Folder.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withFolder sets the old Folder of the mutation.
+func withFolder(node *Folder) folderOption {
+	return func(m *FolderMutation) {
+		m.oldValue = func(context.Context) (*Folder, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m FolderMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m FolderMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Folder entities.
+func (m *FolderMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *FolderMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *FolderMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Folder.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *FolderMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *FolderMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Folder entity.
+// If the Folder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FolderMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *FolderMutation) ResetName() {
+	m.name = nil
+}
+
+// SetSortOrder sets the "sort_order" field.
+func (m *FolderMutation) SetSortOrder(i int) {
+	m.sort_order = &i
+	m.addsort_order = nil
+}
+
+// SortOrder returns the value of the "sort_order" field in the mutation.
+func (m *FolderMutation) SortOrder() (r int, exists bool) {
+	v := m.sort_order
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSortOrder returns the old "sort_order" field's value of the Folder entity.
+// If the Folder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FolderMutation) OldSortOrder(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSortOrder is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSortOrder requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSortOrder: %w", err)
+	}
+	return oldValue.SortOrder, nil
+}
+
+// AddSortOrder adds i to the "sort_order" field.
+func (m *FolderMutation) AddSortOrder(i int) {
+	if m.addsort_order != nil {
+		*m.addsort_order += i
+	} else {
+		m.addsort_order = &i
+	}
+}
+
+// AddedSortOrder returns the value that was added to the "sort_order" field in this mutation.
+func (m *FolderMutation) AddedSortOrder() (r int, exists bool) {
+	v := m.addsort_order
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSortOrder resets all changes to the "sort_order" field.
+func (m *FolderMutation) ResetSortOrder() {
+	m.sort_order = nil
+	m.addsort_order = nil
+}
+
+// SetIsStarred sets the "is_starred" field.
+func (m *FolderMutation) SetIsStarred(b bool) {
+	m.is_starred = &b
+}
+
+// IsStarred returns the value of the "is_starred" field in the mutation.
+func (m *FolderMutation) IsStarred() (r bool, exists bool) {
+	v := m.is_starred
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsStarred returns the old "is_starred" field's value of the Folder entity.
+// If the Folder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FolderMutation) OldIsStarred(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsStarred is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsStarred requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsStarred: %w", err)
+	}
+	return oldValue.IsStarred, nil
+}
+
+// ResetIsStarred resets all changes to the "is_starred" field.
+func (m *FolderMutation) ResetIsStarred() {
+	m.is_starred = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *FolderMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *FolderMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Folder entity.
+// If the Folder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FolderMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *FolderMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *FolderMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *FolderMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Folder entity.
+// If the Folder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FolderMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *FolderMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *FolderMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *FolderMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *FolderMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *FolderMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *FolderMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *FolderMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// SetParentID sets the "parent" edge to the Folder entity by id.
+func (m *FolderMutation) SetParentID(id uuid.UUID) {
+	m.parent = &id
+}
+
+// ClearParent clears the "parent" edge to the Folder entity.
+func (m *FolderMutation) ClearParent() {
+	m.clearedparent = true
+}
+
+// ParentCleared reports if the "parent" edge to the Folder entity was cleared.
+func (m *FolderMutation) ParentCleared() bool {
+	return m.clearedparent
+}
+
+// ParentID returns the "parent" edge ID in the mutation.
+func (m *FolderMutation) ParentID() (id uuid.UUID, exists bool) {
+	if m.parent != nil {
+		return *m.parent, true
+	}
+	return
+}
+
+// ParentIDs returns the "parent" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ParentID instead. It exists only for internal usage by the builders.
+func (m *FolderMutation) ParentIDs() (ids []uuid.UUID) {
+	if id := m.parent; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetParent resets all changes to the "parent" edge.
+func (m *FolderMutation) ResetParent() {
+	m.parent = nil
+	m.clearedparent = false
+}
+
+// AddChildIDs adds the "children" edge to the Folder entity by ids.
+func (m *FolderMutation) AddChildIDs(ids ...uuid.UUID) {
+	if m.children == nil {
+		m.children = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.children[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChildren clears the "children" edge to the Folder entity.
+func (m *FolderMutation) ClearChildren() {
+	m.clearedchildren = true
+}
+
+// ChildrenCleared reports if the "children" edge to the Folder entity was cleared.
+func (m *FolderMutation) ChildrenCleared() bool {
+	return m.clearedchildren
+}
+
+// RemoveChildIDs removes the "children" edge to the Folder entity by IDs.
+func (m *FolderMutation) RemoveChildIDs(ids ...uuid.UUID) {
+	if m.removedchildren == nil {
+		m.removedchildren = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.children, ids[i])
+		m.removedchildren[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChildren returns the removed IDs of the "children" edge to the Folder entity.
+func (m *FolderMutation) RemovedChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.removedchildren {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChildrenIDs returns the "children" edge IDs in the mutation.
+func (m *FolderMutation) ChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.children {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChildren resets all changes to the "children" edge.
+func (m *FolderMutation) ResetChildren() {
+	m.children = nil
+	m.clearedchildren = false
+	m.removedchildren = nil
+}
+
+// AddNoteIDs adds the "notes" edge to the Note entity by ids.
+func (m *FolderMutation) AddNoteIDs(ids ...uuid.UUID) {
+	if m.notes == nil {
+		m.notes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.notes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearNotes clears the "notes" edge to the Note entity.
+func (m *FolderMutation) ClearNotes() {
+	m.clearednotes = true
+}
+
+// NotesCleared reports if the "notes" edge to the Note entity was cleared.
+func (m *FolderMutation) NotesCleared() bool {
+	return m.clearednotes
+}
+
+// RemoveNoteIDs removes the "notes" edge to the Note entity by IDs.
+func (m *FolderMutation) RemoveNoteIDs(ids ...uuid.UUID) {
+	if m.removednotes == nil {
+		m.removednotes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.notes, ids[i])
+		m.removednotes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedNotes returns the removed IDs of the "notes" edge to the Note entity.
+func (m *FolderMutation) RemovedNotesIDs() (ids []uuid.UUID) {
+	for id := range m.removednotes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// NotesIDs returns the "notes" edge IDs in the mutation.
+func (m *FolderMutation) NotesIDs() (ids []uuid.UUID) {
+	for id := range m.notes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetNotes resets all changes to the "notes" edge.
+func (m *FolderMutation) ResetNotes() {
+	m.notes = nil
+	m.clearednotes = false
+	m.removednotes = nil
+}
+
+// Where appends a list predicates to the FolderMutation builder.
+func (m *FolderMutation) Where(ps ...predicate.Folder) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the FolderMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *FolderMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Folder, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *FolderMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *FolderMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Folder).
+func (m *FolderMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *FolderMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.name != nil {
+		fields = append(fields, folder.FieldName)
+	}
+	if m.sort_order != nil {
+		fields = append(fields, folder.FieldSortOrder)
+	}
+	if m.is_starred != nil {
+		fields = append(fields, folder.FieldIsStarred)
+	}
+	if m.created_at != nil {
+		fields = append(fields, folder.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, folder.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *FolderMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case folder.FieldName:
+		return m.Name()
+	case folder.FieldSortOrder:
+		return m.SortOrder()
+	case folder.FieldIsStarred:
+		return m.IsStarred()
+	case folder.FieldCreatedAt:
+		return m.CreatedAt()
+	case folder.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *FolderMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case folder.FieldName:
+		return m.OldName(ctx)
+	case folder.FieldSortOrder:
+		return m.OldSortOrder(ctx)
+	case folder.FieldIsStarred:
+		return m.OldIsStarred(ctx)
+	case folder.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case folder.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Folder field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FolderMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case folder.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case folder.FieldSortOrder:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSortOrder(v)
+		return nil
+	case folder.FieldIsStarred:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsStarred(v)
+		return nil
+	case folder.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case folder.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Folder field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *FolderMutation) AddedFields() []string {
+	var fields []string
+	if m.addsort_order != nil {
+		fields = append(fields, folder.FieldSortOrder)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *FolderMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case folder.FieldSortOrder:
+		return m.AddedSortOrder()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FolderMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case folder.FieldSortOrder:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSortOrder(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Folder numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *FolderMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *FolderMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *FolderMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Folder nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *FolderMutation) ResetField(name string) error {
+	switch name {
+	case folder.FieldName:
+		m.ResetName()
+		return nil
+	case folder.FieldSortOrder:
+		m.ResetSortOrder()
+		return nil
+	case folder.FieldIsStarred:
+		m.ResetIsStarred()
+		return nil
+	case folder.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case folder.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Folder field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *FolderMutation) AddedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.user != nil {
+		edges = append(edges, folder.EdgeUser)
+	}
+	if m.parent != nil {
+		edges = append(edges, folder.EdgeParent)
+	}
+	if m.children != nil {
+		edges = append(edges, folder.EdgeChildren)
+	}
+	if m.notes != nil {
+		edges = append(edges, folder.EdgeNotes)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *FolderMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case folder.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case folder.EdgeParent:
+		if id := m.parent; id != nil {
+			return []ent.Value{*id}
+		}
+	case folder.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.children))
+		for id := range m.children {
+			ids = append(ids, id)
+		}
+		return ids
+	case folder.EdgeNotes:
+		ids := make([]ent.Value, 0, len(m.notes))
+		for id := range m.notes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *FolderMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.removedchildren != nil {
+		edges = append(edges, folder.EdgeChildren)
+	}
+	if m.removednotes != nil {
+		edges = append(edges, folder.EdgeNotes)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *FolderMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case folder.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.removedchildren))
+		for id := range m.removedchildren {
+			ids = append(ids, id)
+		}
+		return ids
+	case folder.EdgeNotes:
+		ids := make([]ent.Value, 0, len(m.removednotes))
+		for id := range m.removednotes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *FolderMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.cleareduser {
+		edges = append(edges, folder.EdgeUser)
+	}
+	if m.clearedparent {
+		edges = append(edges, folder.EdgeParent)
+	}
+	if m.clearedchildren {
+		edges = append(edges, folder.EdgeChildren)
+	}
+	if m.clearednotes {
+		edges = append(edges, folder.EdgeNotes)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *FolderMutation) EdgeCleared(name string) bool {
+	switch name {
+	case folder.EdgeUser:
+		return m.cleareduser
+	case folder.EdgeParent:
+		return m.clearedparent
+	case folder.EdgeChildren:
+		return m.clearedchildren
+	case folder.EdgeNotes:
+		return m.clearednotes
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *FolderMutation) ClearEdge(name string) error {
+	switch name {
+	case folder.EdgeUser:
+		m.ClearUser()
+		return nil
+	case folder.EdgeParent:
+		m.ClearParent()
+		return nil
+	}
+	return fmt.Errorf("unknown Folder unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *FolderMutation) ResetEdge(name string) error {
+	switch name {
+	case folder.EdgeUser:
+		m.ResetUser()
+		return nil
+	case folder.EdgeParent:
+		m.ResetParent()
+		return nil
+	case folder.EdgeChildren:
+		m.ResetChildren()
+		return nil
+	case folder.EdgeNotes:
+		m.ResetNotes()
+		return nil
+	}
+	return fmt.Errorf("unknown Folder edge %s", name)
 }
 
 // FontMutation represents an operation that mutates the Font nodes in the graph.
@@ -6559,6 +7526,8 @@ type NoteMutation struct {
 	clearedFields      map[string]struct{}
 	user               *int
 	cleareduser        bool
+	folder             *uuid.UUID
+	clearedfolder      bool
 	attachments        map[int]struct{}
 	removedattachments map[int]struct{}
 	clearedattachments bool
@@ -7079,6 +8048,45 @@ func (m *NoteMutation) ResetUser() {
 	m.cleareduser = false
 }
 
+// SetFolderID sets the "folder" edge to the Folder entity by id.
+func (m *NoteMutation) SetFolderID(id uuid.UUID) {
+	m.folder = &id
+}
+
+// ClearFolder clears the "folder" edge to the Folder entity.
+func (m *NoteMutation) ClearFolder() {
+	m.clearedfolder = true
+}
+
+// FolderCleared reports if the "folder" edge to the Folder entity was cleared.
+func (m *NoteMutation) FolderCleared() bool {
+	return m.clearedfolder
+}
+
+// FolderID returns the "folder" edge ID in the mutation.
+func (m *NoteMutation) FolderID() (id uuid.UUID, exists bool) {
+	if m.folder != nil {
+		return *m.folder, true
+	}
+	return
+}
+
+// FolderIDs returns the "folder" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FolderID instead. It exists only for internal usage by the builders.
+func (m *NoteMutation) FolderIDs() (ids []uuid.UUID) {
+	if id := m.folder; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFolder resets all changes to the "folder" edge.
+func (m *NoteMutation) ResetFolder() {
+	m.folder = nil
+	m.clearedfolder = false
+}
+
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by ids.
 func (m *NoteMutation) AddAttachmentIDs(ids ...int) {
 	if m.attachments == nil {
@@ -7531,9 +8539,12 @@ func (m *NoteMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NoteMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.user != nil {
 		edges = append(edges, note.EdgeUser)
+	}
+	if m.folder != nil {
+		edges = append(edges, note.EdgeFolder)
 	}
 	if m.attachments != nil {
 		edges = append(edges, note.EdgeAttachments)
@@ -7553,6 +8564,10 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 	switch name {
 	case note.EdgeUser:
 		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case note.EdgeFolder:
+		if id := m.folder; id != nil {
 			return []ent.Value{*id}
 		}
 	case note.EdgeAttachments:
@@ -7579,7 +8594,7 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *NoteMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.removedattachments != nil {
 		edges = append(edges, note.EdgeAttachments)
 	}
@@ -7620,9 +8635,12 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NoteMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.cleareduser {
 		edges = append(edges, note.EdgeUser)
+	}
+	if m.clearedfolder {
+		edges = append(edges, note.EdgeFolder)
 	}
 	if m.clearedattachments {
 		edges = append(edges, note.EdgeAttachments)
@@ -7642,6 +8660,8 @@ func (m *NoteMutation) EdgeCleared(name string) bool {
 	switch name {
 	case note.EdgeUser:
 		return m.cleareduser
+	case note.EdgeFolder:
+		return m.clearedfolder
 	case note.EdgeAttachments:
 		return m.clearedattachments
 	case note.EdgeWhiteboards:
@@ -7659,6 +8679,9 @@ func (m *NoteMutation) ClearEdge(name string) error {
 	case note.EdgeUser:
 		m.ClearUser()
 		return nil
+	case note.EdgeFolder:
+		m.ClearFolder()
+		return nil
 	}
 	return fmt.Errorf("unknown Note unique edge %s", name)
 }
@@ -7669,6 +8692,9 @@ func (m *NoteMutation) ResetEdge(name string) error {
 	switch name {
 	case note.EdgeUser:
 		m.ResetUser()
+		return nil
+	case note.EdgeFolder:
+		m.ResetFolder()
 		return nil
 	case note.EdgeAttachments:
 		m.ResetAttachments()
@@ -8364,6 +9390,7 @@ type UserMutation struct {
 	role                      *user.Role
 	avatar                    *string
 	share_signature           *string
+	time_zone                 *string
 	lazycat_uid               *string
 	created_at                *time.Time
 	updated_at                *time.Time
@@ -8371,6 +9398,9 @@ type UserMutation struct {
 	notes                     map[uuid.UUID]struct{}
 	removednotes              map[uuid.UUID]struct{}
 	clearednotes              bool
+	folders                   map[uuid.UUID]struct{}
+	removedfolders            map[uuid.UUID]struct{}
+	clearedfolders            bool
 	attachments               map[int]struct{}
 	removedattachments        map[int]struct{}
 	clearedattachments        bool
@@ -8788,6 +9818,42 @@ func (m *UserMutation) ResetShareSignature() {
 	m.share_signature = nil
 }
 
+// SetTimeZone sets the "time_zone" field.
+func (m *UserMutation) SetTimeZone(s string) {
+	m.time_zone = &s
+}
+
+// TimeZone returns the value of the "time_zone" field in the mutation.
+func (m *UserMutation) TimeZone() (r string, exists bool) {
+	v := m.time_zone
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimeZone returns the old "time_zone" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldTimeZone(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimeZone is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimeZone requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimeZone: %w", err)
+	}
+	return oldValue.TimeZone, nil
+}
+
+// ResetTimeZone resets all changes to the "time_zone" field.
+func (m *UserMutation) ResetTimeZone() {
+	m.time_zone = nil
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (m *UserMutation) SetLazycatUID(s string) {
 	m.lazycat_uid = &s
@@ -8961,6 +10027,60 @@ func (m *UserMutation) ResetNotes() {
 	m.notes = nil
 	m.clearednotes = false
 	m.removednotes = nil
+}
+
+// AddFolderIDs adds the "folders" edge to the Folder entity by ids.
+func (m *UserMutation) AddFolderIDs(ids ...uuid.UUID) {
+	if m.folders == nil {
+		m.folders = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.folders[ids[i]] = struct{}{}
+	}
+}
+
+// ClearFolders clears the "folders" edge to the Folder entity.
+func (m *UserMutation) ClearFolders() {
+	m.clearedfolders = true
+}
+
+// FoldersCleared reports if the "folders" edge to the Folder entity was cleared.
+func (m *UserMutation) FoldersCleared() bool {
+	return m.clearedfolders
+}
+
+// RemoveFolderIDs removes the "folders" edge to the Folder entity by IDs.
+func (m *UserMutation) RemoveFolderIDs(ids ...uuid.UUID) {
+	if m.removedfolders == nil {
+		m.removedfolders = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.folders, ids[i])
+		m.removedfolders[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedFolders returns the removed IDs of the "folders" edge to the Folder entity.
+func (m *UserMutation) RemovedFoldersIDs() (ids []uuid.UUID) {
+	for id := range m.removedfolders {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// FoldersIDs returns the "folders" edge IDs in the mutation.
+func (m *UserMutation) FoldersIDs() (ids []uuid.UUID) {
+	for id := range m.folders {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetFolders resets all changes to the "folders" edge.
+func (m *UserMutation) ResetFolders() {
+	m.folders = nil
+	m.clearedfolders = false
+	m.removedfolders = nil
 }
 
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by ids.
@@ -9414,7 +10534,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
 	}
@@ -9435,6 +10555,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.share_signature != nil {
 		fields = append(fields, user.FieldShareSignature)
+	}
+	if m.time_zone != nil {
+		fields = append(fields, user.FieldTimeZone)
 	}
 	if m.lazycat_uid != nil {
 		fields = append(fields, user.FieldLazycatUID)
@@ -9467,6 +10590,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Avatar()
 	case user.FieldShareSignature:
 		return m.ShareSignature()
+	case user.FieldTimeZone:
+		return m.TimeZone()
 	case user.FieldLazycatUID:
 		return m.LazycatUID()
 	case user.FieldCreatedAt:
@@ -9496,6 +10621,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldAvatar(ctx)
 	case user.FieldShareSignature:
 		return m.OldShareSignature(ctx)
+	case user.FieldTimeZone:
+		return m.OldTimeZone(ctx)
 	case user.FieldLazycatUID:
 		return m.OldLazycatUID(ctx)
 	case user.FieldCreatedAt:
@@ -9559,6 +10686,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetShareSignature(v)
+		return nil
+	case user.FieldTimeZone:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimeZone(v)
 		return nil
 	case user.FieldLazycatUID:
 		v, ok := value.(string)
@@ -9678,6 +10812,9 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldShareSignature:
 		m.ResetShareSignature()
 		return nil
+	case user.FieldTimeZone:
+		m.ResetTimeZone()
+		return nil
 	case user.FieldLazycatUID:
 		m.ResetLazycatUID()
 		return nil
@@ -9693,9 +10830,12 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.notes != nil {
 		edges = append(edges, user.EdgeNotes)
+	}
+	if m.folders != nil {
+		edges = append(edges, user.EdgeFolders)
 	}
 	if m.attachments != nil {
 		edges = append(edges, user.EdgeAttachments)
@@ -9731,6 +10871,12 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 	case user.EdgeNotes:
 		ids := make([]ent.Value, 0, len(m.notes))
 		for id := range m.notes {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeFolders:
+		ids := make([]ent.Value, 0, len(m.folders))
+		for id := range m.folders {
 			ids = append(ids, id)
 		}
 		return ids
@@ -9786,9 +10932,12 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.removednotes != nil {
 		edges = append(edges, user.EdgeNotes)
+	}
+	if m.removedfolders != nil {
+		edges = append(edges, user.EdgeFolders)
 	}
 	if m.removedattachments != nil {
 		edges = append(edges, user.EdgeAttachments)
@@ -9821,6 +10970,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 	case user.EdgeNotes:
 		ids := make([]ent.Value, 0, len(m.removednotes))
 		for id := range m.removednotes {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeFolders:
+		ids := make([]ent.Value, 0, len(m.removedfolders))
+		for id := range m.removedfolders {
 			ids = append(ids, id)
 		}
 		return ids
@@ -9872,9 +11027,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.clearednotes {
 		edges = append(edges, user.EdgeNotes)
+	}
+	if m.clearedfolders {
+		edges = append(edges, user.EdgeFolders)
 	}
 	if m.clearedattachments {
 		edges = append(edges, user.EdgeAttachments)
@@ -9909,6 +11067,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgeNotes:
 		return m.clearednotes
+	case user.EdgeFolders:
+		return m.clearedfolders
 	case user.EdgeAttachments:
 		return m.clearedattachments
 	case user.EdgeExcalidrawLibrary:
@@ -9946,6 +11106,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 	switch name {
 	case user.EdgeNotes:
 		m.ResetNotes()
+		return nil
+	case user.EdgeFolders:
+		m.ResetFolders()
 		return nil
 	case user.EdgeAttachments:
 		m.ResetAttachments()

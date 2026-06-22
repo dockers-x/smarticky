@@ -21,6 +21,7 @@ export interface UpdateUserPayload {
   avatar?: string;
   lazycat_uid?: string;
   share_signature?: string;
+  time_zone?: string;
   role?: "admin" | "user";
 }
 

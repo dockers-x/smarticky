@@ -8,6 +8,7 @@ export interface User {
   role: "admin" | "user";
   avatar?: string;
   share_signature?: string;
+  time_zone?: string;
   lazycat_uid?: string | null;
 }
 
@@ -25,6 +26,7 @@ export interface Attachment {
   file_size: number;
   mime_type?: string;
   created_at: string;
+  download_url?: string;
 }
 
 export interface Whiteboard {
@@ -52,9 +54,27 @@ export interface Note {
   is_locked: boolean;
   is_starred: boolean;
   is_deleted: boolean;
+  folder_id?: UUID | null;
   tags?: Tag[];
   created_at: string;
   updated_at: string;
+}
+
+export interface Folder {
+  id: UUID;
+  name: string;
+  parent_id?: UUID | null;
+  sort_order: number;
+  is_starred: boolean;
+  note_count: number;
+  child_count: number;
+  depth: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FolderSettings {
+  max_depth: number;
 }
 
 export interface SetupCheckResponse {

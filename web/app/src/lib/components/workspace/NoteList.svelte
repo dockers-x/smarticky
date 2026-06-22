@@ -1,12 +1,20 @@
 <script lang="ts">
-  import { Plus, Settings } from "@lucide/svelte";
+  import { onMount } from "svelte";
+  import { FolderInput, Plus, Settings, SlidersHorizontal, X } from "@lucide/svelte";
   import ToolsPanel from "../settings/ToolsPanel.svelte";
   import type { Note } from "../../api/types";
   import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
+  import {
+    buildFolderTree,
+    flattenFolderTree,
+    foldersStore,
+  } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
+  import { tagsStore } from "../../stores/tags";
   import EmptyState from "./EmptyState.svelte";
+  import FolderBrowserPane from "./FolderBrowserPane.svelte";
   import NoteCard from "./NoteCard.svelte";
 
   interface NoteGroup {
@@ -15,38 +23,88 @@
   }
 
   let settingsOpen = false;
+  let moveMenuOpen = false;
+  let filterPanelOpen = false;
+  let selectedNoteIDs: string[] = [];
+
+  onMount(() => {
+    void tagsStore.load();
+  });
 
   $: filters = [
     { id: "all" as const, label: t("allNotes", $preferencesStore.language) },
     { id: "starred" as const, label: t("starred", $preferencesStore.language) },
     { id: "trash" as const, label: t("trash", $preferencesStore.language) },
   ];
-
-  function groupLabel(date: Date, language: "zh" | "en"): string {
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    const sameDay = (left: Date, right: Date) =>
-      left.getFullYear() === right.getFullYear() &&
-      left.getMonth() === right.getMonth() &&
-      left.getDate() === right.getDate();
-
-    if (sameDay(date, today)) return t("today", language);
-    if (sameDay(date, yesterday)) return t("yesterday", language);
-
-    return date.toLocaleDateString(
-      language === "zh" ? "zh-CN" : "en-US",
-      {
-        month: "long",
-        day: "numeric",
-        year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
-      },
+  $: folderOptions = flattenFolderTree(buildFolderTree($foldersStore.folders));
+  $: activeFolder =
+    $notesStore.folderID && $notesStore.folderID !== "unfiled"
+      ? $foldersStore.folders.find((folder) => folder.id === $notesStore.folderID)
+      : null;
+  $: viewTitle =
+    $notesStore.filter === "trash"
+      ? t("trash", $preferencesStore.language)
+      : $notesStore.filter === "starred"
+        ? t("starred", $preferencesStore.language)
+        : $notesStore.folderID === "unfiled"
+          ? t("unfiledNotes", $preferencesStore.language)
+          : activeFolder?.name ?? t("allNotes", $preferencesStore.language);
+  $: starredFolders = $foldersStore.folders.filter((folder) => folder.is_starred);
+  $: selectedCount = selectedNoteIDs.length;
+  $: advancedFilterCount =
+    ($notesStore.searchFilters.title.trim() ? 1 : 0) +
+    $notesStore.searchFilters.tags.length +
+    ($notesStore.searchFilters.createdFrom ? 1 : 0) +
+    ($notesStore.searchFilters.createdTo ? 1 : 0) +
+    ($notesStore.searchFilters.updatedFrom ? 1 : 0) +
+    ($notesStore.searchFilters.updatedTo ? 1 : 0);
+  $: visibleNoteIDs = new Set($notesStore.notes.map((note) => note.id));
+  $: {
+    const nextSelectedNoteIDs = selectedNoteIDs.filter((id) =>
+      visibleNoteIDs.has(id),
     );
+    if (nextSelectedNoteIDs.length !== selectedNoteIDs.length) {
+      selectedNoteIDs = nextSelectedNoteIDs;
+    }
+  }
+
+  function dateKey(date: Date, timeZone: string): string {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const value = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? "";
+    return `${value("year")}-${value("month")}-${value("day")}`;
+  }
+
+  function groupLabel(date: Date, language: "zh" | "en", timeZone: string): string {
+    const today = new Date();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const noteKey = dateKey(date, timeZone);
+    if (noteKey === dateKey(today, timeZone)) return t("today", language);
+    if (noteKey === dateKey(yesterday, timeZone)) return t("yesterday", language);
+
+    const noteYear = noteKey.slice(0, 4);
+    const todayYear = dateKey(today, timeZone).slice(0, 4);
+
+    return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+      month: "long",
+      day: "numeric",
+      year: noteYear === todayYear ? undefined : "numeric",
+      timeZone,
+    }).format(date);
   }
 
   $: groupedNotes = $notesStore.notes.reduce<NoteGroup[]>((groups, note) => {
-    const label = groupLabel(new Date(note.updated_at), $preferencesStore.language);
+    const label = groupLabel(
+      new Date(note.updated_at),
+      $preferencesStore.language,
+      $preferencesStore.timeZone,
+    );
     const group = groups.find((item) => item.label === label);
     if (group) {
       group.notes.push(note);
@@ -55,6 +113,89 @@
     }
     return groups;
   }, []);
+
+  function toggleSelected(noteID: string): void {
+    selectedNoteIDs = selectedNoteIDs.includes(noteID)
+      ? selectedNoteIDs.filter((id) => id !== noteID)
+      : [...selectedNoteIDs, noteID];
+  }
+
+  function clearSelection(): void {
+    selectedNoteIDs = [];
+    moveMenuOpen = false;
+  }
+
+  async function toggleSearchTag(tagName: string): Promise<void> {
+    const tags = $notesStore.searchFilters.tags.includes(tagName)
+      ? $notesStore.searchFilters.tags.filter((name) => name !== tagName)
+      : [...$notesStore.searchFilters.tags, tagName];
+    await notesStore.setSearchFilters({ tags });
+  }
+
+  async function selectFolder(folderID: string): Promise<void> {
+    foldersStore.select(folderID);
+    await notesStore.setFolder(folderID);
+  }
+
+  async function moveSelected(folderID: string | null): Promise<void> {
+    if (selectedNoteIDs.length === 0) return;
+
+    try {
+      await notesStore.moveToFolder(selectedNoteIDs, folderID);
+      clearSelection();
+      await Promise.all([notesStore.load(), foldersStore.load()]);
+      notify(t("movedNotes", $preferencesStore.language), "success");
+    } catch {
+      notify(t("moveNotesFailed", $preferencesStore.language), "error");
+    }
+  }
+
+  async function toggleNoteStar(note: Note): Promise<void> {
+    try {
+      await notesStore.updateNote(note.id, { is_starred: !note.is_starred });
+      await notesStore.load();
+    } catch {
+      notify(t("updateStarFailed", $preferencesStore.language), "error");
+    }
+  }
+
+  async function deleteNoteFromList(note: Note): Promise<void> {
+    if (note.is_deleted) {
+      const confirmed = await confirmDialog({
+        title: t("deleteForever", $preferencesStore.language),
+        message: t("deleteForeverMessage", $preferencesStore.language),
+        confirmLabel: t("deleteForever", $preferencesStore.language),
+        cancelLabel: t("cancel", $preferencesStore.language),
+      });
+      if (!confirmed) return;
+
+      try {
+        await notesStore.deletePermanent(note.id);
+        selectedNoteIDs = selectedNoteIDs.filter((id) => id !== note.id);
+        notify(t("deletedNote", $preferencesStore.language), "success");
+      } catch {
+        notify(t("deleteForeverFailed", $preferencesStore.language), "error");
+      }
+      return;
+    }
+
+    const confirmed = await confirmDialog({
+      title: t("trashNote", $preferencesStore.language),
+      message: t("trashNoteMessage", $preferencesStore.language),
+      confirmLabel: t("trashNote", $preferencesStore.language),
+      cancelLabel: t("cancel", $preferencesStore.language),
+    });
+    if (!confirmed) return;
+
+    try {
+      await notesStore.updateNote(note.id, { is_deleted: true });
+      selectedNoteIDs = selectedNoteIDs.filter((id) => id !== note.id);
+      await Promise.all([notesStore.load(), foldersStore.load()]);
+      notify(t("trashedNote", $preferencesStore.language), "success");
+    } catch {
+      notify(t("trashFailed", $preferencesStore.language), "error");
+    }
+  }
 
   async function emptyTrash(): Promise<void> {
     const confirmed = await confirmDialog({
@@ -67,6 +208,8 @@
 
     try {
       await notesStore.emptyTrash();
+      clearSelection();
+      await foldersStore.load();
       notify(t("emptiedTrash", $preferencesStore.language), "success");
     } catch {
       notify(t("emptyTrashFailed", $preferencesStore.language), "error");
@@ -79,6 +222,29 @@
   class="note-list-pane"
   aria-label={t("noteList", $preferencesStore.language)}
 >
+  {#if $notesStore.folderBrowserOpen}
+    <FolderBrowserPane
+      {selectedNoteIDs}
+      onSelectionMoved={clearSelection}
+    />
+  {:else}
+  <div class="note-list-titlebar">
+    <div>
+      <h1 title={viewTitle}>{viewTitle}</h1>
+      <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+    </div>
+    {#if $notesStore.filter !== "trash"}
+      <button
+        class="note-list-titlebar__new"
+        type="button"
+        aria-label={t("newNote", $preferencesStore.language)}
+        on:click={() => notesStore.create()}
+      >
+        <Plus size={18} strokeWidth={2} aria-hidden="true" />
+      </button>
+    {/if}
+  </div>
+
   <div class="note-list-toolbar">
     <input
       type="search"
@@ -94,6 +260,19 @@
         </button>
       {/if}
       <button
+        class:active={filterPanelOpen || advancedFilterCount > 0}
+        class="note-list-filter-tool"
+        type="button"
+        aria-expanded={filterPanelOpen}
+        on:click={() => (filterPanelOpen = !filterPanelOpen)}
+      >
+        <SlidersHorizontal size={16} strokeWidth={1.8} aria-hidden="true" />
+        {t("searchFilters", $preferencesStore.language)}
+        {#if advancedFilterCount > 0}
+          <span>{advancedFilterCount}</span>
+        {/if}
+      </button>
+      <button
         class="note-list-mobile-tool"
         type="button"
         aria-expanded={settingsOpen}
@@ -105,16 +284,147 @@
     </div>
   </div>
 
+  {#if filterPanelOpen}
+    <div class="note-list-filter-panel">
+      <label class="note-list-filter-field">
+        <span>{t("titleKeyword", $preferencesStore.language)}</span>
+        <input
+          type="search"
+          value={$notesStore.searchFilters.title}
+          on:input={(event) =>
+            notesStore.setSearchFilters({ title: event.currentTarget.value })}
+        />
+      </label>
+      <section class="note-list-filter-field">
+        <span>{t("tags", $preferencesStore.language)}</span>
+        {#if $tagsStore.length}
+          <div class="note-list-filter-tags">
+            {#each $tagsStore as tag (tag.id)}
+              <button
+                class:active={$notesStore.searchFilters.tags.includes(tag.name)}
+                type="button"
+                on:click={() => void toggleSearchTag(tag.name)}
+              >
+                {tag.name}
+              </button>
+            {/each}
+          </div>
+        {:else}
+          <p>{t("noTags", $preferencesStore.language)}</p>
+        {/if}
+      </section>
+      <div class="note-list-filter-grid">
+        <label class="note-list-filter-field">
+          <span>{t("createdFrom", $preferencesStore.language)}</span>
+          <input
+            type="date"
+            value={$notesStore.searchFilters.createdFrom}
+            on:change={(event) =>
+              notesStore.setSearchFilters({ createdFrom: event.currentTarget.value })}
+          />
+        </label>
+        <label class="note-list-filter-field">
+          <span>{t("createdTo", $preferencesStore.language)}</span>
+          <input
+            type="date"
+            value={$notesStore.searchFilters.createdTo}
+            on:change={(event) =>
+              notesStore.setSearchFilters({ createdTo: event.currentTarget.value })}
+          />
+        </label>
+        <label class="note-list-filter-field">
+          <span>{t("updatedFrom", $preferencesStore.language)}</span>
+          <input
+            type="date"
+            value={$notesStore.searchFilters.updatedFrom}
+            on:change={(event) =>
+              notesStore.setSearchFilters({ updatedFrom: event.currentTarget.value })}
+          />
+        </label>
+        <label class="note-list-filter-field">
+          <span>{t("updatedTo", $preferencesStore.language)}</span>
+          <input
+            type="date"
+            value={$notesStore.searchFilters.updatedTo}
+            on:change={(event) =>
+              notesStore.setSearchFilters({ updatedTo: event.currentTarget.value })}
+          />
+        </label>
+      </div>
+      <button
+        class="note-list-filter-clear"
+        type="button"
+        disabled={$notesStore.search === "" && advancedFilterCount === 0}
+        on:click={() => void notesStore.clearSearchFilters()}
+      >
+        {t("clearSearchFilters", $preferencesStore.language)}
+      </button>
+    </div>
+  {/if}
+
+  {#if selectedCount > 0}
+    <div class="note-list-selection-bar">
+      <span>{selectedCount} {t("selectedNotes", $preferencesStore.language)}</span>
+      <div class="note-list-selection-bar__actions">
+        <div class="note-list-move-menu">
+          <button
+            type="button"
+            aria-expanded={moveMenuOpen}
+            on:click={() => (moveMenuOpen = !moveMenuOpen)}
+          >
+            <FolderInput size={15} strokeWidth={2} aria-hidden="true" />
+            {t("moveToNotebookGroup", $preferencesStore.language)}
+          </button>
+          {#if moveMenuOpen}
+            <div class="note-list-move-menu__content">
+              <button type="button" on:click={() => void moveSelected(null)}>
+                {t("unfiledNotes", $preferencesStore.language)}
+              </button>
+              {#each folderOptions as option (option.id)}
+                <button
+                  type="button"
+                  style={`--folder-depth: ${option.depth - 1}`}
+                  on:click={() => void moveSelected(option.id)}
+                >
+                  {option.name}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        <button type="button" on:click={clearSelection}>
+          <X size={15} strokeWidth={2} aria-hidden="true" />
+          {t("clearSelection", $preferencesStore.language)}
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <div class="note-list-mobile-filters" aria-label={t("noteList", $preferencesStore.language)}>
     {#each filters as filter}
       <button
-        class:active={$notesStore.filter === filter.id}
+        class:active={$notesStore.filter === filter.id && !$notesStore.folderID}
         type="button"
-        aria-pressed={$notesStore.filter === filter.id}
-        on:click={() => notesStore.setFilter(filter.id)}
+        aria-pressed={$notesStore.filter === filter.id && !$notesStore.folderID}
+        on:click={() => {
+          foldersStore.select(null);
+          notesStore.setFilter(filter.id);
+        }}
       >
         {filter.label}
       </button>
+      {#if filter.id === "all"}
+        <button
+          class:active={$notesStore.folderBrowserOpen ||
+            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
+          type="button"
+          aria-pressed={$notesStore.folderBrowserOpen ||
+            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
+          on:click={() => notesStore.showFolderBrowser()}
+        >
+          {t("notebookGroups", $preferencesStore.language)}
+        </button>
+      {/if}
     {/each}
   </div>
 
@@ -122,33 +432,45 @@
     <ToolsPanel user={$authStore.user} onClose={() => (settingsOpen = false)} />
   {/if}
 
+  {#if $notesStore.filter === "starred" && starredFolders.length > 0}
+    <section class="starred-folder-strip" aria-label={t("starredFolders", $preferencesStore.language)}>
+      <h2>{t("starredFolders", $preferencesStore.language)}</h2>
+      <div>
+        {#each starredFolders as folder (folder.id)}
+          <button type="button" title={folder.name} on:click={() => void selectFolder(folder.id)}>
+            <span>{folder.name}</span>
+            <small>{folder.note_count}</small>
+          </button>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
   {#if $notesStore.error}
     <div class="note-list-message" role="alert">{$notesStore.error}</div>
   {:else if $notesStore.loading}
     <div class="note-list-message">{t("loadingNotes", $preferencesStore.language)}</div>
   {:else if $notesStore.notes.length === 0}
-    <EmptyState filter={$notesStore.filter} />
+    <EmptyState filter={$notesStore.filter} folderActive={Boolean($notesStore.folderID)} />
   {:else}
     <div class="note-card-list">
       {#each groupedNotes as group (group.label)}
         <section class="note-group" aria-label={group.label}>
           <h2>{group.label}</h2>
           {#each group.notes as note (note.id)}
-            <NoteCard {note} active={$notesStore.selected?.id === note.id} />
+            <NoteCard
+              {note}
+              active={$notesStore.selected?.id === note.id}
+              selected={selectedNoteIDs.includes(note.id)}
+              dragNoteIDs={selectedNoteIDs}
+              onToggleSelected={toggleSelected}
+              onToggleStar={toggleNoteStar}
+              onDelete={deleteNoteFromList}
+            />
           {/each}
         </section>
       {/each}
     </div>
   {/if}
-
-  {#if $notesStore.filter !== "trash"}
-    <button
-      class="new-note-fab"
-      type="button"
-      aria-label={t("newNote", $preferencesStore.language)}
-      on:click={() => notesStore.create()}
-    >
-      <Plus size={25} strokeWidth={2.1} aria-hidden="true" />
-    </button>
   {/if}
 </section>

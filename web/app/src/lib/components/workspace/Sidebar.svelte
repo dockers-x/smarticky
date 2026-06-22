@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     BookOpenText,
+    Folder,
     Languages,
     Moon,
     PanelLeftClose,
@@ -12,6 +13,7 @@
   } from "@lucide/svelte";
   import ToolsPanel from "../settings/ToolsPanel.svelte";
   import { authStore } from "../../stores/auth";
+  import { foldersStore } from "../../stores/folders";
   import { notesStore, type NoteFilter } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
 
@@ -22,6 +24,22 @@
     { id: "starred" as NoteFilter, label: t("starred", $preferencesStore.language) },
     { id: "trash" as NoteFilter, label: t("trash", $preferencesStore.language) },
   ];
+
+  async function selectFilter(filter: NoteFilter): Promise<void> {
+    foldersStore.select(null);
+    await notesStore.setFilter(filter);
+  }
+
+  function openFolderBrowser(): void {
+    notesStore.showFolderBrowser();
+  }
+
+  function handleFolderTabDragOver(event: DragEvent): void {
+    if (!event.dataTransfer?.types.includes("application/x-smarticky-note-ids")) return;
+    event.preventDefault();
+    notesStore.showFolderBrowser();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  }
 </script>
 
 <aside
@@ -55,12 +73,16 @@
   <nav class="sidebar__nav">
     {#each filters as filter}
       <button
-        class:active={$notesStore.filter === filter.id}
+        class:active={$notesStore.filter === filter.id &&
+          !$notesStore.folderID &&
+          !$notesStore.folderBrowserOpen}
         type="button"
         aria-label={filter.label}
-        aria-pressed={$notesStore.filter === filter.id}
+        aria-pressed={$notesStore.filter === filter.id &&
+          !$notesStore.folderID &&
+          !$notesStore.folderBrowserOpen}
         title={$preferencesStore.sidebarCompact ? filter.label : undefined}
-        on:click={() => notesStore.setFilter(filter.id)}
+        on:click={() => void selectFilter(filter.id)}
       >
         {#if filter.id === "all"}
           <BookOpenText size={17} strokeWidth={1.8} aria-hidden="true" />
@@ -71,8 +93,27 @@
         {/if}
         <span class="sidebar__label">{filter.label}</span>
       </button>
+      {#if filter.id === "all"}
+        <button
+          class:active={$notesStore.folderBrowserOpen ||
+            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
+          type="button"
+          aria-label={t("notebookGroups", $preferencesStore.language)}
+          aria-pressed={$notesStore.folderBrowserOpen ||
+            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
+          title={$preferencesStore.sidebarCompact
+            ? t("notebookGroups", $preferencesStore.language)
+            : undefined}
+          on:dragover={handleFolderTabDragOver}
+          on:click={openFolderBrowser}
+        >
+          <Folder size={17} strokeWidth={1.8} aria-hidden="true" />
+          <span class="sidebar__label">{t("notebookGroups", $preferencesStore.language)}</span>
+        </button>
+      {/if}
     {/each}
   </nav>
+
   <div class="sidebar__spacer"></div>
   <div class="sidebar__preferences" aria-label={t("settings", $preferencesStore.language)}>
     <button

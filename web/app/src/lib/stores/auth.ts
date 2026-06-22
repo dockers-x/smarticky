@@ -1,7 +1,7 @@
 import { writable } from "svelte/store";
 import { apiFetch } from "../api/client";
 import type { SetupCheckResponse, User } from "../api/types";
-import { t } from "./preferences";
+import { preferencesStore, t } from "./preferences";
 
 interface AuthState {
   loading: boolean;
@@ -21,6 +21,7 @@ function createAuthStore() {
   function persistUser(user: User | null): void {
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
+      preferencesStore.setTimeZone(user.time_zone || "");
     } else {
       localStorage.removeItem("user");
     }

@@ -7,12 +7,80 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"smarticky/ent/enttest"
 
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib-x/entsqlite"
 )
+
+func listNoteTitlesForTest(t *testing.T, h *Handler, userID int, target string) []string {
+	t.Helper()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", userID)
+
+	if err := h.ListNotes(c); err != nil {
+		t.Fatalf("ListNotes returned error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var got []struct {
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	titles := make([]string, 0, len(got))
+	for _, item := range got {
+		titles = append(titles, item.Title)
+	}
+	return titles
+}
+
+func TestListNotesSearchesFullTextButTitleFilterOnlyMatchesTitle(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListNotesSearchesFullTextButTitleFilterOnlyMatchesTitle?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("Alpha title").
+		SetContent("plain body").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("Body only").
+		SetContent("alpha appears here").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("Unrelated").
+		SetContent("plain body").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	h := NewHandler(client, nil)
+	fullTextTitles := listNoteTitlesForTest(t, h, u.ID, "/api/notes?q=alpha")
+	if len(fullTextTitles) != 2 {
+		t.Fatalf("expected full-text search to match title and content, got %v", fullTextTitles)
+	}
+
+	titleTitles := listNoteTitlesForTest(t, h, u.ID, "/api/notes?title=alpha")
+	if len(titleTitles) != 1 || titleTitles[0] != "Alpha title" {
+		t.Fatalf("expected title filter to match only the title note, got %v", titleTitles)
+	}
+}
 
 func TestListNotesFiltersByTag(t *testing.T) {
 	ctx := context.Background()
@@ -72,6 +140,75 @@ func TestListNotesFiltersByTag(t *testing.T) {
 	}
 	if got[0].Title != "Tagged note" {
 		t.Fatalf("expected Tagged note, got %q", got[0].Title)
+	}
+}
+
+func TestListNotesFiltersByMultipleTagsWithAndSemantics(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListNotesFiltersByMultipleTagsWithAndSemantics?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	both := client.Note.Create().
+		SetTitle("both tags").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	workOnly := client.Note.Create().
+		SetTitle("work only").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	workTag := client.Tag.Create().
+		SetName("work").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	urgentTag := client.Tag.Create().
+		SetName("urgent").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	both.Update().AddTags(workTag, urgentTag).SaveX(ctx)
+	workOnly.Update().AddTags(workTag).SaveX(ctx)
+
+	h := NewHandler(client, nil)
+	titles := listNoteTitlesForTest(t, h, u.ID, "/api/notes?tags=work,urgent")
+	if len(titles) != 1 || titles[0] != "both tags" {
+		t.Fatalf("expected only note with both tags, got %v", titles)
+	}
+}
+
+func TestListNotesDateFiltersUseRequestedTimeZone(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListNotesDateFiltersUseRequestedTimeZone?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+
+	matchesShanghaiDay := time.Date(2026, 6, 21, 16, 30, 0, 0, time.UTC)
+	outsideShanghaiDay := time.Date(2026, 6, 22, 16, 30, 0, 0, time.UTC)
+	client.Note.Create().
+		SetTitle("local june 22").
+		SetCreatedAt(matchesShanghaiDay).
+		SetUpdatedAt(matchesShanghaiDay).
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("local june 23").
+		SetCreatedAt(outsideShanghaiDay).
+		SetUpdatedAt(outsideShanghaiDay).
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	h := NewHandler(client, nil)
+	titles := listNoteTitlesForTest(t, h, u.ID, "/api/notes?created_from=2026-06-22&created_to=2026-06-22&timezone=Asia/Shanghai")
+	if len(titles) != 1 || titles[0] != "local june 22" {
+		t.Fatalf("expected only note inside Asia/Shanghai June 22, got %v", titles)
 	}
 }
 

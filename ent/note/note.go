@@ -35,6 +35,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
+	// EdgeFolder holds the string denoting the folder edge name in mutations.
+	EdgeFolder = "folder"
 	// EdgeAttachments holds the string denoting the attachments edge name in mutations.
 	EdgeAttachments = "attachments"
 	// EdgeWhiteboards holds the string denoting the whiteboards edge name in mutations.
@@ -50,6 +52,13 @@ const (
 	UserInverseTable = "users"
 	// UserColumn is the table column denoting the user relation/edge.
 	UserColumn = "user_notes"
+	// FolderTable is the table that holds the folder relation/edge.
+	FolderTable = "notes"
+	// FolderInverseTable is the table name for the Folder entity.
+	// It exists in this package in order to avoid circular dependency with the "folder" package.
+	FolderInverseTable = "folders"
+	// FolderColumn is the table column denoting the folder relation/edge.
+	FolderColumn = "folder_notes"
 	// AttachmentsTable is the table that holds the attachments relation/edge.
 	AttachmentsTable = "attachments"
 	// AttachmentsInverseTable is the table name for the Attachment entity.
@@ -88,6 +97,7 @@ var Columns = []string{
 // ForeignKeys holds the SQL foreign-keys that are owned by the "notes"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
+	"folder_notes",
 	"user_notes",
 }
 
@@ -193,6 +203,13 @@ func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByFolderField orders the results by folder field.
+func ByFolderField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newFolderStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByAttachmentsCount orders the results by attachments count.
 func ByAttachmentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -239,6 +256,13 @@ func newUserStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UserInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
+	)
+}
+func newFolderStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(FolderInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, FolderTable, FolderColumn),
 	)
 }
 func newAttachmentsStep() *sqlgraph.Step {

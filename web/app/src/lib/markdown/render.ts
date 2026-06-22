@@ -12,6 +12,8 @@ import {
   extractWhiteboardID,
   isWhiteboardFenceLanguage,
 } from "./whiteboards";
+import { transformCodeGroups } from "./codeGroups";
+import { isProtectedAttachmentURL, protectedImagePlaceholderSrc } from "./protectedImages";
 
 const markedOptions = {
   async: false,
@@ -20,6 +22,14 @@ const markedOptions = {
 } as const;
 
 const fallbackRenderer = new Renderer();
+
+function escapeAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 const markdownRenderer = new Marked(
   markedOptions,
@@ -45,12 +55,30 @@ const markdownRenderer = new Marked(
         }
         return fallbackRenderer.code(token);
       },
+      image(token: Tokens.Image): string {
+        const href = token.href.trim();
+        const alt = token.text.trim();
+        if (!href) {
+          return `<span class="markdown-image-placeholder">${escapeAttribute(alt || "Image URL missing")}</span>`;
+        }
+
+        if (isProtectedAttachmentURL(href)) {
+          const title = token.title
+            ? ` title="${escapeAttribute(token.title)}"`
+            : "";
+          return `<img src="${protectedImagePlaceholderSrc}" data-auth-image="true" data-auth-src="${escapeAttribute(href)}" alt="${escapeAttribute(alt)}"${title}>`;
+        }
+
+        return fallbackRenderer.image(token);
+      },
     },
   },
 );
 
 export function renderMarkdown(markdown: string): string {
-  return DOMPurify.sanitize(markdownRenderer.parse(markdown, markedOptions));
+  return DOMPurify.sanitize(
+    markdownRenderer.parse(transformCodeGroups(markdown), markedOptions),
+  );
 }
 
 export function stripMarkdown(markdown: string): string {

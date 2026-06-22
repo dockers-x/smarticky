@@ -43,6 +43,9 @@ func (BackupConfig) Fields() []ent.Field {
 		field.Int("backup_max_count").
 			Default(10).
 			Comment("Maximum number of backup files to keep (0 = no limit)"),
+		field.Int("folder_max_depth").
+			Default(3).
+			Comment("Maximum notebook group nesting depth"),
 		field.Time("last_backup_at").
 			Optional(),
 		field.Time("created_at").

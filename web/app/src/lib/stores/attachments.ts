@@ -19,11 +19,15 @@ export async function loadAttachments(noteId: UUID): Promise<void> {
 export async function uploadAttachment(
   noteId: UUID,
   file: File,
-): Promise<void> {
+): Promise<Attachment> {
   const form = new FormData();
   form.set("file", file);
-  await apiFetch(`/notes/${noteId}/attachments`, { method: "POST", body: form });
+  const attachment = await apiFetch<Attachment>(`/notes/${noteId}/attachments`, {
+    method: "POST",
+    body: form,
+  });
   await loadAttachments(noteId);
+  return attachment;
 }
 
 export const attachmentsStore = {

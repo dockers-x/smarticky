@@ -32,6 +32,8 @@ type User struct {
 	Avatar string `json:"avatar,omitempty"`
 	// ShareSignature holds the value of the "share_signature" field.
 	ShareSignature string `json:"share_signature,omitempty"`
+	// TimeZone holds the value of the "time_zone" field.
+	TimeZone string `json:"time_zone,omitempty"`
 	// LazycatUID holds the value of the "lazycat_uid" field.
 	LazycatUID *string `json:"lazycat_uid,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -48,6 +50,8 @@ type User struct {
 type UserEdges struct {
 	// Notes holds the value of the notes edge.
 	Notes []*Note `json:"notes,omitempty"`
+	// Folders holds the value of the folders edge.
+	Folders []*Folder `json:"folders,omitempty"`
 	// Attachments holds the value of the attachments edge.
 	Attachments []*Attachment `json:"attachments,omitempty"`
 	// ExcalidrawLibrary holds the value of the excalidraw_library edge.
@@ -66,7 +70,7 @@ type UserEdges struct {
 	McpImages []*MCPImage `json:"mcp_images,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [10]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -78,10 +82,19 @@ func (e UserEdges) NotesOrErr() ([]*Note, error) {
 	return nil, &NotLoadedError{edge: "notes"}
 }
 
+// FoldersOrErr returns the Folders value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) FoldersOrErr() ([]*Folder, error) {
+	if e.loadedTypes[1] {
+		return e.Folders, nil
+	}
+	return nil, &NotLoadedError{edge: "folders"}
+}
+
 // AttachmentsOrErr returns the Attachments value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) AttachmentsOrErr() ([]*Attachment, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Attachments, nil
 	}
 	return nil, &NotLoadedError{edge: "attachments"}
@@ -92,7 +105,7 @@ func (e UserEdges) AttachmentsOrErr() ([]*Attachment, error) {
 func (e UserEdges) ExcalidrawLibraryOrErr() (*ExcalidrawLibrary, error) {
 	if e.ExcalidrawLibrary != nil {
 		return e.ExcalidrawLibrary, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: excalidrawlibrary.Label}
 	}
 	return nil, &NotLoadedError{edge: "excalidraw_library"}
@@ -101,7 +114,7 @@ func (e UserEdges) ExcalidrawLibraryOrErr() (*ExcalidrawLibrary, error) {
 // WhiteboardsOrErr returns the Whiteboards value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.Whiteboards, nil
 	}
 	return nil, &NotLoadedError{edge: "whiteboards"}
@@ -110,7 +123,7 @@ func (e UserEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
 // TagsOrErr returns the Tags value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
@@ -119,7 +132,7 @@ func (e UserEdges) TagsOrErr() ([]*Tag, error) {
 // FontsOrErr returns the Fonts value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) FontsOrErr() ([]*Font, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.Fonts, nil
 	}
 	return nil, &NotLoadedError{edge: "fonts"}
@@ -128,7 +141,7 @@ func (e UserEdges) FontsOrErr() ([]*Font, error) {
 // ImportJobsOrErr returns the ImportJobs value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ImportJobsOrErr() ([]*ImportJob, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.ImportJobs, nil
 	}
 	return nil, &NotLoadedError{edge: "import_jobs"}
@@ -137,7 +150,7 @@ func (e UserEdges) ImportJobsOrErr() ([]*ImportJob, error) {
 // McpTokensOrErr returns the McpTokens value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) McpTokensOrErr() ([]*MCPToken, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.McpTokens, nil
 	}
 	return nil, &NotLoadedError{edge: "mcp_tokens"}
@@ -146,7 +159,7 @@ func (e UserEdges) McpTokensOrErr() ([]*MCPToken, error) {
 // McpImagesOrErr returns the McpImages value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) McpImagesOrErr() ([]*MCPImage, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.McpImages, nil
 	}
 	return nil, &NotLoadedError{edge: "mcp_images"}
@@ -159,7 +172,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldNickname, user.FieldRole, user.FieldAvatar, user.FieldShareSignature, user.FieldLazycatUID:
+		case user.FieldUsername, user.FieldPasswordHash, user.FieldEmail, user.FieldNickname, user.FieldRole, user.FieldAvatar, user.FieldShareSignature, user.FieldTimeZone, user.FieldLazycatUID:
 			values[i] = new(sql.NullString)
 		case user.FieldCreatedAt, user.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -226,6 +239,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ShareSignature = value.String
 			}
+		case user.FieldTimeZone:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field time_zone", values[i])
+			} else if value.Valid {
+				_m.TimeZone = value.String
+			}
 		case user.FieldLazycatUID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field lazycat_uid", values[i])
@@ -261,6 +280,11 @@ func (_m *User) Value(name string) (ent.Value, error) {
 // QueryNotes queries the "notes" edge of the User entity.
 func (_m *User) QueryNotes() *NoteQuery {
 	return NewUserClient(_m.config).QueryNotes(_m)
+}
+
+// QueryFolders queries the "folders" edge of the User entity.
+func (_m *User) QueryFolders() *FolderQuery {
+	return NewUserClient(_m.config).QueryFolders(_m)
 }
 
 // QueryAttachments queries the "attachments" edge of the User entity.
@@ -345,6 +369,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("share_signature=")
 	builder.WriteString(_m.ShareSignature)
+	builder.WriteString(", ")
+	builder.WriteString("time_zone=")
+	builder.WriteString(_m.TimeZone)
 	builder.WriteString(", ")
 	if v := _m.LazycatUID; v != nil {
 		builder.WriteString("lazycat_uid=")

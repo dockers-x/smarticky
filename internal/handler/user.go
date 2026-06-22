@@ -38,6 +38,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		Nickname       string `json:"nickname"`
 		Role           string `json:"role"`
 		ShareSignature string `json:"share_signature"`
+		TimeZone       string `json:"time_zone"`
 		LazycatUID     string `json:"lazycat_uid"`
 	}
 
@@ -75,6 +76,13 @@ func (h *Handler) CreateUser(c echo.Context) error {
 
 	if req.Nickname != "" {
 		createUser.SetNickname(req.Nickname)
+	}
+	if strings.TrimSpace(req.TimeZone) != "" {
+		timeZone, err := normalizeUserTimeZone(req.TimeZone)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid time zone"})
+		}
+		createUser.SetTimeZone(timeZone)
 	}
 	if strings.TrimSpace(req.LazycatUID) != "" {
 		createUser.SetLazycatUID(strings.TrimSpace(req.LazycatUID))
@@ -120,6 +128,7 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 		Avatar         *string `json:"avatar"`
 		Role           *string `json:"role"`
 		ShareSignature *string `json:"share_signature"`
+		TimeZone       *string `json:"time_zone"`
 		LazycatUID     *string `json:"lazycat_uid"`
 	}
 
@@ -150,6 +159,14 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 
 	if req.ShareSignature != nil {
 		updateQuery = updateQuery.SetShareSignature(normalizeShareSignature(*req.ShareSignature))
+	}
+
+	if req.TimeZone != nil {
+		timeZone, err := normalizeUserTimeZone(*req.TimeZone)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid time zone"})
+		}
+		updateQuery = updateQuery.SetTimeZone(timeZone)
 	}
 
 	if req.LazycatUID != nil {

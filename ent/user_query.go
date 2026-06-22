@@ -9,6 +9,7 @@ import (
 	"math"
 	"smarticky/ent/attachment"
 	"smarticky/ent/excalidrawlibrary"
+	"smarticky/ent/folder"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
 	"smarticky/ent/mcpimage"
@@ -33,6 +34,7 @@ type UserQuery struct {
 	inters                []Interceptor
 	predicates            []predicate.User
 	withNotes             *NoteQuery
+	withFolders           *FolderQuery
 	withAttachments       *AttachmentQuery
 	withExcalidrawLibrary *ExcalidrawLibraryQuery
 	withWhiteboards       *WhiteboardQuery
@@ -92,6 +94,28 @@ func (_q *UserQuery) QueryNotes() *NoteQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(note.Table, note.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.NotesTable, user.NotesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryFolders chains the current query on the "folders" edge.
+func (_q *UserQuery) QueryFolders() *FolderQuery {
+	query := (&FolderClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(folder.Table, folder.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.FoldersTable, user.FoldersColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -468,6 +492,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		inters:                append([]Interceptor{}, _q.inters...),
 		predicates:            append([]predicate.User{}, _q.predicates...),
 		withNotes:             _q.withNotes.Clone(),
+		withFolders:           _q.withFolders.Clone(),
 		withAttachments:       _q.withAttachments.Clone(),
 		withExcalidrawLibrary: _q.withExcalidrawLibrary.Clone(),
 		withWhiteboards:       _q.withWhiteboards.Clone(),
@@ -490,6 +515,17 @@ func (_q *UserQuery) WithNotes(opts ...func(*NoteQuery)) *UserQuery {
 		opt(query)
 	}
 	_q.withNotes = query
+	return _q
+}
+
+// WithFolders tells the query-builder to eager-load the nodes that are connected to
+// the "folders" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithFolders(opts ...func(*FolderQuery)) *UserQuery {
+	query := (&FolderClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withFolders = query
 	return _q
 }
 
@@ -659,8 +695,9 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [10]bool{
 			_q.withNotes != nil,
+			_q.withFolders != nil,
 			_q.withAttachments != nil,
 			_q.withExcalidrawLibrary != nil,
 			_q.withWhiteboards != nil,
@@ -693,6 +730,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadNotes(ctx, query, nodes,
 			func(n *User) { n.Edges.Notes = []*Note{} },
 			func(n *User, e *Note) { n.Edges.Notes = append(n.Edges.Notes, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withFolders; query != nil {
+		if err := _q.loadFolders(ctx, query, nodes,
+			func(n *User) { n.Edges.Folders = []*Folder{} },
+			func(n *User, e *Folder) { n.Edges.Folders = append(n.Edges.Folders, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -780,6 +824,37 @@ func (_q *UserQuery) loadNotes(ctx context.Context, query *NoteQuery, nodes []*U
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_notes" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadFolders(ctx context.Context, query *FolderQuery, nodes []*User, init func(*User), assign func(*User, *Folder)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Folder(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.FoldersColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_folders
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_folders" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_folders" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

@@ -85,11 +85,12 @@ func (h *Handler) UploadAttachment(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":         att.ID,
-		"filename":   att.Filename,
-		"file_size":  att.FileSize,
-		"mime_type":  att.MimeType,
-		"created_at": att.CreatedAt,
+		"id":           att.ID,
+		"filename":     att.Filename,
+		"file_size":    att.FileSize,
+		"mime_type":    att.MimeType,
+		"created_at":   att.CreatedAt,
+		"download_url": fmt.Sprintf("/api/attachments/%d/download", att.ID),
 	})
 }
 
@@ -131,11 +132,12 @@ func (h *Handler) ListAttachments(c echo.Context) error {
 	result := make([]map[string]interface{}, 0, len(attachments))
 	for _, att := range attachments {
 		result = append(result, map[string]interface{}{
-			"id":         att.ID,
-			"filename":   att.Filename,
-			"file_size":  att.FileSize,
-			"mime_type":  att.MimeType,
-			"created_at": att.CreatedAt,
+			"id":           att.ID,
+			"filename":     att.Filename,
+			"file_size":    att.FileSize,
+			"mime_type":    att.MimeType,
+			"created_at":   att.CreatedAt,
+			"download_url": fmt.Sprintf("/api/attachments/%d/download", att.ID),
 		})
 	}
 

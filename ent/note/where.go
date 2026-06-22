@@ -524,6 +524,29 @@ func HasUserWith(preds ...predicate.User) predicate.Note {
 	})
 }
 
+// HasFolder applies the HasEdge predicate on the "folder" edge.
+func HasFolder() predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, FolderTable, FolderColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasFolderWith applies the HasEdge predicate on the "folder" edge with a given conditions (other predicates).
+func HasFolderWith(preds ...predicate.Folder) predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := newFolderStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasAttachments applies the HasEdge predicate on the "attachments" edge.
 func HasAttachments() predicate.Note {
 	return predicate.Note(func(s *sql.Selector) {

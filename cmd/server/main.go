@@ -136,11 +136,22 @@ func main() {
 	// Notes API
 	protected.GET("/notes", h.ListNotes)
 	protected.POST("/notes", h.CreateNote)
+	protected.POST("/notes/move", h.MoveNotes)
 	protected.GET("/notes/:id", h.GetNote)
 	protected.PUT("/notes/:id", h.UpdateNote)
 	protected.DELETE("/notes/trash", h.EmptyTrash)
 	protected.DELETE("/notes/:id", h.DeleteNote)
 	protected.POST("/notes/:id/verify-password", h.VerifyNotePassword)
+
+	// Folders API
+	protected.GET("/folders", h.ListFolders)
+	protected.POST("/folders", h.CreateFolder)
+	protected.GET("/folders/settings", h.GetFolderSettings)
+	folderAdminRoutes := protected.Group("/folders")
+	folderAdminRoutes.Use(authmw.AdminOnly())
+	folderAdminRoutes.PUT("/settings", h.UpdateFolderSettings)
+	protected.PUT("/folders/:id", h.UpdateFolder)
+	protected.DELETE("/folders/:id", h.DeleteFolder)
 
 	// Tags API
 	protected.GET("/tags", h.GetTags)

@@ -35,6 +35,8 @@ func (User) Fields() []ent.Field {
 			Default(""),
 		field.String("share_signature").
 			Default("Smarticky"),
+		field.String("time_zone").
+			Default("UTC"),
 		field.String("lazycat_uid").
 			Optional().
 			Nillable().
@@ -52,6 +54,7 @@ func (User) Fields() []ent.Field {
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("notes", Note.Type),
+		edge.To("folders", Folder.Type),
 		edge.To("attachments", Attachment.Type),
 		edge.To("excalidraw_library", ExcalidrawLibrary.Type).Unique(),
 		edge.To("whiteboards", Whiteboard.Type),

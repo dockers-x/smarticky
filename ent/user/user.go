@@ -29,6 +29,8 @@ const (
 	FieldAvatar = "avatar"
 	// FieldShareSignature holds the string denoting the share_signature field in the database.
 	FieldShareSignature = "share_signature"
+	// FieldTimeZone holds the string denoting the time_zone field in the database.
+	FieldTimeZone = "time_zone"
 	// FieldLazycatUID holds the string denoting the lazycat_uid field in the database.
 	FieldLazycatUID = "lazycat_uid"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -37,6 +39,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeNotes holds the string denoting the notes edge name in mutations.
 	EdgeNotes = "notes"
+	// EdgeFolders holds the string denoting the folders edge name in mutations.
+	EdgeFolders = "folders"
 	// EdgeAttachments holds the string denoting the attachments edge name in mutations.
 	EdgeAttachments = "attachments"
 	// EdgeExcalidrawLibrary holds the string denoting the excalidraw_library edge name in mutations.
@@ -62,6 +66,13 @@ const (
 	NotesInverseTable = "notes"
 	// NotesColumn is the table column denoting the notes relation/edge.
 	NotesColumn = "user_notes"
+	// FoldersTable is the table that holds the folders relation/edge.
+	FoldersTable = "folders"
+	// FoldersInverseTable is the table name for the Folder entity.
+	// It exists in this package in order to avoid circular dependency with the "folder" package.
+	FoldersInverseTable = "folders"
+	// FoldersColumn is the table column denoting the folders relation/edge.
+	FoldersColumn = "user_folders"
 	// AttachmentsTable is the table that holds the attachments relation/edge.
 	AttachmentsTable = "attachments"
 	// AttachmentsInverseTable is the table name for the Attachment entity.
@@ -130,6 +141,7 @@ var Columns = []string{
 	FieldRole,
 	FieldAvatar,
 	FieldShareSignature,
+	FieldTimeZone,
 	FieldLazycatUID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -156,6 +168,8 @@ var (
 	DefaultAvatar string
 	// DefaultShareSignature holds the default value on creation for the "share_signature" field.
 	DefaultShareSignature string
+	// DefaultTimeZone holds the default value on creation for the "time_zone" field.
+	DefaultTimeZone string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -233,6 +247,11 @@ func ByShareSignature(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldShareSignature, opts...).ToFunc()
 }
 
+// ByTimeZone orders the results by the time_zone field.
+func ByTimeZone(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimeZone, opts...).ToFunc()
+}
+
 // ByLazycatUID orders the results by the lazycat_uid field.
 func ByLazycatUID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLazycatUID, opts...).ToFunc()
@@ -259,6 +278,20 @@ func ByNotesCount(opts ...sql.OrderTermOption) OrderOption {
 func ByNotes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newNotesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByFoldersCount orders the results by folders count.
+func ByFoldersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newFoldersStep(), opts...)
+	}
+}
+
+// ByFolders orders the results by folders terms.
+func ByFolders(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newFoldersStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -371,6 +404,13 @@ func newNotesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(NotesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, NotesTable, NotesColumn),
+	)
+}
+func newFoldersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(FoldersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, FoldersTable, FoldersColumn),
 	)
 }
 func newAttachmentsStep() *sqlgraph.Step {

@@ -7,6 +7,7 @@ interface PreferencesState {
   language: Language;
   sidebarCompact: boolean;
   theme: Theme;
+  timeZone: string;
 }
 
 const messages = {
@@ -118,6 +119,7 @@ const messages = {
     enterOldPassword: "输入旧密码",
     enterPasswordMin: "输入密码（至少 6 个字符）",
     enterUsername: "输入用户名",
+    exportMarkdown: "导出 Markdown",
     expandSidebar: "展开侧栏",
     exitFocus: "退出",
     failed: "失败",
@@ -137,6 +139,27 @@ const messages = {
     fontPrivateHint: "关闭后仅自己可见",
     fontUploadFailed: "字体上传失败",
     fontUploadSuccess: "字体已上传",
+    folderCreated: "笔记本组已创建",
+    folderCreateFailed: "创建笔记本组失败",
+    folderDeleted: "笔记本组已删除",
+    folderDeleteFailed: "删除笔记本组失败",
+    folderDeleteMessage: "只能删除空的笔记本组。确认删除这个笔记本组？",
+    folderDepthLimit: "已达到层级上限",
+    folderEmptySubtitle: "在当前笔记本组中新建笔记，内容会自动归入这里",
+    folderEmptyTitle: "这个笔记本组还没有笔记",
+    folderLoadFailed: "加载笔记本组失败",
+    folderMaxDepth: "最大层级",
+    folderMaxDepthHint: "默认 3 层。现有笔记本组更深时不能调低。",
+    folderMoved: "笔记本组已移动",
+    folderMoveFailed: "移动笔记本组失败",
+    folderMoveNonEmptyMessage: "这个笔记本组包含笔记或子分组。确认移动整个笔记本组？",
+    folderName: "笔记本组名称",
+    folderNameRequired: "请输入笔记本组名称",
+    folderRenameFailed: "重命名笔记本组失败",
+    folderSettings: "笔记本组",
+    folderSettingsFailed: "保存笔记本组设置失败",
+    folderSettingsSaved: "笔记本组设置已保存",
+    folderStarFailed: "更新笔记本组收藏失败",
     format: "版式",
     generatedImage: "分享图片已生成",
     generateImage: "生成图片",
@@ -171,6 +194,7 @@ const messages = {
     chooseWritingMode: "选择排版模式",
     markdownMode: "Markdown 模式",
     markdownModeShort: "MD",
+    markdownDownloaded: "Markdown 已开始下载",
     markdownToolbar: "Markdown 工具栏",
     mermaidGroupAdvanced: "高级 / 实验",
     mermaidGroupData: "数据图",
@@ -202,6 +226,8 @@ const messages = {
     noFonts: "暂无字体",
     noTags: "暂无标签",
     noUsers: "暂无用户",
+    notebookGroups: "笔记本组",
+    newNotebookGroup: "新建笔记本组",
     no: "否",
     noteInfo: "笔记信息",
     noteList: "笔记列表",
@@ -235,6 +261,11 @@ const messages = {
     restoredNote: "已恢复笔记",
     restoreSuccess: "恢复成功，请重启应用使数据完全生效",
     role: "角色",
+    moveNotesFailed: "移动笔记失败",
+    moveNotebookGroup: "移动笔记本组",
+    moveToNotebookGroup: "移动到笔记本组",
+    movedNotes: "笔记已移动",
+    renameNotebookGroup: "重命名笔记本组",
     saveError: "保存失败",
     saveConfig: "保存配置",
     saveFailed: "保存失败",
@@ -242,6 +273,7 @@ const messages = {
     saved: "已保存",
     saving: "正在保存",
     searchNotes: "搜索笔记",
+    searchFilters: "筛选",
     selectFile: "选择 .enex 文件",
     selectFileFirst: "请先选择 .enex 文件",
     selectImportFile: "选择 Evernote ENEX 文件",
@@ -263,6 +295,7 @@ const messages = {
     sourceMode: "源码编辑",
     squareImage: "方图",
     starred: "收藏",
+    starredFolders: "收藏的笔记本组",
     star: "收藏",
     starAdded: "已收藏",
     starRemoved: "已取消收藏",
@@ -279,6 +312,9 @@ const messages = {
     tags: "标签",
     task: "待办",
     theme: "主题",
+    titleKeyword: "标题关键词",
+    timeZone: "时区",
+    timeZoneHint: "用于笔记时间显示和日期筛选，数据库仍按 UTC 存储。",
     today: "今天",
     trash: "废纸篓",
     trashFailed: "移动失败",
@@ -286,7 +322,15 @@ const messages = {
     trashNoteMessage: "确认将这篇笔记移入废纸篓？",
     trashedNote: "已移入废纸篓",
     untitled: "未命名",
+    unfiledNotes: "未归类",
+    selectedNotes: "已选笔记",
+    clearSelection: "取消选择",
+    clearSearchFilters: "清除筛选",
+    createdFrom: "创建开始",
+    createdTo: "创建结束",
     unknown: "未知",
+    updatedFrom: "修改开始",
+    updatedTo: "修改结束",
     uploadAttachmentFailed: "上传附件失败",
     uploadAvatar: "上传头像",
     uploadFont: "上传字体",
@@ -436,6 +480,7 @@ const messages = {
     expandSidebar: "Expand sidebar",
     exitFocus: "Exit",
     failed: "Failed",
+    exportMarkdown: "Export Markdown",
     fontDeleteConfirm: "Delete font",
     fontDeleteFailed: "Font deletion failed",
     fontDeleteSuccess: "Font deleted",
@@ -452,6 +497,27 @@ const messages = {
     fontPrivateHint: "Turn off to keep this font private",
     fontUploadFailed: "Font upload failed",
     fontUploadSuccess: "Font uploaded",
+    folderCreated: "Notebook group created",
+    folderCreateFailed: "Failed to create notebook group",
+    folderDeleted: "Notebook group deleted",
+    folderDeleteFailed: "Failed to delete notebook group",
+    folderDeleteMessage: "Only empty notebook groups can be deleted. Delete this notebook group?",
+    folderDepthLimit: "Depth limit reached",
+    folderEmptySubtitle: "Create a note here and it will be filed in this notebook group",
+    folderEmptyTitle: "No notes in this notebook group",
+    folderLoadFailed: "Failed to load notebook groups",
+    folderMaxDepth: "Maximum depth",
+    folderMaxDepthHint: "Default is 3 levels. You cannot lower this below existing depth.",
+    folderMoved: "Notebook group moved",
+    folderMoveFailed: "Failed to move notebook group",
+    folderMoveNonEmptyMessage: "This notebook group contains notes or child groups. Move the whole notebook group?",
+    folderName: "Notebook group name",
+    folderNameRequired: "Enter a notebook group name",
+    folderRenameFailed: "Failed to rename notebook group",
+    folderSettings: "Notebook groups",
+    folderSettingsFailed: "Failed to save notebook group settings",
+    folderSettingsSaved: "Notebook group settings saved",
+    folderStarFailed: "Failed to update notebook group star",
     format: "Format",
     generatedImage: "Share image generated",
     generateImage: "Generate image",
@@ -486,6 +552,7 @@ const messages = {
     chooseWritingMode: "Choose writing mode",
     markdownMode: "Markdown mode",
     markdownModeShort: "MD",
+    markdownDownloaded: "Markdown download started",
     markdownToolbar: "Markdown toolbar",
     mermaidGroupAdvanced: "Advanced / experimental",
     mermaidGroupData: "Data",
@@ -517,6 +584,8 @@ const messages = {
     noFonts: "No fonts",
     noTags: "No tags",
     noUsers: "No users",
+    notebookGroups: "Notebook groups",
+    newNotebookGroup: "New notebook group",
     no: "No",
     noteInfo: "Note info",
     noteList: "Note list",
@@ -550,6 +619,11 @@ const messages = {
     restoredNote: "Note restored",
     restoreSuccess: "Restore successful. Restart the app for changes to fully apply",
     role: "Role",
+    moveNotesFailed: "Failed to move notes",
+    moveNotebookGroup: "Move notebook group",
+    moveToNotebookGroup: "Move to notebook group",
+    movedNotes: "Notes moved",
+    renameNotebookGroup: "Rename notebook group",
     saveConfig: "Save config",
     saveError: "Save failed",
     saveFailed: "Save failed",
@@ -557,6 +631,7 @@ const messages = {
     saved: "Saved",
     saving: "Saving",
     searchNotes: "Search notes",
+    searchFilters: "Filters",
     selectFile: "Choose .enex file",
     selectFileFirst: "Choose an .enex file first",
     selectImportFile: "Choose Evernote ENEX file",
@@ -578,6 +653,7 @@ const messages = {
     sourceMode: "Source mode",
     squareImage: "Square",
     starred: "Starred",
+    starredFolders: "Starred notebook groups",
     star: "Star",
     starAdded: "Starred",
     starRemoved: "Unstarred",
@@ -594,6 +670,9 @@ const messages = {
     tags: "Tags",
     task: "Task",
     theme: "Theme",
+    titleKeyword: "Title keyword",
+    timeZone: "Time zone",
+    timeZoneHint: "Used for note time display and date filters. Stored data remains UTC.",
     today: "Today",
     trash: "Trash",
     trashFailed: "Move failed",
@@ -601,7 +680,15 @@ const messages = {
     trashNoteMessage: "Move this note to trash?",
     trashedNote: "Moved to trash",
     untitled: "Untitled",
+    unfiledNotes: "Unfiled",
+    selectedNotes: "Selected notes",
+    clearSelection: "Clear selection",
+    clearSearchFilters: "Clear filters",
+    createdFrom: "Created from",
+    createdTo: "Created to",
     unknown: "Unknown",
+    updatedFrom: "Updated from",
+    updatedTo: "Updated to",
     uploadAttachmentFailed: "Attachment upload failed",
     uploadAvatar: "Upload avatar",
     uploadFont: "Upload font",
@@ -662,11 +749,49 @@ function storedTheme(): Theme {
   }
   if (
     typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-color-scheme: dark)").matches
   ) {
     return "dark";
   }
   return "light";
+}
+
+export function browserTimeZone(): string {
+  if (typeof Intl !== "undefined") {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  }
+  return "UTC";
+}
+
+export function supportedTimeZones(current?: string): string[] {
+  const preferred = [
+    current,
+    browserTimeZone(),
+    "UTC",
+    "Asia/Shanghai",
+    "Asia/Chongqing",
+    "America/New_York",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Berlin",
+    "Asia/Tokyo",
+  ].filter((value): value is string => Boolean(value));
+
+  let zones: string[] = [];
+  if (
+    typeof Intl !== "undefined" &&
+    typeof Intl.supportedValuesOf === "function"
+  ) {
+    try {
+      zones = Intl.supportedValuesOf("timeZone");
+    } catch {
+      zones = [];
+    }
+  }
+  return [...new Set([...preferred, ...zones])].sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function storedSidebarCompact(): boolean {
@@ -690,6 +815,7 @@ function createPreferencesStore() {
     language: storedLanguage(),
     sidebarCompact: storedSidebarCompact(),
     theme: storedTheme(),
+    timeZone: browserTimeZone(),
   };
   const { subscribe, set, update } = writable<PreferencesState>(initial);
   applyPreferences(initial);
@@ -712,6 +838,7 @@ function createPreferencesStore() {
           language: storedLanguage(),
           sidebarCompact: storedSidebarCompact(),
           theme: storedTheme(),
+          timeZone: browserTimeZone(),
         }),
       );
     },
@@ -730,6 +857,9 @@ function createPreferencesStore() {
     },
     setTheme(theme: Theme) {
       update((state) => commit({ ...state, theme }));
+    },
+    setTimeZone(timeZone: string) {
+      update((state) => commit({ ...state, timeZone: timeZone || browserTimeZone() }));
     },
     toggleTheme() {
       update((state) =>

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"smarticky/ent/attachment"
 	"smarticky/ent/excalidrawlibrary"
+	"smarticky/ent/folder"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
 	"smarticky/ent/mcpimage"
@@ -112,6 +113,20 @@ func (_c *UserCreate) SetNillableShareSignature(v *string) *UserCreate {
 	return _c
 }
 
+// SetTimeZone sets the "time_zone" field.
+func (_c *UserCreate) SetTimeZone(v string) *UserCreate {
+	_c.mutation.SetTimeZone(v)
+	return _c
+}
+
+// SetNillableTimeZone sets the "time_zone" field if the given value is not nil.
+func (_c *UserCreate) SetNillableTimeZone(v *string) *UserCreate {
+	if v != nil {
+		_c.SetTimeZone(*v)
+	}
+	return _c
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (_c *UserCreate) SetLazycatUID(v string) *UserCreate {
 	_c.mutation.SetLazycatUID(v)
@@ -167,6 +182,21 @@ func (_c *UserCreate) AddNotes(v ...*Note) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddNoteIDs(ids...)
+}
+
+// AddFolderIDs adds the "folders" edge to the Folder entity by IDs.
+func (_c *UserCreate) AddFolderIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddFolderIDs(ids...)
+	return _c
+}
+
+// AddFolders adds the "folders" edges to the Folder entity.
+func (_c *UserCreate) AddFolders(v ...*Folder) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddFolderIDs(ids...)
 }
 
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by IDs.
@@ -344,6 +374,10 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultShareSignature
 		_c.mutation.SetShareSignature(v)
 	}
+	if _, ok := _c.mutation.TimeZone(); !ok {
+		v := user.DefaultTimeZone
+		_c.mutation.SetTimeZone(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := user.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -382,6 +416,9 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.ShareSignature(); !ok {
 		return &ValidationError{Name: "share_signature", err: errors.New(`ent: missing required field "User.share_signature"`)}
+	}
+	if _, ok := _c.mutation.TimeZone(); !ok {
+		return &ValidationError{Name: "time_zone", err: errors.New(`ent: missing required field "User.time_zone"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "User.created_at"`)}
@@ -443,6 +480,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldShareSignature, field.TypeString, value)
 		_node.ShareSignature = value
 	}
+	if value, ok := _c.mutation.TimeZone(); ok {
+		_spec.SetField(user.FieldTimeZone, field.TypeString, value)
+		_node.TimeZone = value
+	}
 	if value, ok := _c.mutation.LazycatUID(); ok {
 		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
 		_node.LazycatUID = &value
@@ -464,6 +505,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.FoldersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

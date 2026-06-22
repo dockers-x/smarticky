@@ -85,6 +85,11 @@ func ShareSignature(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldShareSignature, v))
 }
 
+// TimeZone applies equality check predicate on the "time_zone" field. It's identical to TimeZoneEQ.
+func TimeZone(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTimeZone, v))
+}
+
 // LazycatUID applies equality check predicate on the "lazycat_uid" field. It's identical to LazycatUIDEQ.
 func LazycatUID(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLazycatUID, v))
@@ -540,6 +545,71 @@ func ShareSignatureContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldShareSignature, v))
 }
 
+// TimeZoneEQ applies the EQ predicate on the "time_zone" field.
+func TimeZoneEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTimeZone, v))
+}
+
+// TimeZoneNEQ applies the NEQ predicate on the "time_zone" field.
+func TimeZoneNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldTimeZone, v))
+}
+
+// TimeZoneIn applies the In predicate on the "time_zone" field.
+func TimeZoneIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldTimeZone, vs...))
+}
+
+// TimeZoneNotIn applies the NotIn predicate on the "time_zone" field.
+func TimeZoneNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldTimeZone, vs...))
+}
+
+// TimeZoneGT applies the GT predicate on the "time_zone" field.
+func TimeZoneGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldTimeZone, v))
+}
+
+// TimeZoneGTE applies the GTE predicate on the "time_zone" field.
+func TimeZoneGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldTimeZone, v))
+}
+
+// TimeZoneLT applies the LT predicate on the "time_zone" field.
+func TimeZoneLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldTimeZone, v))
+}
+
+// TimeZoneLTE applies the LTE predicate on the "time_zone" field.
+func TimeZoneLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldTimeZone, v))
+}
+
+// TimeZoneContains applies the Contains predicate on the "time_zone" field.
+func TimeZoneContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldTimeZone, v))
+}
+
+// TimeZoneHasPrefix applies the HasPrefix predicate on the "time_zone" field.
+func TimeZoneHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldTimeZone, v))
+}
+
+// TimeZoneHasSuffix applies the HasSuffix predicate on the "time_zone" field.
+func TimeZoneHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldTimeZone, v))
+}
+
+// TimeZoneEqualFold applies the EqualFold predicate on the "time_zone" field.
+func TimeZoneEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldTimeZone, v))
+}
+
+// TimeZoneContainsFold applies the ContainsFold predicate on the "time_zone" field.
+func TimeZoneContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldTimeZone, v))
+}
+
 // LazycatUIDEQ applies the EQ predicate on the "lazycat_uid" field.
 func LazycatUIDEQ(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLazycatUID, v))
@@ -710,6 +780,29 @@ func HasNotes() predicate.User {
 func HasNotesWith(preds ...predicate.Note) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newNotesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasFolders applies the HasEdge predicate on the "folders" edge.
+func HasFolders() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, FoldersTable, FoldersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasFoldersWith applies the HasEdge predicate on the "folders" edge with a given conditions (other predicates).
+func HasFoldersWith(preds ...predicate.Folder) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newFoldersStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

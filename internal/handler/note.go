@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"smarticky/ent"
+	"smarticky/ent/folder"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -75,18 +76,23 @@ func verifyPassword(password, storedHash string) (bool, error) {
 }
 
 type NoteResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Color     string    `json:"color"`
-	IsLocked  bool      `json:"is_locked"`
-	IsStarred bool      `json:"is_starred"`
-	IsDeleted bool      `json:"is_deleted"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uuid.UUID  `json:"id"`
+	Title     string     `json:"title"`
+	Content   string     `json:"content"`
+	Color     string     `json:"color"`
+	IsLocked  bool       `json:"is_locked"`
+	IsStarred bool       `json:"is_starred"`
+	IsDeleted bool       `json:"is_deleted"`
+	FolderID  *uuid.UUID `json:"folder_id"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
-func noteToResponse(n *ent.Note) NoteResponse {
+func noteToResponse(ctx context.Context, n *ent.Note) (NoteResponse, error) {
+	folderID, err := noteFolderID(ctx, n)
+	if err != nil {
+		return NoteResponse{}, err
+	}
 	return NoteResponse{
 		ID:        n.ID,
 		Title:     n.Title,
@@ -95,30 +101,90 @@ func noteToResponse(n *ent.Note) NoteResponse {
 		IsLocked:  n.IsLocked,
 		IsStarred: n.IsStarred,
 		IsDeleted: n.IsDeleted,
+		FolderID:  folderID,
 		CreatedAt: n.CreatedAt,
 		UpdatedAt: n.UpdatedAt,
+	}, nil
+}
+
+func noteFolderID(ctx context.Context, n *ent.Note) (*uuid.UUID, error) {
+	f, err := n.QueryFolder().Only(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	id := f.ID
+	return &id, nil
 }
 
 type CreateNoteRequest struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	Color   string `json:"color"`
+	Title    string       `json:"title"`
+	Content  string       `json:"content"`
+	Color    string       `json:"color"`
+	FolderID OptionalUUID `json:"folder_id"`
 }
 
 type UpdateNoteRequest struct {
-	Title     *string `json:"title"`
-	Content   *string `json:"content"`
-	Color     *string `json:"color"`
-	Password  *string `json:"password"`
-	IsLocked  *bool   `json:"is_locked"`
-	IsStarred *bool   `json:"is_starred"`
-	IsDeleted *bool   `json:"is_deleted"`
+	Title     *string      `json:"title"`
+	Content   *string      `json:"content"`
+	Color     *string      `json:"color"`
+	Password  *string      `json:"password"`
+	IsLocked  *bool        `json:"is_locked"`
+	IsStarred *bool        `json:"is_starred"`
+	IsDeleted *bool        `json:"is_deleted"`
+	FolderID  OptionalUUID `json:"folder_id"`
+}
+
+func parseNoteTimeParam(value string, endOfDay bool, location *time.Location) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, nil
+	}
+
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return parsed.UTC(), nil
+	}
+
+	parsed, err := time.ParseInLocation("2006-01-02", value, location)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if endOfDay {
+		return parsed.Add(24*time.Hour - time.Nanosecond).UTC(), nil
+	}
+	return parsed.UTC(), nil
+}
+
+func noteQueryLocation(c echo.Context) (*time.Location, error) {
+	value := strings.TrimSpace(c.QueryParam("timezone"))
+	if value == "" {
+		return time.UTC, nil
+	}
+	return time.LoadLocation(value)
+}
+
+func applyNoteTimeFilter(c echo.Context, location *time.Location, param string, endOfDay bool, apply func(time.Time)) error {
+	value := strings.TrimSpace(c.QueryParam(param))
+	if value == "" {
+		return nil
+	}
+	parsed, err := parseNoteTimeParam(value, endOfDay, location)
+	if err != nil {
+		return err
+	}
+	apply(parsed)
+	return nil
 }
 
 func (h *Handler) ListNotes(c echo.Context) error {
 	ctx := context.Background()
 	userID := c.Get("user_id").(int)
+	location, err := noteQueryLocation(c)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid timezone"})
+	}
 
 	query := h.client.Note.Query()
 
@@ -152,6 +218,17 @@ func (h *Handler) ListNotes(c echo.Context) error {
 			query.Where(note.HasTagsWith(tag.NameEQ(tagName), tag.HasUserWith(user.IDEQ(userID))))
 		}
 	}
+	if folderParam := strings.TrimSpace(c.QueryParam("folder_id")); folderParam != "" {
+		if folderParam == "unfiled" {
+			query.Where(note.Not(note.HasFolder()))
+		} else {
+			folderID, err := uuid.Parse(folderParam)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid folder_id"})
+			}
+			query.Where(note.HasFolderWith(folder.ID(folderID), folder.HasUserWith(user.IDEQ(userID))))
+		}
+	}
 
 	search := c.QueryParam("q")
 	if search != "" {
@@ -161,6 +238,29 @@ func (h *Handler) ListNotes(c echo.Context) error {
 				note.ContentContainsFold(search),
 			),
 		)
+	}
+	if titleSearch := strings.TrimSpace(c.QueryParam("title")); titleSearch != "" {
+		query.Where(note.TitleContainsFold(titleSearch))
+	}
+	if err := applyNoteTimeFilter(c, location, "created_from", false, func(value time.Time) {
+		query.Where(note.CreatedAtGTE(value))
+	}); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid created_from"})
+	}
+	if err := applyNoteTimeFilter(c, location, "created_to", true, func(value time.Time) {
+		query.Where(note.CreatedAtLTE(value))
+	}); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid created_to"})
+	}
+	if err := applyNoteTimeFilter(c, location, "updated_from", false, func(value time.Time) {
+		query.Where(note.UpdatedAtGTE(value))
+	}); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid updated_from"})
+	}
+	if err := applyNoteTimeFilter(c, location, "updated_to", true, func(value time.Time) {
+		query.Where(note.UpdatedAtLTE(value))
+	}); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid updated_to"})
 	}
 
 	// Order by updated_at desc
@@ -185,8 +285,12 @@ func (h *Handler) ListNotes(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 
+		noteResponse, err := noteToResponse(ctx, n)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
 		response[i] = NoteWithTagsResponse{
-			NoteResponse: noteToResponse(n),
+			NoteResponse: noteResponse,
 			Tags:         tags,
 		}
 	}
@@ -204,18 +308,32 @@ func (h *Handler) CreateNote(c echo.Context) error {
 	userID := c.Get("user_id").(int)
 
 	ctx := context.Background()
-	n, err := h.client.Note.Create().
+	create := h.client.Note.Create().
 		SetTitle(req.Title).
 		SetContent(req.Content).
 		SetColor(req.Color).
-		SetUserID(userID).
-		Save(ctx)
+		SetUserID(userID)
+	if req.FolderID.Set && req.FolderID.Value != nil {
+		if _, err := h.folderForUser(ctx, userID, *req.FolderID.Value); err != nil {
+			if ent.IsNotFound(err) {
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "folder not found"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		create.SetFolderID(*req.FolderID.Value)
+	}
+
+	n, err := create.Save(ctx)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, noteToResponse(n))
+	response, err := noteToResponse(ctx, n)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusCreated, response)
 }
 
 func (h *Handler) GetNote(c echo.Context) error {
@@ -255,8 +373,12 @@ func (h *Handler) GetNote(c echo.Context) error {
 		Tags []*ent.Tag `json:"tags"`
 	}
 
+	noteResponse, err := noteToResponse(ctx, n)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 	response := NoteWithTagsResponse{
-		NoteResponse: noteToResponse(n),
+		NoteResponse: noteResponse,
 		Tags:         tags,
 	}
 
@@ -328,13 +450,30 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 	if req.IsDeleted != nil {
 		update.SetIsDeleted(*req.IsDeleted)
 	}
+	if req.FolderID.Set {
+		if req.FolderID.Value == nil {
+			update.ClearFolder()
+		} else {
+			if _, err := h.folderForUser(ctx, userID, *req.FolderID.Value); err != nil {
+				if ent.IsNotFound(err) {
+					return c.JSON(http.StatusNotFound, map[string]string{"error": "folder not found"})
+				}
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			}
+			update.SetFolderID(*req.FolderID.Value)
+		}
+	}
 
 	n, err = update.Save(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, noteToResponse(n))
+	response, err := noteToResponse(ctx, n)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) DeleteNote(c echo.Context) error {
@@ -433,8 +572,12 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 	}
 
 	// Return success with note content
+	response, err := noteToResponse(ctx, n)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
-		"note":    noteToResponse(n),
+		"note":    response,
 	})
 }

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { diagramRuntime } from "../../markdown/diagrams/runtime";
   import type { DiagramRuntimeState, DiagramTheme } from "../../markdown/diagrams/types";
+  import { attachCodeGroupTabs } from "../../markdown/codeGroups";
+  import { protectedImageRuntime } from "../../markdown/protectedImages";
   import { whiteboardRuntime } from "../../markdown/whiteboards";
 
   export let html = "";
@@ -19,12 +21,26 @@
     contentKey: html,
     onOpen: onOpenWhiteboard,
   };
+  $: protectedImageRuntimeOptions = {
+    contentKey: html,
+  };
+
+  function codeGroupTabs(node: HTMLElement): { destroy: () => void } {
+    const detach = attachCodeGroupTabs(node);
+    return {
+      destroy() {
+        detach();
+      },
+    };
+  }
 </script>
 
 <div
   class={className}
   use:diagramRuntime={runtimeOptions}
   use:whiteboardRuntime={whiteboardRuntimeOptions}
+  use:codeGroupTabs
+  use:protectedImageRuntime={protectedImageRuntimeOptions}
 >
   {@html html}
 </div>

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import EditorPane from "../editor/EditorPane.svelte";
   import ExcalidrawWhiteboardDialog from "../editor/ExcalidrawWhiteboardDialog.svelte";
+  import { foldersStore } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
   import { whiteboardStore } from "../../stores/whiteboard";
   import NoteList from "./NoteList.svelte";
@@ -9,6 +10,7 @@
 
   onMount(() => {
     notesStore.load();
+    foldersStore.load();
   });
 </script>
 

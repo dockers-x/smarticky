@@ -161,11 +161,42 @@
     exportDiagramState = state;
   }
 
+  function delay(ms: number): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  async function waitForImages(root: HTMLElement): Promise<void> {
+    const deadline = Date.now() + 5000;
+    while (
+      Date.now() < deadline &&
+      root.querySelector("img[data-auth-image-loading='true']")
+    ) {
+      await delay(80);
+    }
+
+    const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+    await Promise.all(
+      images.map(async (image) => {
+        if (image.complete) return;
+        await new Promise<void>((resolve) => {
+          const done = () => {
+            image.removeEventListener("load", done);
+            image.removeEventListener("error", done);
+            resolve();
+          };
+          image.addEventListener("load", done, { once: true });
+          image.addEventListener("error", done, { once: true });
+        });
+      }),
+    );
+  }
+
   async function exportOptions() {
     await tick();
     await waitForDiagramSettle(() => exportDiagramState);
     await tick();
     if (!exportTarget) throw new Error("Share image target unavailable");
+    await waitForImages(exportTarget);
 
     const width = exportTarget.scrollWidth;
     const height = exportTarget.scrollHeight;

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"smarticky/ent/attachment"
 	"smarticky/ent/excalidrawlibrary"
+	"smarticky/ent/folder"
 	"smarticky/ent/font"
 	"smarticky/ent/importjob"
 	"smarticky/ent/mcpimage"
@@ -154,6 +155,20 @@ func (_u *UserUpdate) SetNillableShareSignature(v *string) *UserUpdate {
 	return _u
 }
 
+// SetTimeZone sets the "time_zone" field.
+func (_u *UserUpdate) SetTimeZone(v string) *UserUpdate {
+	_u.mutation.SetTimeZone(v)
+	return _u
+}
+
+// SetNillableTimeZone sets the "time_zone" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableTimeZone(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetTimeZone(*v)
+	}
+	return _u
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (_u *UserUpdate) SetLazycatUID(v string) *UserUpdate {
 	_u.mutation.SetLazycatUID(v)
@@ -193,6 +208,21 @@ func (_u *UserUpdate) AddNotes(v ...*Note) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddNoteIDs(ids...)
+}
+
+// AddFolderIDs adds the "folders" edge to the Folder entity by IDs.
+func (_u *UserUpdate) AddFolderIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.AddFolderIDs(ids...)
+	return _u
+}
+
+// AddFolders adds the "folders" edges to the Folder entity.
+func (_u *UserUpdate) AddFolders(v ...*Folder) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddFolderIDs(ids...)
 }
 
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by IDs.
@@ -343,6 +373,27 @@ func (_u *UserUpdate) RemoveNotes(v ...*Note) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveNoteIDs(ids...)
+}
+
+// ClearFolders clears all "folders" edges to the Folder entity.
+func (_u *UserUpdate) ClearFolders() *UserUpdate {
+	_u.mutation.ClearFolders()
+	return _u
+}
+
+// RemoveFolderIDs removes the "folders" edge to Folder entities by IDs.
+func (_u *UserUpdate) RemoveFolderIDs(ids ...uuid.UUID) *UserUpdate {
+	_u.mutation.RemoveFolderIDs(ids...)
+	return _u
+}
+
+// RemoveFolders removes "folders" edges to Folder entities.
+func (_u *UserUpdate) RemoveFolders(v ...*Folder) *UserUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveFolderIDs(ids...)
 }
 
 // ClearAttachments clears all "attachments" edges to the Attachment entity.
@@ -596,6 +647,9 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.ShareSignature(); ok {
 		_spec.SetField(user.FieldShareSignature, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TimeZone(); ok {
+		_spec.SetField(user.FieldTimeZone, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.LazycatUID(); ok {
 		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
 	}
@@ -643,6 +697,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FoldersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedFoldersIDs(); len(nodes) > 0 && !_u.mutation.FoldersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FoldersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1130,6 +1229,20 @@ func (_u *UserUpdateOne) SetNillableShareSignature(v *string) *UserUpdateOne {
 	return _u
 }
 
+// SetTimeZone sets the "time_zone" field.
+func (_u *UserUpdateOne) SetTimeZone(v string) *UserUpdateOne {
+	_u.mutation.SetTimeZone(v)
+	return _u
+}
+
+// SetNillableTimeZone sets the "time_zone" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableTimeZone(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetTimeZone(*v)
+	}
+	return _u
+}
+
 // SetLazycatUID sets the "lazycat_uid" field.
 func (_u *UserUpdateOne) SetLazycatUID(v string) *UserUpdateOne {
 	_u.mutation.SetLazycatUID(v)
@@ -1169,6 +1282,21 @@ func (_u *UserUpdateOne) AddNotes(v ...*Note) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddNoteIDs(ids...)
+}
+
+// AddFolderIDs adds the "folders" edge to the Folder entity by IDs.
+func (_u *UserUpdateOne) AddFolderIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.AddFolderIDs(ids...)
+	return _u
+}
+
+// AddFolders adds the "folders" edges to the Folder entity.
+func (_u *UserUpdateOne) AddFolders(v ...*Folder) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddFolderIDs(ids...)
 }
 
 // AddAttachmentIDs adds the "attachments" edge to the Attachment entity by IDs.
@@ -1319,6 +1447,27 @@ func (_u *UserUpdateOne) RemoveNotes(v ...*Note) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveNoteIDs(ids...)
+}
+
+// ClearFolders clears all "folders" edges to the Folder entity.
+func (_u *UserUpdateOne) ClearFolders() *UserUpdateOne {
+	_u.mutation.ClearFolders()
+	return _u
+}
+
+// RemoveFolderIDs removes the "folders" edge to Folder entities by IDs.
+func (_u *UserUpdateOne) RemoveFolderIDs(ids ...uuid.UUID) *UserUpdateOne {
+	_u.mutation.RemoveFolderIDs(ids...)
+	return _u
+}
+
+// RemoveFolders removes "folders" edges to Folder entities.
+func (_u *UserUpdateOne) RemoveFolders(v ...*Folder) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveFolderIDs(ids...)
 }
 
 // ClearAttachments clears all "attachments" edges to the Attachment entity.
@@ -1602,6 +1751,9 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if value, ok := _u.mutation.ShareSignature(); ok {
 		_spec.SetField(user.FieldShareSignature, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TimeZone(); ok {
+		_spec.SetField(user.FieldTimeZone, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.LazycatUID(); ok {
 		_spec.SetField(user.FieldLazycatUID, field.TypeString, value)
 	}
@@ -1649,6 +1801,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.FoldersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedFoldersIDs(); len(nodes) > 0 && !_u.mutation.FoldersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.FoldersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FoldersTable,
+			Columns: []string{user.FoldersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(folder.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

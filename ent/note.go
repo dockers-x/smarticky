@@ -4,6 +4,7 @@ package ent
 
 import (
 	"fmt"
+	"smarticky/ent/folder"
 	"smarticky/ent/note"
 	"smarticky/ent/user"
 	"strings"
@@ -40,6 +41,7 @@ type Note struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the NoteQuery when eager-loading is set.
 	Edges        NoteEdges `json:"edges"`
+	folder_notes *uuid.UUID
 	user_notes   *int
 	selectValues sql.SelectValues
 }
@@ -48,6 +50,8 @@ type Note struct {
 type NoteEdges struct {
 	// User holds the value of the user edge.
 	User *User `json:"user,omitempty"`
+	// Folder holds the value of the folder edge.
+	Folder *Folder `json:"folder,omitempty"`
 	// Attachments holds the value of the attachments edge.
 	Attachments []*Attachment `json:"attachments,omitempty"`
 	// Whiteboards holds the value of the whiteboards edge.
@@ -56,7 +60,7 @@ type NoteEdges struct {
 	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -70,10 +74,21 @@ func (e NoteEdges) UserOrErr() (*User, error) {
 	return nil, &NotLoadedError{edge: "user"}
 }
 
+// FolderOrErr returns the Folder value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e NoteEdges) FolderOrErr() (*Folder, error) {
+	if e.Folder != nil {
+		return e.Folder, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: folder.Label}
+	}
+	return nil, &NotLoadedError{edge: "folder"}
+}
+
 // AttachmentsOrErr returns the Attachments value or an error if the edge
 // was not loaded in eager-loading.
 func (e NoteEdges) AttachmentsOrErr() ([]*Attachment, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Attachments, nil
 	}
 	return nil, &NotLoadedError{edge: "attachments"}
@@ -82,7 +97,7 @@ func (e NoteEdges) AttachmentsOrErr() ([]*Attachment, error) {
 // WhiteboardsOrErr returns the Whiteboards value or an error if the edge
 // was not loaded in eager-loading.
 func (e NoteEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Whiteboards, nil
 	}
 	return nil, &NotLoadedError{edge: "whiteboards"}
@@ -91,7 +106,7 @@ func (e NoteEdges) WhiteboardsOrErr() ([]*Whiteboard, error) {
 // TagsOrErr returns the Tags value or an error if the edge
 // was not loaded in eager-loading.
 func (e NoteEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
@@ -110,7 +125,9 @@ func (*Note) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullTime)
 		case note.FieldID:
 			values[i] = new(uuid.UUID)
-		case note.ForeignKeys[0]: // user_notes
+		case note.ForeignKeys[0]: // folder_notes
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
+		case note.ForeignKeys[1]: // user_notes
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -188,6 +205,13 @@ func (_m *Note) assignValues(columns []string, values []any) error {
 				_m.UpdatedAt = value.Time
 			}
 		case note.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field folder_notes", values[i])
+			} else if value.Valid {
+				_m.folder_notes = new(uuid.UUID)
+				*_m.folder_notes = *value.S.(*uuid.UUID)
+			}
+		case note.ForeignKeys[1]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field user_notes", value)
 			} else if value.Valid {
@@ -210,6 +234,11 @@ func (_m *Note) Value(name string) (ent.Value, error) {
 // QueryUser queries the "user" edge of the Note entity.
 func (_m *Note) QueryUser() *UserQuery {
 	return NewNoteClient(_m.config).QueryUser(_m)
+}
+
+// QueryFolder queries the "folder" edge of the Note entity.
+func (_m *Note) QueryFolder() *FolderQuery {
+	return NewNoteClient(_m.config).QueryFolder(_m)
 }
 
 // QueryAttachments queries the "attachments" edge of the Note entity.

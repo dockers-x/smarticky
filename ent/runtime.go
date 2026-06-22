@@ -6,6 +6,7 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
 	"smarticky/ent/excalidrawlibrary"
+	"smarticky/ent/folder"
 	"smarticky/ent/font"
 	"smarticky/ent/importitem"
 	"smarticky/ent/importjob"
@@ -61,12 +62,16 @@ func init() {
 	backupconfigDescBackupMaxCount := backupconfigFields[11].Descriptor()
 	// backupconfig.DefaultBackupMaxCount holds the default value on creation for the backup_max_count field.
 	backupconfig.DefaultBackupMaxCount = backupconfigDescBackupMaxCount.Default.(int)
+	// backupconfigDescFolderMaxDepth is the schema descriptor for folder_max_depth field.
+	backupconfigDescFolderMaxDepth := backupconfigFields[12].Descriptor()
+	// backupconfig.DefaultFolderMaxDepth holds the default value on creation for the folder_max_depth field.
+	backupconfig.DefaultFolderMaxDepth = backupconfigDescFolderMaxDepth.Default.(int)
 	// backupconfigDescCreatedAt is the schema descriptor for created_at field.
-	backupconfigDescCreatedAt := backupconfigFields[13].Descriptor()
+	backupconfigDescCreatedAt := backupconfigFields[14].Descriptor()
 	// backupconfig.DefaultCreatedAt holds the default value on creation for the created_at field.
 	backupconfig.DefaultCreatedAt = backupconfigDescCreatedAt.Default.(func() time.Time)
 	// backupconfigDescUpdatedAt is the schema descriptor for updated_at field.
-	backupconfigDescUpdatedAt := backupconfigFields[14].Descriptor()
+	backupconfigDescUpdatedAt := backupconfigFields[15].Descriptor()
 	// backupconfig.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	backupconfig.DefaultUpdatedAt = backupconfigDescUpdatedAt.Default.(func() time.Time)
 	// backupconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -91,6 +96,34 @@ func init() {
 	excalidrawlibraryDescID := excalidrawlibraryFields[0].Descriptor()
 	// excalidrawlibrary.DefaultID holds the default value on creation for the id field.
 	excalidrawlibrary.DefaultID = excalidrawlibraryDescID.Default.(func() uuid.UUID)
+	folderFields := schema.Folder{}.Fields()
+	_ = folderFields
+	// folderDescName is the schema descriptor for name field.
+	folderDescName := folderFields[1].Descriptor()
+	// folder.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	folder.NameValidator = folderDescName.Validators[0].(func(string) error)
+	// folderDescSortOrder is the schema descriptor for sort_order field.
+	folderDescSortOrder := folderFields[2].Descriptor()
+	// folder.DefaultSortOrder holds the default value on creation for the sort_order field.
+	folder.DefaultSortOrder = folderDescSortOrder.Default.(int)
+	// folderDescIsStarred is the schema descriptor for is_starred field.
+	folderDescIsStarred := folderFields[3].Descriptor()
+	// folder.DefaultIsStarred holds the default value on creation for the is_starred field.
+	folder.DefaultIsStarred = folderDescIsStarred.Default.(bool)
+	// folderDescCreatedAt is the schema descriptor for created_at field.
+	folderDescCreatedAt := folderFields[4].Descriptor()
+	// folder.DefaultCreatedAt holds the default value on creation for the created_at field.
+	folder.DefaultCreatedAt = folderDescCreatedAt.Default.(func() time.Time)
+	// folderDescUpdatedAt is the schema descriptor for updated_at field.
+	folderDescUpdatedAt := folderFields[5].Descriptor()
+	// folder.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	folder.DefaultUpdatedAt = folderDescUpdatedAt.Default.(func() time.Time)
+	// folder.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	folder.UpdateDefaultUpdatedAt = folderDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// folderDescID is the schema descriptor for id field.
+	folderDescID := folderFields[0].Descriptor()
+	// folder.DefaultID holds the default value on creation for the id field.
+	folder.DefaultID = folderDescID.Default.(func() uuid.UUID)
 	fontFields := schema.Font{}.Fields()
 	_ = fontFields
 	// fontDescName is the schema descriptor for name field.
@@ -303,12 +336,16 @@ func init() {
 	userDescShareSignature := userFields[6].Descriptor()
 	// user.DefaultShareSignature holds the default value on creation for the share_signature field.
 	user.DefaultShareSignature = userDescShareSignature.Default.(string)
+	// userDescTimeZone is the schema descriptor for time_zone field.
+	userDescTimeZone := userFields[7].Descriptor()
+	// user.DefaultTimeZone holds the default value on creation for the time_zone field.
+	user.DefaultTimeZone = userDescTimeZone.Default.(string)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[8].Descriptor()
+	userDescCreatedAt := userFields[9].Descriptor()
 	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
 	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 	// userDescUpdatedAt is the schema descriptor for updated_at field.
-	userDescUpdatedAt := userFields[9].Descriptor()
+	userDescUpdatedAt := userFields[10].Descriptor()
 	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
