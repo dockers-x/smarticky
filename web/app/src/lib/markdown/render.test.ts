@@ -402,6 +402,71 @@ describe("renderMarkdown code groups", () => {
     expect(result.markdown).toBe(original);
     expect(result.error).toBe("Replacement must be a complete code-group or code-tabs block.");
   });
+
+  it("rejects stale source replacements when fallback matches are ambiguous", () => {
+    const original = [
+      "::: code-group",
+      "```bash [pnpm]",
+      "pnpm install",
+      "```",
+      ":::",
+      "Middle",
+      "::: code-group",
+      "```bash [pnpm]",
+      "pnpm install",
+      "```",
+      ":::",
+    ].join("\n");
+    const first = extractCodeGroupSources(original)[0];
+    const nextRaw = [
+      "::: code-group",
+      "```bash [bun]",
+      "bun install",
+      "```",
+      ":::",
+    ].join("\n");
+
+    const result = replaceCodeGroupSource(original, {
+      sourceID: "stale-group-1",
+      startLine: 99,
+      endLine: 103,
+      raw: first.raw,
+      signature: first.signature,
+    }, nextRaw);
+
+    expect(result.markdown).toBe(original);
+    expect(result.error).toBe("The original code group could not be found.");
+  });
+
+  it("replaces code-group source changes that keep the same rendered tabs", () => {
+    const original = [
+      "::: code-group",
+      "```bash [pnpm]",
+      "pnpm install",
+      "```",
+      ":::",
+    ].join("\n");
+    const group = extractCodeGroupSources(original)[0];
+    const nextRaw = [
+      "::: code-group # install commands",
+      "```bash [pnpm]",
+      "pnpm install",
+      "```",
+      ":::",
+    ].join("\n");
+
+    const result = replaceCodeGroupSource(original, {
+      sourceID: "group-1",
+      startLine: group.startLine,
+      endLine: group.endLine,
+      raw: group.raw,
+      signature: group.signature,
+    }, nextRaw);
+
+    expect(result.error).toBeUndefined();
+    expect(result.markdown).toBe(nextRaw);
+    expect(extractCodeGroupSources(result.markdown)[0].signature).toBe(group.signature);
+  });
 });
 
 describe("renderMarkdown images", () => {

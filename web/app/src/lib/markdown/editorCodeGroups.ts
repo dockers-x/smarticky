@@ -64,8 +64,8 @@ function topLevelBlocks(doc: ProseNode): TopLevelBlock[] {
   return blocks;
 }
 
-function codeGroupSourceID(group: CodeGroupBlock): string {
-  return `smarticky-code-group-source-${group.startLine}-${group.endLine}-${hashString(JSON.stringify(group.items))}`;
+function codeGroupSourceID(group: CodeGroupSourceBlock): string {
+  return `smarticky-code-group-source-${group.startLine}-${group.endLine}-${hashString(group.raw)}-${hashString(JSON.stringify(group.items))}`;
 }
 
 function createCodeGroupPreview(
@@ -95,14 +95,19 @@ function createCodeGroupPreview(
   sourceEditor.hidden = true;
 
   const textarea = document.createElement("textarea");
+  const errorID = `${sourceID}-error`;
   textarea.className = "editor-code-group-source-textarea";
   textarea.spellcheck = false;
   textarea.value = group.raw;
   textarea.setAttribute("aria-label", "Code group source");
+  textarea.setAttribute("aria-describedby", errorID);
 
   const error = document.createElement("div");
+  error.id = errorID;
   error.className = "editor-code-group-source-error";
   error.hidden = true;
+  error.setAttribute("role", "alert");
+  error.setAttribute("aria-live", "polite");
 
   const actions = document.createElement("div");
   actions.className = "editor-code-group-source-actions";
@@ -122,6 +127,7 @@ function createCodeGroupPreview(
   preview.append(sourceModeButton, content, sourceEditor);
 
   const detach = attachCodeGroupTabs(preview);
+  let focusTimer: ReturnType<typeof window.setTimeout> | null = null;
 
   const showPreview = (): void => {
     textarea.value = group.raw;
@@ -139,7 +145,10 @@ function createCodeGroupPreview(
     sourceEditor.hidden = false;
     content.hidden = true;
     sourceModeButton.hidden = true;
-    window.setTimeout(() => {
+    if (focusTimer) window.clearTimeout(focusTimer);
+    focusTimer = window.setTimeout(() => {
+      focusTimer = null;
+      if (!textarea.isConnected) return;
       textarea.focus();
       textarea.setSelectionRange(0, textarea.value.length);
     }, 0);
@@ -177,6 +186,10 @@ function createCodeGroupPreview(
   saveButton.addEventListener("click", handleSave);
   cancelButton.addEventListener("click", handleCancel);
   previewCleanup.set(preview, () => {
+    if (focusTimer) {
+      window.clearTimeout(focusTimer);
+      focusTimer = null;
+    }
     detach();
     sourceModeButton.removeEventListener("click", handleSourceModeRequest);
     saveButton.removeEventListener("click", handleSave);
@@ -219,7 +232,7 @@ function createCodeGroupDecorations(
     const sourceID = codeGroupSourceID(group);
     decorations.push(
       Decoration.widget(opener.pos, () => createCodeGroupPreview(group, sourceID, replaceSource), {
-        key: `smarticky-code-group-${group.startLine}-${group.endLine}-${hashString(JSON.stringify(group.items))}`,
+        key: `smarticky-code-group-${group.startLine}-${group.endLine}-${hashString(group.raw)}-${hashString(JSON.stringify(group.items))}`,
         side: -1,
         ignoreSelection: true,
         destroy: (node: Node) => {

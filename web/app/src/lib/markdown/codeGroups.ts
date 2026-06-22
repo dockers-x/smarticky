@@ -318,17 +318,25 @@ export function replaceCodeGroupSource(
   }
 
   const groups = extractCodeGroupSources(markdown);
-  const rawMatch = groups.find((group) => group.raw === request.raw);
-  if (rawMatch) {
+  const rawMatches = groups.filter((group) => group.raw === request.raw);
+  if (rawMatches.length === 1) {
     return {
-      markdown: replaceLineRange(rawMatch.startLine, rawMatch.endLine),
+      markdown: replaceLineRange(rawMatches[0].startLine, rawMatches[0].endLine),
+    };
+  }
+  if (rawMatches.length > 1) {
+    return {
+      markdown,
+      error: "The original code group could not be found.",
     };
   }
 
-  const signatureMatch = groups.find((group) => group.signature === request.signature);
-  if (signatureMatch) {
+  const signatureMatches = groups.filter(
+    (group) => group.signature === request.signature,
+  );
+  if (signatureMatches.length === 1) {
     return {
-      markdown: replaceLineRange(signatureMatch.startLine, signatureMatch.endLine),
+      markdown: replaceLineRange(signatureMatches[0].startLine, signatureMatches[0].endLine),
     };
   }
 
