@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { FileText, Folder, Network, Search, Shield, Tag } from "@lucide/svelte";
+  import IndexGraphCanvas from "./IndexGraphCanvas.svelte";
   import type {
     Folder as FolderRecord,
     Note,
@@ -24,20 +25,11 @@
     label: string;
     count: number;
     note?: Note;
-    x: number;
-    y: number;
   }
 
   interface IndexLink {
     source: string;
     target: string;
-  }
-
-  interface RenderedIndexLink extends IndexLink {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
   }
 
   interface GroupEntry {
@@ -49,7 +41,6 @@
   interface IndexModel {
     nodes: IndexNode[];
     links: IndexLink[];
-    renderedLinks: RenderedIndexLink[];
     nodeByID: Map<string, IndexNode>;
     notesByNodeID: Map<string, Note[]>;
     tagNodes: IndexNode[];
@@ -58,8 +49,6 @@
     rootNode: IndexNode;
   }
 
-  const graphWidth = 1000;
-  const graphHeight = 620;
   const rootID = "root";
   const protectionModes: ProtectionMode[] = ["none", "password", "encrypted"];
 
@@ -96,12 +85,6 @@
     return t("indexAllNotes", language);
   }
 
-  function shortLabel(label: string, maxLength: number): string {
-    const trimmed = label.trim();
-    if (trimmed.length <= maxLength) return trimmed;
-    return `${trimmed.slice(0, Math.max(1, maxLength - 1))}...`;
-  }
-
   function tagIdentity(tag: TagRecord | string): { id: string; name: string } {
     if (typeof tag === "string") return { id: tag, name: tag };
     return { id: tag.id, name: tag.name };
@@ -111,29 +94,6 @@
     return ((note.tags ?? []) as Array<TagRecord | string>).map(tagIdentity);
   }
 
-  function ringPoint(
-    index: number,
-    total: number,
-    centerX: number,
-    centerY: number,
-    radiusX: number,
-    radiusY: number,
-    startAngle = -Math.PI / 2,
-  ): { x: number; y: number } {
-    if (total <= 1) return { x: centerX, y: centerY - radiusY };
-    const angle = startAngle + (index / total) * Math.PI * 2;
-    return {
-      x: centerX + Math.cos(angle) * radiusX,
-      y: centerY + Math.sin(angle) * radiusY,
-    };
-  }
-
-  function nodeRadius(node: IndexNode): number {
-    if (node.type === "root") return 34;
-    if (node.type === "note") return selectedNodeID === node.id ? 13 : 9;
-    return 18;
-  }
-
   function sortedNotes(notes: Note[], language: Language): Note[] {
     return [...notes].sort((left, right) => {
       const updated = Date.parse(right.updated_at) - Date.parse(left.updated_at);
@@ -141,24 +101,6 @@
       const title = noteTitle(left, language).localeCompare(noteTitle(right, language));
       if (title !== 0) return title;
       return left.id.localeCompare(right.id);
-    });
-  }
-
-  function buildRenderedLinks(
-    links: IndexLink[],
-    nodeByID: Map<string, IndexNode>,
-  ): RenderedIndexLink[] {
-    return links.flatMap((link) => {
-      const source = nodeByID.get(link.source);
-      const target = nodeByID.get(link.target);
-      if (!source || !target) return [];
-      return [{
-        ...link,
-        x1: source.x,
-        y1: source.y,
-        x2: target.x,
-        y2: target.y,
-      }];
     });
   }
 
@@ -174,8 +116,6 @@
       type: "root",
       label: t("indexAllNotes", language),
       count: orderedNotes.length,
-      x: graphWidth / 2,
-      y: graphHeight / 2,
     };
 
     const nodes: IndexNode[] = [rootNode];
@@ -235,18 +175,13 @@
       protectionGroup?.notes.push(note);
     }
 
-    const noteNodes = orderedNotes.map((note, index) => {
-      const point = ringPoint(index, orderedNotes.length, 500, 310, 260, 185);
-      return {
-        id: nodeID("note", note.id),
-        type: "note" as const,
-        label: noteTitle(note, language),
-        count: 1,
-        note,
-        x: point.x,
-        y: point.y,
-      };
-    });
+    const noteNodes = orderedNotes.map((note) => ({
+      id: nodeID("note", note.id),
+      type: "note" as const,
+      label: noteTitle(note, language),
+      count: 1,
+      note,
+    }));
 
     for (const node of noteNodes) {
       nodes.push(node);
@@ -270,41 +205,26 @@
       .map((mode) => protectionGroups.get(mode))
       .filter((entry): entry is GroupEntry => Boolean(entry));
 
-    const tagNodes = tagEntries.map((entry, index) => {
-      const point = ringPoint(index, tagEntries.length, 165, 210, 94, 116);
-      return {
-        id: nodeID("tag", entry.id),
-        type: "tag" as const,
-        label: entry.label,
-        count: entry.notes.length,
-        x: point.x,
-        y: point.y,
-      };
-    });
+    const tagNodes = tagEntries.map((entry) => ({
+      id: nodeID("tag", entry.id),
+      type: "tag" as const,
+      label: entry.label,
+      count: entry.notes.length,
+    }));
 
-    const folderNodes = folderEntries.map((entry, index) => {
-      const point = ringPoint(index, folderEntries.length, 835, 210, 94, 116);
-      return {
-        id: nodeID("folder", entry.id),
-        type: "folder" as const,
-        label: entry.label,
-        count: entry.notes.length,
-        x: point.x,
-        y: point.y,
-      };
-    });
+    const folderNodes = folderEntries.map((entry) => ({
+      id: nodeID("folder", entry.id),
+      type: "folder" as const,
+      label: entry.label,
+      count: entry.notes.length,
+    }));
 
-    const protectionNodes = protectionEntries.map((entry, index) => {
-      const point = ringPoint(index, protectionEntries.length, 500, 545, 150, 44, 0);
-      return {
-        id: nodeID("protection", entry.id),
-        type: "protection" as const,
-        label: entry.label,
-        count: entry.notes.length,
-        x: point.x,
-        y: point.y,
-      };
-    });
+    const protectionNodes = protectionEntries.map((entry) => ({
+      id: nodeID("protection", entry.id),
+      type: "protection" as const,
+      label: entry.label,
+      count: entry.notes.length,
+    }));
 
     for (const node of [...tagNodes, ...folderNodes, ...protectionNodes]) {
       nodes.push(node);
@@ -339,7 +259,6 @@
     return {
       nodes,
       links,
-      renderedLinks: buildRenderedLinks(links, nodeByID),
       nodeByID,
       notesByNodeID,
       tagNodes,
@@ -351,12 +270,6 @@
 
   function selectNode(nodeIDValue: string): void {
     selectedNodeID = nodeIDValue;
-  }
-
-  function handleNodeKeydown(event: KeyboardEvent, nodeIDValue: string): void {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    selectNode(nodeIDValue);
   }
 
   function openNote(note: Note): void {
@@ -532,54 +445,14 @@
         {activeSearch ? t("indexNoConnections", $preferencesStore.language) : t("indexEmpty", $preferencesStore.language)}
       </div>
     {:else}
-      <svg
-        class="index-graph__svg"
-        viewBox={`0 0 ${graphWidth} ${graphHeight}`}
-        role="img"
-        aria-label={t("indexGraph", $preferencesStore.language)}
-      >
-        <g aria-hidden="true">
-          {#each indexModel.renderedLinks as link (`${link.source}-${link.target}`)}
-            <line
-              class="index-link"
-              x1={link.x1}
-              y1={link.y1}
-              x2={link.x2}
-              y2={link.y2}
-            />
-          {/each}
-        </g>
-        <g>
-          {#each indexModel.nodes as node (node.id)}
-            <g
-              class={`index-node index-node--${node.type}`}
-              class:index-node--active={selectedNodeID === node.id}
-              role="button"
-              tabindex="0"
-              aria-label={`${node.label}, ${node.count} ${t("indexConnections", $preferencesStore.language)}`}
-              on:click={() => selectNode(node.id)}
-              on:keydown={(event) => handleNodeKeydown(event, node.id)}
-            >
-              <title>{node.label}</title>
-              <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
-              {#if node.type !== "note"}
-                <text class="index-node__count" x={node.x} y={node.y + 4}>
-                  {node.count}
-                </text>
-              {/if}
-              {#if node.type !== "note" || selectedNodeID === node.id}
-                <text
-                  class="index-node__label"
-                  x={node.x}
-                  y={node.y + nodeRadius(node) + 17}
-                >
-                  {shortLabel(node.label, node.type === "note" ? 22 : 18)}
-                </text>
-              {/if}
-            </g>
-          {/each}
-        </g>
-      </svg>
+      <IndexGraphCanvas
+        nodes={indexModel.nodes}
+        links={indexModel.links}
+        {selectedNodeID}
+        ariaLabel={t("indexGraph", $preferencesStore.language)}
+        theme={$preferencesStore.theme}
+        onSelectNode={selectNode}
+      />
     {/if}
   </section>
 

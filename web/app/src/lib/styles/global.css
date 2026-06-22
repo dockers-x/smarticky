@@ -1902,7 +1902,7 @@ h6 {
   line-height: 1.5;
 }
 
-.index-graph__svg {
+.index-graph-canvas {
   width: 100%;
   height: 100%;
   min-height: 360px;
@@ -1912,83 +1912,6 @@ h6 {
     linear-gradient(90deg, var(--color-divider) 1px, transparent 1px);
   background-size: 48px 48px;
   background-position: -1px -1px;
-}
-
-.index-link {
-  stroke: color-mix(in srgb, var(--color-divider-em) 66%, transparent);
-  stroke-width: 1.4;
-  vector-effect: non-scaling-stroke;
-}
-
-.index-node {
-  cursor: pointer;
-  outline: none;
-}
-
-.index-node circle {
-  fill: var(--color-card);
-  stroke: var(--color-divider-em);
-  stroke-width: 2;
-  transition:
-    fill 120ms ease,
-    stroke 120ms ease,
-    stroke-width 120ms ease;
-  vector-effect: non-scaling-stroke;
-}
-
-.index-node--root circle {
-  fill: color-mix(in srgb, var(--color-brand) 16%, var(--color-card));
-  stroke: var(--color-brand);
-}
-
-.index-node--note circle {
-  fill: var(--color-text-muted);
-  stroke: var(--color-card);
-}
-
-.index-node--tag circle {
-  fill: var(--sm-info-bg);
-  stroke: var(--sm-info);
-}
-
-.index-node--folder circle {
-  fill: var(--sm-success-bg);
-  stroke: var(--sm-success);
-}
-
-.index-node--protection circle {
-  fill: var(--sm-warning-bg);
-  stroke: var(--sm-warning);
-}
-
-.index-node:hover circle,
-.index-node--active circle,
-.index-node:focus-visible circle {
-  stroke: var(--color-brand);
-  stroke-width: 4;
-}
-
-.index-node__count,
-.index-node__label {
-  pointer-events: none;
-  text-anchor: middle;
-  user-select: none;
-}
-
-.index-node__count {
-  fill: var(--color-text);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.index-node__label {
-  fill: var(--color-text-secondary);
-  stroke: var(--color-page);
-  stroke-linejoin: round;
-  stroke-width: 5px;
-  paint-order: stroke;
-  font-size: 12px;
-  font-weight: 500;
 }
 
 .index-inspector {
