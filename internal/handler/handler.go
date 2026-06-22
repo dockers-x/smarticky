@@ -4,6 +4,7 @@ import (
 	"smarticky/ent"
 	importsvc "smarticky/internal/importer"
 	"smarticky/internal/notes"
+	searchsvc "smarticky/internal/search"
 	"smarticky/internal/shareimage"
 	"smarticky/internal/storage"
 )
@@ -13,10 +14,15 @@ type Handler struct {
 	fs          *storage.FileSystem
 	importer    *importsvc.Service
 	notes       *notes.Service
+	search      *searchsvc.Service
 	shareImages *shareimage.Service
 }
 
 func NewHandler(client *ent.Client, fs *storage.FileSystem) *Handler {
+	return NewHandlerWithSearch(client, fs, nil)
+}
+
+func NewHandlerWithSearch(client *ent.Client, fs *storage.FileSystem, searchService *searchsvc.Service) *Handler {
 	if fs == nil {
 		fs = storage.NewMemoryFileSystem()
 	}
@@ -25,7 +31,8 @@ func NewHandler(client *ent.Client, fs *storage.FileSystem) *Handler {
 		client:      client,
 		fs:          fs,
 		importer:    importsvc.NewService(client, fs),
-		notes:       notes.NewService(client),
+		notes:       notes.NewService(client, searchService),
+		search:      searchService,
 		shareImages: shareimage.NewService(client, fs.GetDataDir()),
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"smarticky/ent/enttest"
 	"smarticky/ent/note"
+	searchsvc "smarticky/internal/search"
 
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib-x/entsqlite"
@@ -220,6 +221,67 @@ func TestListNotesSearchesFullTextButTitleFilterOnlyMatchesTitle(t *testing.T) {
 	titleTitles := listNoteTitlesForTest(t, h, u.ID, "/api/notes?title=alpha")
 	if len(titleTitles) != 1 || titleTitles[0] != "Alpha title" {
 		t.Fatalf("expected title filter to match only the title note, got %v", titleTitles)
+	}
+}
+
+func TestListNotesWithSearchIndexFindsCreatedAndUpdatedBody(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestListNotesWithSearchIndexFindsCreatedAndUpdatedBody?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	index, err := searchsvc.NewMemory()
+	if err != nil {
+		t.Fatalf("NewMemory: %v", err)
+	}
+	h := NewHandlerWithSearch(client, nil, index)
+	e := echo.New()
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/notes", strings.NewReader(`{"title":"Indexed note","content":"alphaunique body"}`))
+	createReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	createRec := httptest.NewRecorder()
+	createCtx := e.NewContext(createReq, createRec)
+	createCtx.Set("user_id", u.ID)
+	if err := h.CreateNote(createCtx); err != nil {
+		t.Fatalf("CreateNote returned error: %v", err)
+	}
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", createRec.Code, createRec.Body.String())
+	}
+	var created NoteResponse
+	if err := json.NewDecoder(createRec.Body).Decode(&created); err != nil {
+		t.Fatalf("decode created response: %v", err)
+	}
+
+	titles := listNoteTitlesForTest(t, h, u.ID, "/api/notes?q=alphaunique")
+	if len(titles) != 1 || titles[0] != "Indexed note" {
+		t.Fatalf("expected created note to match indexed body, got %v", titles)
+	}
+
+	updateReq := httptest.NewRequest(http.MethodPut, "/api/notes/"+created.ID.String(), strings.NewReader(`{"content":"betaupdated body"}`))
+	updateReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	updateRec := httptest.NewRecorder()
+	updateCtx := e.NewContext(updateReq, updateRec)
+	updateCtx.Set("user_id", u.ID)
+	updateCtx.SetParamNames("id")
+	updateCtx.SetParamValues(created.ID.String())
+	if err := h.UpdateNote(updateCtx); err != nil {
+		t.Fatalf("UpdateNote returned error: %v", err)
+	}
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", updateRec.Code, updateRec.Body.String())
+	}
+
+	titles = listNoteTitlesForTest(t, h, u.ID, "/api/notes?q=betaupdated")
+	if len(titles) != 1 || titles[0] != "Indexed note" {
+		t.Fatalf("expected updated note to match indexed body, got %v", titles)
+	}
+	titles = listNoteTitlesForTest(t, h, u.ID, "/api/notes?q=alphaunique")
+	if len(titles) != 0 {
+		t.Fatalf("expected old indexed body to be replaced, got %v", titles)
 	}
 }
 

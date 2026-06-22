@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -16,9 +17,11 @@ import (
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	searchsvc "smarticky/internal/search"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -217,7 +220,14 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid timezone"})
 	}
 
+	type NoteWithTagsResponse struct {
+		NoteResponse
+		Tags []*ent.Tag `json:"tags"`
+	}
+
 	query := h.client.Note.Query()
+	var searchIDs []uuid.UUID
+	useIndexSearch := false
 
 	// 只返回当前用户的笔记
 	query.Where(note.HasUserWith(user.IDEQ(userID)))
@@ -261,14 +271,32 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		}
 	}
 
-	search := c.QueryParam("q")
-	if search != "" {
+	searchText := strings.TrimSpace(c.QueryParam("q"))
+	if searchText != "" && h.search != nil {
+		ids, err := h.search.Search(ctx, searchsvc.SearchOptions{
+			UserID:       userID,
+			Query:        searchText,
+			IncludeTrash: c.QueryParam("trash") == "true",
+			Limit:        10000,
+		})
+		if err != nil {
+			zap.L().Warn("Failed to search note index", zap.Error(err))
+		} else {
+			if len(ids) == 0 {
+				return c.JSON(http.StatusOK, []NoteWithTagsResponse{})
+			}
+			searchIDs = ids
+			useIndexSearch = true
+			query.Where(note.IDIn(ids...))
+		}
+	}
+	if searchText != "" && !useIndexSearch {
 		query.Where(
 			note.Or(
-				note.TitleContainsFold(search),
+				note.TitleContainsFold(searchText),
 				note.And(
 					note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
-					note.ContentContainsFold(search),
+					note.ContentContainsFold(searchText),
 				),
 			),
 		)
@@ -297,18 +325,17 @@ func (h *Handler) ListNotes(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid updated_to"})
 	}
 
-	// Order by updated_at desc
-	query.Order(ent.Desc(note.FieldUpdatedAt))
+	if !useIndexSearch {
+		// Order by updated_at desc
+		query.Order(ent.Desc(note.FieldUpdatedAt))
+	}
 
 	notes, err := query.All(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-
-	// Convert to response format that includes tags
-	type NoteWithTagsResponse struct {
-		NoteResponse
-		Tags []*ent.Tag `json:"tags"`
+	if useIndexSearch {
+		orderHandlerNotesBySearch(notes, searchIDs)
 	}
 
 	response := make([]NoteWithTagsResponse, len(notes))
@@ -330,6 +357,48 @@ func (h *Handler) ListNotes(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func orderHandlerNotesBySearch(rows []*ent.Note, ids []uuid.UUID) {
+	rank := searchsvc.IDRank(ids)
+	sort.SliceStable(rows, func(i, j int) bool {
+		left, ok := rank[rows[i].ID]
+		if !ok {
+			left = len(rank)
+		}
+		right, ok := rank[rows[j].ID]
+		if !ok {
+			right = len(rank)
+		}
+		return left < right
+	})
+}
+
+func (h *Handler) indexNoteBestEffort(ctx context.Context, n *ent.Note) {
+	if h.search == nil {
+		return
+	}
+	if err := h.search.IndexNote(ctx, n); err != nil {
+		zap.L().Warn("Failed to index note", zap.String("note_id", n.ID.String()), zap.Error(err))
+	}
+}
+
+func (h *Handler) deleteNoteFromIndexBestEffort(id uuid.UUID) {
+	if h.search == nil {
+		return
+	}
+	if err := h.search.DeleteNote(id); err != nil {
+		zap.L().Warn("Failed to delete note from index", zap.String("note_id", id.String()), zap.Error(err))
+	}
+}
+
+func (h *Handler) rebuildSearchIndexBestEffort(ctx context.Context) {
+	if h.search == nil {
+		return
+	}
+	if err := h.search.Rebuild(ctx, h.client); err != nil {
+		zap.L().Warn("Failed to rebuild note index", zap.Error(err))
+	}
 }
 
 func (h *Handler) CreateNote(c echo.Context) error {
@@ -362,6 +431,7 @@ func (h *Handler) CreateNote(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+	h.indexNoteBestEffort(ctx, n)
 
 	response, err := noteToResponse(ctx, n, false)
 	if err != nil {
@@ -540,6 +610,7 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+	h.indexNoteBestEffort(ctx, n)
 
 	response, err := noteToResponse(ctx, n, false)
 	if err != nil {
@@ -575,6 +646,7 @@ func (h *Handler) DeleteNote(c echo.Context) error {
 	if count == 0 {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
 	}
+	h.deleteNoteFromIndexBestEffort(id)
 
 	return c.NoContent(http.StatusNoContent)
 }
@@ -592,6 +664,7 @@ func (h *Handler) EmptyTrash(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+	h.rebuildSearchIndexBestEffort(context.Background())
 
 	return c.JSON(http.StatusOK, map[string]int{"deleted_count": count})
 }

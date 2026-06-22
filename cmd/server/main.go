@@ -15,6 +15,7 @@ import (
 	"smarticky/internal/logger"
 	mcpserver "smarticky/internal/mcp"
 	authmw "smarticky/internal/middleware"
+	searchsvc "smarticky/internal/search"
 	"smarticky/internal/storage"
 	"smarticky/internal/version"
 	"smarticky/web"
@@ -80,6 +81,19 @@ func main() {
 		zap.L().Warn("Schema migration failed, trying to continue", zap.Error(err))
 	}
 
+	searchService, err := searchsvc.Open(filepath.Join(dataDir, "search.bleve"))
+	if err != nil {
+		zap.L().Warn("Failed to initialize note search index", zap.Error(err))
+		searchService = nil
+	} else if err := searchService.Rebuild(context.Background(), client); err != nil {
+		zap.L().Warn("Failed to rebuild note search index", zap.Error(err))
+		_ = searchService.Close()
+		searchService = nil
+	}
+	if searchService != nil {
+		defer searchService.Close()
+	}
+
 	// 4. Initialize Echo
 	e := echo.New()
 	e.HideBanner = true
@@ -95,7 +109,7 @@ func main() {
 
 	// 5. Initialize FileSystem and Handlers
 	fs := storage.NewFileSystem("")
-	h := handler.NewHandler(client, fs)
+	h := handler.NewHandlerWithSearch(client, fs, searchService)
 
 	if created, err := h.InitializeAdminFromEnv(context.Background(), os.Getenv); err != nil {
 		zap.L().Fatal("Failed to initialize admin from environment", zap.Error(err))

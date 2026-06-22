@@ -2,6 +2,7 @@ package notes
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	searchsvc "smarticky/internal/search"
 
 	"github.com/google/uuid"
 )
@@ -22,6 +24,7 @@ const (
 
 type Service struct {
 	client *ent.Client
+	search *searchsvc.Service
 }
 
 type ListOptions struct {
@@ -53,8 +56,12 @@ type NoteView struct {
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
-func NewService(client *ent.Client) *Service {
-	return &Service{client: client}
+func NewService(client *ent.Client, searchService ...*searchsvc.Service) *Service {
+	var index *searchsvc.Service
+	if len(searchService) > 0 {
+		index = searchService[0]
+	}
+	return &Service{client: client, search: index}
 }
 
 func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]NoteView, error) {
@@ -63,30 +70,60 @@ func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]Not
 	if offset < 0 {
 		offset = 0
 	}
+	q := strings.TrimSpace(opts.Query)
+	var searchIDs []uuid.UUID
+	useSearch := false
+
+	if q != "" && s.search != nil {
+		ids, err := s.search.Search(ctx, searchsvc.SearchOptions{
+			UserID:       userID,
+			Query:        q,
+			IncludeTrash: opts.IncludeTrash,
+			Limit:        searchsvc.CandidateLimit(limit, offset),
+		})
+		if err == nil {
+			if len(ids) == 0 {
+				return []NoteView{}, nil
+			}
+			searchIDs = ids
+			useSearch = true
+		}
+	}
 
 	query := s.client.Note.Query().
-		Where(note.HasUserWith(user.IDEQ(userID))).
-		Limit(limit).
-		Offset(offset).
-		Order(ent.Desc(note.FieldUpdatedAt))
+		Where(note.HasUserWith(user.IDEQ(userID)))
 
 	if !opts.IncludeTrash {
 		query.Where(note.IsDeleted(false))
 	}
 
-	if q := strings.TrimSpace(opts.Query); q != "" {
-		query.Where(note.Or(
-			note.TitleContainsFold(q),
-			note.And(
-				note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
-				note.ContentContainsFold(q),
-			),
-		))
+	if q != "" {
+		if useSearch {
+			query.Where(note.IDIn(searchIDs...))
+		} else {
+			query.Where(note.Or(
+				note.TitleContainsFold(q),
+				note.And(
+					note.ProtectionModeNEQ(note.ProtectionModeEncrypted),
+					note.ContentContainsFold(q),
+				),
+			))
+		}
+	}
+
+	if !useSearch {
+		query.Limit(limit).
+			Offset(offset).
+			Order(ent.Desc(note.FieldUpdatedAt))
 	}
 
 	rows, err := query.All(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if useSearch {
+		orderNotesBySearch(rows, searchIDs)
+		rows = paginateNotes(rows, offset, limit)
 	}
 
 	result := make([]NoteView, 0, len(rows))
@@ -98,6 +135,32 @@ func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]Not
 		result = append(result, view)
 	}
 	return result, nil
+}
+
+func orderNotesBySearch(rows []*ent.Note, ids []uuid.UUID) {
+	rank := searchsvc.IDRank(ids)
+	sort.SliceStable(rows, func(i, j int) bool {
+		left, ok := rank[rows[i].ID]
+		if !ok {
+			left = len(rank)
+		}
+		right, ok := rank[rows[j].ID]
+		if !ok {
+			right = len(rank)
+		}
+		return left < right
+	})
+}
+
+func paginateNotes(rows []*ent.Note, offset, limit int) []*ent.Note {
+	if offset >= len(rows) {
+		return []*ent.Note{}
+	}
+	end := offset + limit
+	if end > len(rows) {
+		end = len(rows)
+	}
+	return rows[offset:end]
 }
 
 func (s *Service) Get(ctx context.Context, userID int, id uuid.UUID, redactLocked bool) (NoteView, error) {
@@ -132,6 +195,9 @@ func (s *Service) Create(ctx context.Context, userID int, input CreateInput) (No
 		Save(ctx)
 	if err != nil {
 		return NoteView{}, err
+	}
+	if s.search != nil {
+		_ = s.search.IndexNote(ctx, row)
 	}
 	return s.noteToView(ctx, row, false)
 }

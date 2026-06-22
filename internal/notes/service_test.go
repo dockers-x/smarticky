@@ -4,8 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"smarticky/ent"
 	"smarticky/ent/enttest"
 	"smarticky/ent/note"
+	searchsvc "smarticky/internal/search"
 
 	_ "github.com/lib-x/entsqlite"
 )
@@ -82,5 +84,78 @@ func TestServiceSearchDoesNotMatchLockedContentWhenRedacting(t *testing.T) {
 	}
 	if len(rows) != 1 || rows[0].Title != "Public" {
 		t.Fatalf("expected only public content match, got %+v", rows)
+	}
+}
+
+func TestServiceIndexedSearchEnforcesOwnership(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestServiceIndexedSearchEnforcesOwnership?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	other := client.User.Create().SetUsername("other").SetPasswordHash("hash").SaveX(ctx)
+	owned := client.Note.Create().SetTitle("Owned").SetContent("indexed needle").SetUserID(owner.ID).SaveX(ctx)
+	foreign := client.Note.Create().SetTitle("Foreign").SetContent("indexed needle").SetUserID(other.ID).SaveX(ctx)
+
+	index, err := searchsvc.NewMemory()
+	if err != nil {
+		t.Fatalf("NewMemory: %v", err)
+	}
+	for _, row := range []*ent.Note{owned, foreign} {
+		if err := index.IndexNote(ctx, row); err != nil {
+			t.Fatalf("IndexNote: %v", err)
+		}
+	}
+
+	service := NewService(client, index)
+	rows, err := service.List(ctx, owner.ID, ListOptions{Query: "needle"})
+	if err != nil {
+		t.Fatalf("List returned error: %v", err)
+	}
+	if len(rows) != 1 || rows[0].ID != owned.ID {
+		t.Fatalf("expected only owner note, got %+v", rows)
+	}
+}
+
+func TestServiceIndexedSearchDoesNotMatchEncryptedContent(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestServiceIndexedSearchDoesNotMatchEncryptedContent?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().SetUsername("owner").SetPasswordHash("hash").SaveX(ctx)
+	plain := client.Note.Create().
+		SetTitle("Plain").
+		SetContent("service needle").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	encrypted := client.Note.Create().
+		SetTitle("Encrypted Title").
+		SetContent("").
+		SetProtectionMode(note.ProtectionModeEncrypted).
+		SetEncryptedContent("service needle ciphertext").
+		SetEncryptionAlg("aes-gcm").
+		SetEncryptionKdf("pbkdf2-sha256:310000").
+		SetEncryptionSalt("salt").
+		SetEncryptionNonce("nonce").
+		SetUserID(u.ID).
+		SaveX(ctx)
+
+	index, err := searchsvc.NewMemory()
+	if err != nil {
+		t.Fatalf("NewMemory: %v", err)
+	}
+	for _, row := range []*ent.Note{plain, encrypted} {
+		if err := index.IndexNote(ctx, row); err != nil {
+			t.Fatalf("IndexNote: %v", err)
+		}
+	}
+
+	service := NewService(client, index)
+	rows, err := service.List(ctx, u.ID, ListOptions{Query: "service"})
+	if err != nil {
+		t.Fatalf("List returned error: %v", err)
+	}
+	if len(rows) != 1 || rows[0].ID != plain.ID {
+		t.Fatalf("expected only plain indexed content match, got %+v", rows)
 	}
 }
