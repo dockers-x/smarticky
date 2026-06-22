@@ -2084,6 +2084,68 @@ h6 {
   padding-bottom: 0.08em;
 }
 
+.diagram-block,
+.diagram-render {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 1em 0;
+}
+
+.diagram-loading,
+.diagram-error {
+  box-sizing: border-box;
+  border: 1px solid var(--color-divider, rgba(0, 0, 0, 0.14));
+  border-radius: 8px;
+  background: var(--color-surface-secondary, rgba(0, 0, 0, 0.04));
+  color: var(--color-text-secondary, inherit);
+  padding: 12px 14px;
+  font-family:
+    "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas,
+    "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.diagram-error {
+  border-color: color-mix(in srgb, var(--color-danger, #c7352f) 55%, transparent);
+  color: var(--color-danger, #c7352f);
+}
+
+.diagram-render {
+  overflow-x: auto;
+  border: 1px solid var(--color-divider, rgba(0, 0, 0, 0.14));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-card, #fff) 92%, transparent);
+  padding: 14px;
+}
+
+.diagram-render svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.share-preview__markdown .diagram-loading,
+.share-preview__markdown .diagram-error {
+  border-color: var(--share-divider);
+  background: var(--share-code);
+  color: var(--share-code-text);
+  font-size: 0.78em;
+}
+
+.share-preview__markdown .diagram-error {
+  color: var(--share-accent);
+}
+
+.share-preview__markdown .diagram-render {
+  border-color: var(--share-divider);
+  background: var(--share-surface);
+  padding: 0.8em;
+}
+
 .share-preview__paper footer {
   align-self: end;
   display: flex;
