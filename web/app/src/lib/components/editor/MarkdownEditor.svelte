@@ -17,7 +17,11 @@
   import { onDestroy, onMount, tick } from "svelte";
   import type { UUID } from "../../api/types";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
-  import { preserveCodeGroups } from "../../markdown/codeGroups";
+  import {
+    preserveCodeGroups,
+    replaceCodeGroupSource,
+    type CodeGroupSourceEditRequest,
+  } from "../../markdown/codeGroups";
   import { createCodeGroupEditorPlugin } from "../../markdown/editorCodeGroups";
   import { createEditorDiagramCodeBlockConfig } from "../../markdown/diagrams/editorPreview";
   import { fetchProtectedImageObjectURL } from "../../markdown/protectedImages";
@@ -28,7 +32,6 @@
   export let noteId: UUID = "";
   export let onChange: (value: string) => void = () => {};
   export let bindEditor: (editor: MarkdownEditorHandle | null) => void = () => {};
-  export let requestSourceMode: () => void = () => {};
 
   let host: HTMLDivElement;
   let crepe: CrepeBuilder | null = null;
@@ -109,6 +112,27 @@
     );
   }
 
+  function replaceLocalCodeGroupSource(
+    request: CodeGroupSourceEditRequest,
+    nextRaw: string,
+  ): string | null {
+    if (!crepe) return "Editor is not ready.";
+
+    const result = replaceCodeGroupSource(lastMarkdown, request, nextRaw);
+    if (result.error) return result.error;
+
+    applyingExternalValue = true;
+    crepe.editor.action(replaceAll(result.markdown, true));
+    lastMarkdown = result.markdown;
+    onChange(result.markdown);
+    refreshCodeGroupDecorations();
+    void tick().then(() => {
+      applyingExternalValue = false;
+      focusEditor();
+    });
+    return null;
+  }
+
   async function uploadEditorImage(file: File): Promise<string> {
     if (!noteId) throw new Error("Note is required before uploading images");
     const attachment = await uploadAttachment(noteId, file);
@@ -161,7 +185,7 @@
       .addFeature(table)
       .addFeature(latex);
 
-    crepe.editor.use(createCodeGroupEditorPlugin(() => lastMarkdown, requestSourceMode));
+    crepe.editor.use(createCodeGroupEditorPlugin(() => lastMarkdown, replaceLocalCodeGroupSource));
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {

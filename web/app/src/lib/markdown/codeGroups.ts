@@ -18,6 +18,14 @@ export interface CodeGroupSourceBlock extends CodeGroupBlock {
   signature: string;
 }
 
+export interface CodeGroupSourceEditRequest {
+  sourceID: string;
+  startLine: number;
+  endLine: number;
+  raw: string;
+  signature: string;
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -269,6 +277,65 @@ export function extractCodeGroups(markdown: string): CodeGroupBlock[] {
   return extractCodeGroupSources(markdown).filter((group) =>
     Boolean(renderCodeGroup(group.items)),
   );
+}
+
+export function isEditableCodeGroupSource(markdown: string): boolean {
+  const groups = extractCodeGroupSources(markdown.trim());
+  return groups.length === 1 && groups[0].raw.trim() === markdown.trim();
+}
+
+export function replaceCodeGroupSource(
+  markdown: string,
+  request: CodeGroupSourceEditRequest,
+  nextRaw: string,
+): { markdown: string; error?: string } {
+  const replacement = nextRaw.trim();
+  if (!isEditableCodeGroupSource(replacement)) {
+    return {
+      markdown,
+      error: "Replacement must be a complete code-group or code-tabs block.",
+    };
+  }
+
+  const lines = markdown.split(/\r?\n/);
+  const replacementLines = replacement.split(/\r?\n/);
+  const replaceLineRange = (startLine: number, endLine: number): string =>
+    [
+      ...lines.slice(0, startLine),
+      ...replacementLines,
+      ...lines.slice(endLine + 1),
+    ].join("\n");
+
+  if (
+    request.startLine >= 0 &&
+    request.endLine >= request.startLine &&
+    request.endLine < lines.length &&
+    lines.slice(request.startLine, request.endLine + 1).join("\n") === request.raw
+  ) {
+    return {
+      markdown: replaceLineRange(request.startLine, request.endLine),
+    };
+  }
+
+  const groups = extractCodeGroupSources(markdown);
+  const rawMatch = groups.find((group) => group.raw === request.raw);
+  if (rawMatch) {
+    return {
+      markdown: replaceLineRange(rawMatch.startLine, rawMatch.endLine),
+    };
+  }
+
+  const signatureMatch = groups.find((group) => group.signature === request.signature);
+  if (signatureMatch) {
+    return {
+      markdown: replaceLineRange(signatureMatch.startLine, signatureMatch.endLine),
+    };
+  }
+
+  return {
+    markdown,
+    error: "The original code group could not be found.",
+  };
 }
 
 export function preserveCodeGroups(

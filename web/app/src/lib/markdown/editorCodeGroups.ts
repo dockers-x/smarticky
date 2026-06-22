@@ -4,9 +4,11 @@ import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import type { Node as ProseNode } from "@milkdown/kit/prose/model";
 import {
   attachCodeGroupTabs,
-  extractCodeGroups,
+  extractCodeGroupSources,
   renderCodeGroup,
   type CodeGroupBlock,
+  type CodeGroupSourceBlock,
+  type CodeGroupSourceEditRequest,
 } from "./codeGroups";
 
 interface TopLevelBlock {
@@ -17,6 +19,11 @@ interface TopLevelBlock {
 
 const codeGroupPluginKey = new PluginKey("smarticky-code-groups");
 const previewCleanup = new WeakMap<HTMLElement, () => void>();
+
+export type ReplaceCodeGroupSource = (
+  request: CodeGroupSourceEditRequest,
+  nextRaw: string,
+) => string | null;
 
 function hashString(value: string): string {
   let hash = 0;
@@ -62,9 +69,9 @@ function codeGroupSourceID(group: CodeGroupBlock): string {
 }
 
 function createCodeGroupPreview(
-  group: CodeGroupBlock,
+  group: CodeGroupSourceBlock,
   sourceID: string,
-  requestSourceMode: () => void,
+  replaceSource: ReplaceCodeGroupSource,
 ): HTMLElement {
   const preview = document.createElement("div");
   preview.className = "editor-code-group-preview";
@@ -76,24 +83,104 @@ function createCodeGroupPreview(
   const sourceModeButton = document.createElement("button");
   sourceModeButton.type = "button";
   sourceModeButton.className = "editor-code-group-source-toggle";
-  sourceModeButton.textContent = "Source mode";
-  sourceModeButton.title = "Open the full Markdown source editor";
+  sourceModeButton.textContent = "Source";
+  sourceModeButton.title = "Edit this code group source";
 
   const content = document.createElement("div");
   content.className = "editor-code-group-preview__content";
   content.innerHTML = renderCodeGroup(group.items);
 
-  preview.append(sourceModeButton, content);
+  const sourceEditor = document.createElement("div");
+  sourceEditor.className = "editor-code-group-source-editor";
+  sourceEditor.hidden = true;
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "editor-code-group-source-textarea";
+  textarea.spellcheck = false;
+  textarea.value = group.raw;
+  textarea.setAttribute("aria-label", "Code group source");
+
+  const error = document.createElement("div");
+  error.className = "editor-code-group-source-error";
+  error.hidden = true;
+
+  const actions = document.createElement("div");
+  actions.className = "editor-code-group-source-actions";
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "editor-code-group-source-save";
+  saveButton.textContent = "Save";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "editor-code-group-source-cancel";
+  cancelButton.textContent = "Cancel";
+
+  actions.append(saveButton, cancelButton);
+  sourceEditor.append(textarea, actions, error);
+  preview.append(sourceModeButton, content, sourceEditor);
+
   const detach = attachCodeGroupTabs(preview);
+
+  const showPreview = (): void => {
+    textarea.value = group.raw;
+    error.hidden = true;
+    error.textContent = "";
+    sourceEditor.hidden = true;
+    content.hidden = false;
+    sourceModeButton.hidden = false;
+  };
+
+  const showSourceEditor = (): void => {
+    textarea.value = group.raw;
+    error.hidden = true;
+    error.textContent = "";
+    sourceEditor.hidden = false;
+    content.hidden = true;
+    sourceModeButton.hidden = true;
+    window.setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(0, textarea.value.length);
+    }, 0);
+  };
+
   const handleSourceModeRequest = (event: MouseEvent): void => {
     event.preventDefault();
     event.stopPropagation();
-    requestSourceMode();
+    showSourceEditor();
+  };
+  const handleSave = (event: MouseEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    const message = replaceSource(
+      {
+        sourceID,
+        startLine: group.startLine,
+        endLine: group.endLine,
+        raw: group.raw,
+        signature: group.signature,
+      },
+      textarea.value,
+    );
+    if (message) {
+      error.textContent = message;
+      error.hidden = false;
+    }
+  };
+  const handleCancel = (event: MouseEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    showPreview();
   };
   sourceModeButton.addEventListener("click", handleSourceModeRequest);
+  saveButton.addEventListener("click", handleSave);
+  cancelButton.addEventListener("click", handleCancel);
   previewCleanup.set(preview, () => {
     detach();
     sourceModeButton.removeEventListener("click", handleSourceModeRequest);
+    saveButton.removeEventListener("click", handleSave);
+    cancelButton.removeEventListener("click", handleCancel);
   });
   return preview;
 }
@@ -101,9 +188,11 @@ function createCodeGroupPreview(
 function createCodeGroupDecorations(
   state: EditorState,
   markdown: string,
-  requestSourceMode: () => void,
+  replaceSource: ReplaceCodeGroupSource,
 ): DecorationSet {
-  const groups = extractCodeGroups(markdown);
+  const groups = extractCodeGroupSources(markdown).filter((group) =>
+    Boolean(renderCodeGroup(group.items)),
+  );
   if (groups.length === 0) return DecorationSet.empty;
 
   const blocks = topLevelBlocks(state.doc);
@@ -129,7 +218,7 @@ function createCodeGroupDecorations(
     const opener = blocks[openerIndex];
     const sourceID = codeGroupSourceID(group);
     decorations.push(
-      Decoration.widget(opener.pos, () => createCodeGroupPreview(group, sourceID, requestSourceMode), {
+      Decoration.widget(opener.pos, () => createCodeGroupPreview(group, sourceID, replaceSource), {
         key: `smarticky-code-group-${group.startLine}-${group.endLine}-${hashString(JSON.stringify(group.items))}`,
         side: -1,
         ignoreSelection: true,
@@ -143,7 +232,11 @@ function createCodeGroupDecorations(
           const target = event.target;
           return (
             target instanceof Element &&
-            Boolean(target.closest(".markdown-code-tab, .editor-code-group-source-toggle"))
+            Boolean(
+              target.closest(
+                ".markdown-code-tab, .editor-code-group-source-toggle, .editor-code-group-source-editor",
+              ),
+            )
           );
         },
       }),
@@ -168,7 +261,7 @@ function createCodeGroupDecorations(
 
 export function createCodeGroupEditorPlugin(
   getMarkdown: () => string,
-  requestSourceMode: () => void = () => {},
+  replaceSource: ReplaceCodeGroupSource,
 ) {
   return $prose(
     () =>
@@ -176,7 +269,7 @@ export function createCodeGroupEditorPlugin(
         key: codeGroupPluginKey,
         props: {
           decorations(state) {
-            return createCodeGroupDecorations(state, getMarkdown(), requestSourceMode);
+            return createCodeGroupDecorations(state, getMarkdown(), replaceSource);
           },
         },
       }),

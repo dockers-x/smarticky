@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { decodeDiagramSource } from "./diagrams/placeholders";
-import { preserveCodeGroups } from "./codeGroups";
+import {
+  extractCodeGroupSources,
+  isEditableCodeGroupSource,
+  preserveCodeGroups,
+  replaceCodeGroupSource,
+} from "./codeGroups";
 import { renderMarkdown, stripMarkdown } from "./render";
 import { protectedImagePlaceholderSrc, protectedImageRuntime } from "./protectedImages";
 
@@ -335,6 +340,67 @@ describe("renderMarkdown code groups", () => {
 
     expect(newIndex).toBeGreaterThanOrEqual(0);
     expect(oldIndex).toBeGreaterThan(newIndex);
+  });
+
+  it("replaces one code-group source block without touching siblings", () => {
+    const original = [
+      "Intro",
+      "::: code-group",
+      "```bash [pnpm]",
+      "pnpm install",
+      "```",
+      ":::",
+      "Middle",
+      "::: code-group",
+      "```bash [npm]",
+      "npm install",
+      "```",
+      ":::",
+    ].join("\n");
+    const first = extractCodeGroupSources(original)[0];
+    const nextRaw = [
+      "::: code-group",
+      "```bash [bun]",
+      "bun install",
+      "```",
+      ":::",
+    ].join("\n");
+
+    const result = replaceCodeGroupSource(original, {
+      sourceID: "group-1",
+      startLine: first.startLine,
+      endLine: first.endLine,
+      raw: first.raw,
+      signature: first.signature,
+    }, nextRaw);
+
+    expect(result.error).toBeUndefined();
+    expect(result.markdown).toContain("```bash [bun]");
+    expect(result.markdown).toContain("```bash [npm]");
+    expect(result.markdown).not.toContain("```bash [pnpm]");
+  });
+
+  it("rejects local source replacements that are not code groups", () => {
+    expect(isEditableCodeGroupSource("plain text")).toBe(false);
+
+    const original = [
+      "::: code-group",
+      "```bash [pnpm]",
+      "pnpm install",
+      "```",
+      ":::",
+    ].join("\n");
+    const group = extractCodeGroupSources(original)[0];
+    const result = replaceCodeGroupSource(original, {
+      sourceID: "group-1",
+      startLine: group.startLine,
+      endLine: group.endLine,
+      raw: group.raw,
+      signature: group.signature,
+    }, "plain text");
+
+    expect(result.markdown).toBe(original);
+    expect(result.error).toBe("Replacement must be a complete code-group or code-tabs block.");
   });
 });
 
