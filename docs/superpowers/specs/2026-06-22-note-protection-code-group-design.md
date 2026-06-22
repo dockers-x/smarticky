@@ -10,7 +10,7 @@ Smarticky needs two related but separate improvements:
 - Code group source editing should be local to the selected code group. Clicking `Source` inside a rendered code group must not switch the whole note into global source mode.
 - Note protection should become an explicit protection model with `none`, `password`, and `encrypted` modes. The default is `none`. Password protection is an access gate. Encrypted mode is client-side zero-knowledge encryption for note body content: the server stores ciphertext and metadata, not the user password or plaintext body.
 
-The clean target is to delete `is_locked` and `password` from the note model. Migration may read those legacy columns to seed the new fields, but the final schema, API, frontend types, and MCP output should use `protection_mode` and `content_redacted` instead.
+The clean target is to remove `is_locked` and legacy `password` from the public note model. Migration may read those legacy columns to seed the new fields, but the final API, frontend types, MCP output, and new business logic should use `protection_mode` and `content_redacted` instead. The migration must not rebuild the notes table, drop legacy columns, or delete user data.
 
 ## Goals
 
@@ -20,7 +20,7 @@ The clean target is to delete `is_locked` and `password` from the note model. Mi
 - Support access-password protected notes using the existing Argon2 verification pattern.
 - Support true encrypted notes where the browser encrypts/decrypts body content and the server cannot recover plaintext.
 - Make encrypted-note limitations explicit for search, MCP, share image export, and server-side rendering.
-- Migrate existing locked notes to `protection_mode="password"` before deleting legacy columns.
+- Migrate existing locked notes to `protection_mode="password"` without dropping legacy columns or rebuilding the notes table.
 
 ## Non-Goals
 
@@ -90,15 +90,16 @@ field.String("encryption_nonce").
     Optional()
 ```
 
-Delete the legacy `password` and `is_locked` fields from the Ent schema after migration logic can convert existing rows.
+Stop exposing the legacy `password` and `is_locked` fields through new public contracts after migration logic can convert existing rows. The physical database columns remain in place as inert legacy columns for safety.
 
 Migration policy:
 
 - Existing rows with legacy `is_locked=false` become `protection_mode="none"`.
 - Existing rows with legacy `is_locked=true` become `protection_mode="password"`.
 - Existing `password` hash values are copied to `protection_password_hash` when present.
-- After conversion, drop the legacy `password` and `is_locked` columns. If the active database driver cannot drop them in place, rebuild the notes table as part of the migration instead of leaving public or generated model compatibility behind.
+- After conversion, keep the legacy `password` and `is_locked` columns physically present but unused. Do not run `DROP COLUMN`, do not rebuild the `notes` table, and do not clear those legacy values during this feature.
 - New writes update `protection_mode` and the new fields only.
+- New reads use `protection_mode` and the new fields only. The only allowed read of legacy columns is a guarded backfill step for existing databases.
 
 Encrypted rows store an empty plaintext `content` or leave it as the last plaintext only during a guarded migration step. The target invariant is: when `protection_mode="encrypted"`, `notes.content` must not contain the decrypted body.
 
@@ -255,7 +256,7 @@ Go tests:
 
 - Note schema defaults `protection_mode` to `none`.
 - Updating to password mode stores a hash and returns `protection_mode="password"`.
-- Existing legacy locked rows migrate to password mode.
+- Existing legacy locked rows migrate to password mode without table rebuild, column drop, or data deletion.
 - Note responses, frontend types, and MCP output do not include `is_locked`.
 - Encrypted note responses do not include plaintext body.
 - Search does not match encrypted body ciphertext or plaintext.
@@ -274,7 +275,7 @@ Manual verification:
 ## Rollout Plan
 
 1. Add schema fields and regenerate Ent.
-2. Add migration logic for legacy `is_locked/password` rows, then remove legacy fields from generated models and public types.
+2. Add migration logic for legacy `is_locked/password` rows without table rebuild or column deletion, then remove legacy fields from public types and new business logic.
 3. Extend API types and handlers around `protection_mode`.
 4. Add frontend note protection types and store update support.
 5. Implement client-side encryption helpers with tests.
@@ -288,5 +289,5 @@ Manual verification:
 - True encryption means client-side zero-knowledge encryption.
 - The first encrypted scope is note body content only.
 - `protection_mode` is the source of truth and defaults to `none`.
-- `is_locked` and legacy `password` are deleted from the public model after migration seeding.
+- `is_locked` and legacy `password` are removed from the public model after migration seeding, while their physical legacy columns remain untouched.
 - Encrypted bodies are not server-searchable in this stage.
