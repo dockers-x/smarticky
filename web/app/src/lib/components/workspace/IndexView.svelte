@@ -42,6 +42,8 @@
     notes: Note[];
   }
 
+  type MobileIndexPanel = "groups" | "graph" | "details";
+
   interface IndexModel {
     nodes: IndexNode[];
     links: IndexLink[];
@@ -65,6 +67,7 @@
   let linkGraphSequence = 0;
   let mounted = false;
   let lastLinkGraphSignature = "";
+  let mobileIndexPanel: MobileIndexPanel = "graph";
 
   onMount(() => {
     void tagsStore.load();
@@ -337,8 +340,19 @@
     };
   }
 
-  function selectNode(nodeIDValue: string): void {
+  function selectNode(nodeIDValue: string, nextMobilePanel?: MobileIndexPanel): void {
     selectedNodeID = nodeIDValue;
+    if (nextMobilePanel) {
+      mobileIndexPanel = nextMobilePanel;
+    }
+  }
+
+  function selectNodeFromRail(nodeIDValue: string): void {
+    selectNode(nodeIDValue, "details");
+  }
+
+  function selectNodeFromGraph(nodeIDValue: string): void {
+    selectNode(nodeIDValue, nodeIDValue === rootID ? undefined : "details");
   }
 
   function openNote(note: Note): void {
@@ -431,12 +445,58 @@
   class="index-view"
   aria-label={t("index", $preferencesStore.language)}
 >
-  <aside class="index-sidebar" aria-label={t("indexAllNotes", $preferencesStore.language)}>
+  <div class="index-mobile-tabs" role="tablist" aria-label={t("index", $preferencesStore.language)}>
+    <button
+      id="index-tab-groups"
+      class:active={mobileIndexPanel === "groups"}
+      type="button"
+      role="tab"
+      aria-selected={mobileIndexPanel === "groups"}
+      aria-controls="index-panel-groups"
+      on:click={() => (mobileIndexPanel = "groups")}
+    >
+      <Folder size={16} strokeWidth={1.8} aria-hidden="true" />
+      <span>{t("indexGroups", $preferencesStore.language)}</span>
+    </button>
+    <button
+      id="index-tab-graph"
+      class:active={mobileIndexPanel === "graph"}
+      type="button"
+      role="tab"
+      aria-selected={mobileIndexPanel === "graph"}
+      aria-controls="index-panel-graph"
+      on:click={() => (mobileIndexPanel = "graph")}
+    >
+      <Network size={16} strokeWidth={1.8} aria-hidden="true" />
+      <span>{t("indexGraph", $preferencesStore.language)}</span>
+    </button>
+    <button
+      id="index-tab-details"
+      class:active={mobileIndexPanel === "details"}
+      type="button"
+      role="tab"
+      aria-selected={mobileIndexPanel === "details"}
+      aria-controls="index-panel-details"
+      on:click={() => (mobileIndexPanel = "details")}
+    >
+      <FileText size={16} strokeWidth={1.8} aria-hidden="true" />
+      <span>{t("details", $preferencesStore.language)}</span>
+    </button>
+  </div>
+
+  <div
+    id="index-panel-groups"
+    class:mobile-active={mobileIndexPanel === "groups"}
+    class="index-sidebar"
+    role="tabpanel"
+    aria-labelledby="index-tab-groups"
+    aria-label={t("indexAllNotes", $preferencesStore.language)}
+  >
     <button
       class:active={selectedNodeID === indexModel.rootNode.id}
       class="index-rail-item index-rail-item--root"
       type="button"
-      on:click={() => selectNode(indexModel.rootNode.id)}
+      on:click={() => selectNodeFromRail(indexModel.rootNode.id)}
     >
       <Network size={16} strokeWidth={1.8} aria-hidden="true" />
       <span>
@@ -451,7 +511,7 @@
         class="index-rail-item"
         type="button"
         title={activeSearch}
-        on:click={() => selectNode(indexModel.rootNode.id)}
+        on:click={() => selectNodeFromRail(indexModel.rootNode.id)}
       >
         <Search size={15} strokeWidth={1.8} aria-hidden="true" />
         <span>
@@ -469,7 +529,7 @@
           class:active={selectedNodeID === relationID}
           class="index-rail-item"
           type="button"
-          on:click={() => selectNode(relationID)}
+          on:click={() => selectNodeFromRail(relationID)}
         >
           <Network size={14} strokeWidth={1.8} aria-hidden="true" />
           <span><strong>{t("indexRelations", $preferencesStore.language)}</strong></span>
@@ -487,7 +547,7 @@
             class="index-rail-item"
             type="button"
             title={node.label}
-            on:click={() => selectNode(node.id)}
+            on:click={() => selectNodeFromRail(node.id)}
           >
             <Tag size={14} strokeWidth={1.8} aria-hidden="true" />
             <span><strong>{node.label}</strong></span>
@@ -506,7 +566,7 @@
             class="index-rail-item"
             type="button"
             title={node.label}
-            on:click={() => selectNode(node.id)}
+            on:click={() => selectNodeFromRail(node.id)}
           >
             <Folder size={14} strokeWidth={1.8} aria-hidden="true" />
             <span><strong>{node.label}</strong></span>
@@ -525,7 +585,7 @@
             class="index-rail-item"
             type="button"
             title={node.label}
-            on:click={() => selectNode(node.id)}
+            on:click={() => selectNodeFromRail(node.id)}
           >
             <Shield size={14} strokeWidth={1.8} aria-hidden="true" />
             <span><strong>{node.label}</strong></span>
@@ -534,9 +594,16 @@
         {/each}
       </div>
     </div>
-  </aside>
+  </div>
 
-  <section class="index-graph" aria-label={t("indexGraph", $preferencesStore.language)}>
+  <div
+    id="index-panel-graph"
+    class:mobile-active={mobileIndexPanel === "graph"}
+    class="index-graph"
+    role="tabpanel"
+    aria-labelledby="index-tab-graph"
+    aria-label={t("indexGraph", $preferencesStore.language)}
+  >
     <div class="index-graph__toolbar">
       <label class="index-search">
         <Search size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -582,12 +649,19 @@
         {selectedNodeID}
         ariaLabel={t("indexGraph", $preferencesStore.language)}
         theme={$preferencesStore.theme}
-        onSelectNode={selectNode}
+        onSelectNode={selectNodeFromGraph}
       />
     {/if}
-  </section>
+  </div>
 
-  <aside class="index-inspector" aria-label={t("indexNoSelection", $preferencesStore.language)}>
+  <div
+    id="index-panel-details"
+    class:mobile-active={mobileIndexPanel === "details"}
+    class="index-inspector"
+    role="tabpanel"
+    aria-labelledby="index-tab-details"
+    aria-label={t("indexNoSelection", $preferencesStore.language)}
+  >
     {#if selectedNode}
       <header>
         <span>{typeLabel(selectedNode.type, $preferencesStore.language)}</span>
@@ -636,5 +710,5 @@
         {t("indexNoSelection", $preferencesStore.language)}
       </div>
     {/if}
-  </aside>
+  </div>
 </section>
