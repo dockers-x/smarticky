@@ -1835,6 +1835,7 @@ h6 {
 }
 
 .index-graph {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -1895,6 +1896,34 @@ h6 {
   padding: 14px;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.index-message--overlay {
+  position: absolute;
+  top: 68px;
+  right: 12px;
+  z-index: 2;
+  max-width: min(320px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--color-card) 94%, transparent);
+  box-shadow: 0 8px 18px rgb(var(--color-shadow) / 10%);
+}
+
+.index-message--overlay span {
+  min-width: 0;
+}
+
+.index-message--overlay button {
+  min-height: 32px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-brand);
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .index-graph-canvas {
@@ -4501,7 +4530,7 @@ h6 {
 
   .mobile-nav button {
     min-width: 64px;
-    min-height: 42px;
+    min-height: 44px;
     flex: 1 0 auto;
     display: inline-flex;
     align-items: center;
@@ -4523,7 +4552,7 @@ h6 {
   }
 
   .mobile-nav__row--utility button {
-    min-height: 36px;
+    min-height: 44px;
     background: var(--color-surface-secondary);
   }
 
@@ -4563,7 +4592,7 @@ h6 {
     min-height: 0;
   }
 
-  .index-graph__svg {
+  .index-graph-canvas {
     min-height: 420px;
   }
 

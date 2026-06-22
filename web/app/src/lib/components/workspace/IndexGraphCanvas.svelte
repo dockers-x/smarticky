@@ -7,7 +7,8 @@
     StylesheetJson,
   } from "cytoscape";
 
-  type IndexGraphNodeType = "root" | "note" | "tag" | "folder" | "protection";
+  type IndexGraphNodeType = "root" | "note" | "tag" | "folder" | "protection" | "relation";
+  type IndexGraphLinkKind = "membership" | "backlink";
 
   interface IndexGraphNode {
     id: string;
@@ -19,6 +20,7 @@
   interface IndexGraphLink {
     source: string;
     target: string;
+    kind?: IndexGraphLinkKind;
   }
 
   export let nodes: IndexGraphNode[] = [];
@@ -66,8 +68,9 @@
           id: `${link.source}->${link.target}:${index}`,
           source: link.source,
           target: link.target,
+          kind: link.kind ?? "membership",
         },
-        classes: "index-cy-link",
+        classes: `index-cy-link index-cy-link--${link.kind ?? "membership"}`,
       })),
     ];
   }
@@ -75,7 +78,7 @@
   function elementSignature(): string {
     return JSON.stringify({
       nodes: nodes.map((node) => [node.id, node.type, node.label, node.count]),
-      links: links.map((link) => [link.source, link.target]),
+      links: links.map((link) => [link.source, link.target, link.kind ?? "membership"]),
     });
   }
 
@@ -118,6 +121,18 @@
           "curve-style": "bezier",
           "target-arrow-shape": "none",
           "overlay-opacity": 0,
+        },
+      },
+      {
+        selector: 'edge[kind = "backlink"]',
+        style: {
+          width: 1.8,
+          "line-color": brand,
+          opacity: 0.44,
+          "target-arrow-shape": "triangle",
+          "target-arrow-color": brand,
+          "arrow-scale": 0.82,
+          "curve-style": "bezier",
         },
       },
       {
@@ -196,6 +211,15 @@
         },
       },
       {
+        selector: 'node[type = "relation"]',
+        style: {
+          width: "mapData(count, 1, 48, 24, 46)",
+          height: "mapData(count, 1, 48, 24, 46)",
+          "background-color": warningBg,
+          "border-color": brand,
+        },
+      },
+      {
         selector: ".is-neighbor",
         style: {
           opacity: 1,
@@ -212,6 +236,7 @@
         style: {
           width: 2.2,
           "line-color": brand,
+          "target-arrow-color": brand,
           opacity: 0.82,
         },
       },

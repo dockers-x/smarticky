@@ -68,6 +68,33 @@ export interface Note {
   updated_at: string;
 }
 
+export interface NoteMetadata {
+  id: UUID;
+  title: string;
+  color: string;
+  protection_mode: ProtectionMode;
+  content_redacted: boolean;
+  is_starred: boolean;
+  is_deleted: boolean;
+  folder_id?: UUID | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteLinkGraphEdge {
+  id: UUID;
+  source: UUID;
+  target: UUID;
+  link_type: string;
+  display_text: string;
+  occurrence_count: number;
+}
+
+export interface NoteLinkGraph {
+  nodes: NoteMetadata[];
+  edges: NoteLinkGraphEdge[];
+}
+
 export interface Folder {
   id: UUID;
   name: string;

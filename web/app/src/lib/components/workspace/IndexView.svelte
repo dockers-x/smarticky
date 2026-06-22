@@ -2,9 +2,11 @@
   import { onMount } from "svelte";
   import { FileText, Folder, Network, Search, Shield, Tag } from "@lucide/svelte";
   import IndexGraphCanvas from "./IndexGraphCanvas.svelte";
+  import { fetchNoteLinkGraph } from "../../api/noteLinks";
   import type {
     Folder as FolderRecord,
     Note,
+    NoteLinkGraph,
     ProtectionMode,
     Tag as TagRecord,
   } from "../../api/types";
@@ -17,7 +19,8 @@
   } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
 
-  type IndexNodeType = "root" | "note" | "tag" | "folder" | "protection";
+  type IndexNodeType = "root" | "note" | "tag" | "folder" | "protection" | "relation";
+  type IndexLinkKind = "membership" | "backlink";
 
   interface IndexNode {
     id: string;
@@ -30,6 +33,7 @@
   interface IndexLink {
     source: string;
     target: string;
+    kind?: IndexLinkKind;
   }
 
   interface GroupEntry {
@@ -50,12 +54,21 @@
   }
 
   const rootID = "root";
+  const relationID = "relations";
+  const emptyLinkGraph: NoteLinkGraph = { nodes: [], edges: [] };
   const protectionModes: ProtectionMode[] = ["none", "password", "encrypted"];
 
   let selectedNodeID = rootID;
+  let linkGraph = emptyLinkGraph;
+  let linkGraphLoading = false;
+  let linkGraphError = "";
+  let linkGraphSequence = 0;
+  let mounted = false;
+  let lastLinkGraphSignature = "";
 
   onMount(() => {
     void tagsStore.load();
+    mounted = true;
   });
 
   function nodeID(type: Exclude<IndexNodeType, "root">, id: string): string {
@@ -78,6 +91,7 @@
   }
 
   function typeLabel(type: IndexNodeType, language: Language): string {
+    if (type === "relation") return t("indexRelations", language);
     if (type === "tag") return t("indexTags", language);
     if (type === "folder") return t("indexFolders", language);
     if (type === "protection") return t("indexProtection", language);
@@ -108,17 +122,29 @@
     notes: Note[],
     folders: FolderRecord[],
     tags: TagRecord[],
+    graph: NoteLinkGraph,
     language: Language,
   ): IndexModel {
     const orderedNotes = sortedNotes(notes, language);
+    const noteIDSet = new Set(orderedNotes.map((note) => note.id));
+    const noteByID = new Map(orderedNotes.map((note) => [note.id, note]));
+    const visibleGraphEdges = graph.edges.filter(
+      (edge) => noteIDSet.has(edge.source) && noteIDSet.has(edge.target),
+    );
     const rootNode: IndexNode = {
       id: rootID,
       type: "root",
       label: t("indexAllNotes", language),
       count: orderedNotes.length,
     };
+    const relationNode: IndexNode = {
+      id: relationID,
+      type: "relation",
+      label: t("indexRelations", language),
+      count: visibleGraphEdges.length,
+    };
 
-    const nodes: IndexNode[] = [rootNode];
+    const nodes: IndexNode[] = [rootNode, relationNode];
     const links: IndexLink[] = [];
     const notesByNodeID = new Map<string, Note[]>([[rootID, orderedNotes]]);
     const tagGroups = new Map<string, GroupEntry>();
@@ -186,7 +212,50 @@
     for (const node of noteNodes) {
       nodes.push(node);
       notesByNodeID.set(node.id, node.note ? [node.note] : []);
-      links.push({ source: rootID, target: node.id });
+      links.push({ source: rootID, target: node.id, kind: "membership" });
+    }
+
+    const relationNoteIDs = new Set<string>();
+    const noteRelationIDs = new Map<string, Set<string>>();
+    for (const edge of visibleGraphEdges) {
+      relationNoteIDs.add(edge.source);
+      relationNoteIDs.add(edge.target);
+      const sourceNodeID = nodeID("note", edge.source);
+      const targetNodeID = nodeID("note", edge.target);
+      links.push({ source: sourceNodeID, target: targetNodeID, kind: "backlink" });
+      const sourceRelations = noteRelationIDs.get(edge.source) ?? new Set<string>();
+      sourceRelations.add(edge.target);
+      noteRelationIDs.set(edge.source, sourceRelations);
+      const targetRelations = noteRelationIDs.get(edge.target) ?? new Set<string>();
+      targetRelations.add(edge.source);
+      noteRelationIDs.set(edge.target, targetRelations);
+    }
+    notesByNodeID.set(
+      relationID,
+      sortedNotes(
+        [...relationNoteIDs]
+          .map((id) => noteByID.get(id))
+          .filter((note): note is Note => Boolean(note)),
+        language,
+      ),
+    );
+    for (const noteID of relationNoteIDs) {
+      links.push({ source: relationID, target: nodeID("note", noteID), kind: "membership" });
+    }
+    for (const [noteID, relatedIDs] of noteRelationIDs.entries()) {
+      const currentNote = noteByID.get(noteID);
+      notesByNodeID.set(
+        nodeID("note", noteID),
+        [
+          ...(currentNote ? [currentNote] : []),
+          ...sortedNotes(
+            [...relatedIDs]
+              .map((id) => noteByID.get(id))
+              .filter((note): note is Note => Boolean(note)),
+            language,
+          ),
+        ],
+      );
     }
 
     const tagEntries = [...tagGroups.values()].sort((left, right) => {
@@ -276,6 +345,28 @@
     notesStore.select(note);
   }
 
+  async function loadLinkGraph(): Promise<void> {
+    const sequence = ++linkGraphSequence;
+    linkGraphLoading = true;
+    linkGraphError = "";
+    try {
+      const graph = await fetchNoteLinkGraph(false);
+      if (sequence !== linkGraphSequence) return;
+      linkGraph = graph;
+    } catch (error) {
+      if (sequence !== linkGraphSequence) return;
+      linkGraph = emptyLinkGraph;
+      linkGraphError =
+        error instanceof Error
+          ? error.message
+          : t("indexRelationGraphLoadFailed", $preferencesStore.language);
+    } finally {
+      if (sequence === linkGraphSequence) {
+        linkGraphLoading = false;
+      }
+    }
+  }
+
   function formatNoteDate(note: Note, language: Language, timeZone: string): string {
     return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
       month: "numeric",
@@ -312,8 +403,16 @@
     $notesStore.notes,
     $foldersStore.folders,
     $tagsStore,
+    linkGraph,
     $preferencesStore.language,
   );
+  $: noteListSignature = $notesStore.notes
+    .map((note) => `${note.id}:${note.updated_at}:${note.is_deleted}`)
+    .join("|");
+  $: if (mounted && !$notesStore.loading && noteListSignature !== lastLinkGraphSignature) {
+    lastLinkGraphSignature = noteListSignature;
+    void loadLinkGraph();
+  }
   $: if (!indexModel.nodeByID.has(selectedNodeID)) {
     selectedNodeID = rootID;
   }
@@ -362,6 +461,22 @@
         <b>{indexModel.rootNode.count}</b>
       </button>
     {/if}
+
+    <div class="index-rail-section">
+      <h2>{t("indexRelations", $preferencesStore.language)}</h2>
+      <div class="index-rail-list">
+        <button
+          class:active={selectedNodeID === relationID}
+          class="index-rail-item"
+          type="button"
+          on:click={() => selectNode(relationID)}
+        >
+          <Network size={14} strokeWidth={1.8} aria-hidden="true" />
+          <span><strong>{t("indexRelations", $preferencesStore.language)}</strong></span>
+          <b>{indexModel.nodeByID.get(relationID)?.count ?? 0}</b>
+        </button>
+      </div>
+    </div>
 
     <div class="index-rail-section">
       <h2>{t("indexTags", $preferencesStore.language)}</h2>
@@ -433,7 +548,11 @@
           on:input={(event) => void notesStore.setSearch(event.currentTarget.value)}
         />
       </label>
-      <span>{indexModel.rootNode.count} {t("notes", $preferencesStore.language)}</span>
+      <span>
+        {indexModel.rootNode.count} {t("notes", $preferencesStore.language)}
+        ·
+        {indexModel.nodeByID.get(relationID)?.count ?? 0} {t("indexRelations", $preferencesStore.language)}
+      </span>
     </div>
 
     {#if $notesStore.error}
@@ -445,6 +564,18 @@
         {activeSearch ? t("indexNoConnections", $preferencesStore.language) : t("indexEmpty", $preferencesStore.language)}
       </div>
     {:else}
+      {#if linkGraphError}
+        <div class="index-message index-message--overlay" role="status">
+          <span>{t("indexRelationGraphLoadFailed", $preferencesStore.language)}</span>
+          <button type="button" on:click={() => void loadLinkGraph()}>
+            {t("refresh", $preferencesStore.language)}
+          </button>
+        </div>
+      {:else if linkGraphLoading}
+        <div class="index-message index-message--overlay" role="status">
+          {t("loading", $preferencesStore.language)}
+        </div>
+      {/if}
       <IndexGraphCanvas
         nodes={indexModel.nodes}
         links={indexModel.links}
