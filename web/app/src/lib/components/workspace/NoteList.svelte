@@ -1,9 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { FolderInput, Plus, Settings, SlidersHorizontal, X } from "@lucide/svelte";
-  import ToolsPanel from "../settings/ToolsPanel.svelte";
+  import { FolderInput, Plus, SlidersHorizontal, X } from "@lucide/svelte";
   import type { Note } from "../../api/types";
-  import { authStore } from "../../stores/auth";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import {
     buildFolderTree,
@@ -22,7 +20,6 @@
     notes: Note[];
   }
 
-  let settingsOpen = false;
   let moveMenuOpen = false;
   let filterPanelOpen = false;
   let selectedNoteIDs: string[] = [];
@@ -272,15 +269,6 @@
           <span>{advancedFilterCount}</span>
         {/if}
       </button>
-      <button
-        class="note-list-mobile-tool"
-        type="button"
-        aria-expanded={settingsOpen}
-        on:click={() => (settingsOpen = !settingsOpen)}
-      >
-        <Settings size={16} strokeWidth={1.8} aria-hidden="true" />
-        {t("settings", $preferencesStore.language)}
-      </button>
     </div>
   </div>
 
@@ -398,38 +386,6 @@
         </button>
       </div>
     </div>
-  {/if}
-
-  <div class="note-list-mobile-filters" aria-label={t("noteList", $preferencesStore.language)}>
-    {#each filters as filter}
-      <button
-        class:active={$notesStore.filter === filter.id && !$notesStore.folderID}
-        type="button"
-        aria-pressed={$notesStore.filter === filter.id && !$notesStore.folderID}
-        on:click={() => {
-          foldersStore.select(null);
-          notesStore.setFilter(filter.id);
-        }}
-      >
-        {filter.label}
-      </button>
-      {#if filter.id === "all"}
-        <button
-          class:active={$notesStore.folderBrowserOpen ||
-            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
-          type="button"
-          aria-pressed={$notesStore.folderBrowserOpen ||
-            ($notesStore.filter === "all" && Boolean($notesStore.folderID))}
-          on:click={() => notesStore.showFolderBrowser()}
-        >
-          {t("notebookGroups", $preferencesStore.language)}
-        </button>
-      {/if}
-    {/each}
-  </div>
-
-  {#if settingsOpen}
-    <ToolsPanel user={$authStore.user} onClose={() => (settingsOpen = false)} />
   {/if}
 
   {#if $notesStore.filter === "starred" && starredFolders.length > 0}

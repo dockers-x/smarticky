@@ -6,6 +6,7 @@
   import { notesStore } from "../../stores/notes";
   import { whiteboardStore } from "../../stores/whiteboard";
   import IndexView from "./IndexView.svelte";
+  import MobileNav from "./MobileNav.svelte";
   import NoteList from "./NoteList.svelte";
   import Sidebar from "./Sidebar.svelte";
 
@@ -17,6 +18,7 @@
 
 <div class:index-open={$notesStore.workspaceView === "index"} class="workspace">
   <Sidebar />
+  <MobileNav />
   {#if $notesStore.workspaceView === "index"}
     <IndexView />
   {:else}
