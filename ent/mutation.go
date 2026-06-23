@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/backuptarget"
+	"smarticky/ent/backuptask"
 	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/folder"
 	"smarticky/ent/font"
@@ -16,6 +18,9 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -38,20 +43,25 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAttachment        = "Attachment"
-	TypeBackupConfig      = "BackupConfig"
-	TypeExcalidrawLibrary = "ExcalidrawLibrary"
-	TypeFolder            = "Folder"
-	TypeFont              = "Font"
-	TypeImportItem        = "ImportItem"
-	TypeImportJob         = "ImportJob"
-	TypeMCPImage          = "MCPImage"
-	TypeMCPToken          = "MCPToken"
-	TypeNote              = "Note"
-	TypeNoteLink          = "NoteLink"
-	TypeTag               = "Tag"
-	TypeUser              = "User"
-	TypeWhiteboard        = "Whiteboard"
+	TypeAttachment            = "Attachment"
+	TypeBackupConfig          = "BackupConfig"
+	TypeBackupTarget          = "BackupTarget"
+	TypeBackupTask            = "BackupTask"
+	TypeExcalidrawLibrary     = "ExcalidrawLibrary"
+	TypeFolder                = "Folder"
+	TypeFont                  = "Font"
+	TypeImportItem            = "ImportItem"
+	TypeImportJob             = "ImportJob"
+	TypeMCPImage              = "MCPImage"
+	TypeMCPToken              = "MCPToken"
+	TypeNote                  = "Note"
+	TypeNoteConnectionAccount = "NoteConnectionAccount"
+	TypeNoteConnectionItemMap = "NoteConnectionItemMap"
+	TypeNoteConnectionJob     = "NoteConnectionJob"
+	TypeNoteLink              = "NoteLink"
+	TypeTag                   = "Tag"
+	TypeUser                  = "User"
+	TypeWhiteboard            = "Whiteboard"
 )
 
 // AttachmentMutation represents an operation that mutates the Attachment nodes in the graph.
@@ -802,6 +812,7 @@ type BackupConfigMutation struct {
 	addbackup_max_count      *int
 	folder_max_depth         *int
 	addfolder_max_depth      *int
+	backup_targets_migrated  *bool
 	last_backup_at           *time.Time
 	created_at               *time.Time
 	updated_at               *time.Time
@@ -1541,6 +1552,42 @@ func (m *BackupConfigMutation) ResetFolderMaxDepth() {
 	m.addfolder_max_depth = nil
 }
 
+// SetBackupTargetsMigrated sets the "backup_targets_migrated" field.
+func (m *BackupConfigMutation) SetBackupTargetsMigrated(b bool) {
+	m.backup_targets_migrated = &b
+}
+
+// BackupTargetsMigrated returns the value of the "backup_targets_migrated" field in the mutation.
+func (m *BackupConfigMutation) BackupTargetsMigrated() (r bool, exists bool) {
+	v := m.backup_targets_migrated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBackupTargetsMigrated returns the old "backup_targets_migrated" field's value of the BackupConfig entity.
+// If the BackupConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupConfigMutation) OldBackupTargetsMigrated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBackupTargetsMigrated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBackupTargetsMigrated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBackupTargetsMigrated: %w", err)
+	}
+	return oldValue.BackupTargetsMigrated, nil
+}
+
+// ResetBackupTargetsMigrated resets all changes to the "backup_targets_migrated" field.
+func (m *BackupConfigMutation) ResetBackupTargetsMigrated() {
+	m.backup_targets_migrated = nil
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (m *BackupConfigMutation) SetLastBackupAt(t time.Time) {
 	m.last_backup_at = &t
@@ -1696,7 +1743,7 @@ func (m *BackupConfigMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BackupConfigMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.webdav_url != nil {
 		fields = append(fields, backupconfig.FieldWebdavURL)
 	}
@@ -1735,6 +1782,9 @@ func (m *BackupConfigMutation) Fields() []string {
 	}
 	if m.folder_max_depth != nil {
 		fields = append(fields, backupconfig.FieldFolderMaxDepth)
+	}
+	if m.backup_targets_migrated != nil {
+		fields = append(fields, backupconfig.FieldBackupTargetsMigrated)
 	}
 	if m.last_backup_at != nil {
 		fields = append(fields, backupconfig.FieldLastBackupAt)
@@ -1779,6 +1829,8 @@ func (m *BackupConfigMutation) Field(name string) (ent.Value, bool) {
 		return m.BackupMaxCount()
 	case backupconfig.FieldFolderMaxDepth:
 		return m.FolderMaxDepth()
+	case backupconfig.FieldBackupTargetsMigrated:
+		return m.BackupTargetsMigrated()
 	case backupconfig.FieldLastBackupAt:
 		return m.LastBackupAt()
 	case backupconfig.FieldCreatedAt:
@@ -1820,6 +1872,8 @@ func (m *BackupConfigMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldBackupMaxCount(ctx)
 	case backupconfig.FieldFolderMaxDepth:
 		return m.OldFolderMaxDepth(ctx)
+	case backupconfig.FieldBackupTargetsMigrated:
+		return m.OldBackupTargetsMigrated(ctx)
 	case backupconfig.FieldLastBackupAt:
 		return m.OldLastBackupAt(ctx)
 	case backupconfig.FieldCreatedAt:
@@ -1925,6 +1979,13 @@ func (m *BackupConfigMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFolderMaxDepth(v)
+		return nil
+	case backupconfig.FieldBackupTargetsMigrated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBackupTargetsMigrated(v)
 		return nil
 	case backupconfig.FieldLastBackupAt:
 		v, ok := value.(time.Time)
@@ -2131,6 +2192,9 @@ func (m *BackupConfigMutation) ResetField(name string) error {
 	case backupconfig.FieldFolderMaxDepth:
 		m.ResetFolderMaxDepth()
 		return nil
+	case backupconfig.FieldBackupTargetsMigrated:
+		m.ResetBackupTargetsMigrated()
+		return nil
 	case backupconfig.FieldLastBackupAt:
 		m.ResetLastBackupAt()
 		return nil
@@ -2190,6 +2254,2643 @@ func (m *BackupConfigMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *BackupConfigMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown BackupConfig edge %s", name)
+}
+
+// BackupTargetMutation represents an operation that mutates the BackupTarget nodes in the graph.
+type BackupTargetMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *int
+	name               *string
+	_type              *string
+	enabled            *bool
+	last_backup_status *string
+	last_backup_error  *string
+	last_backup_at     *time.Time
+	last_test_status   *string
+	last_test_error    *string
+	last_test_at       *time.Time
+	webdav_url         *string
+	webdav_user        *string
+	webdav_password    *string
+	s3_endpoint        *string
+	s3_region          *string
+	s3_bucket          *string
+	s3_access_key      *string
+	s3_secret_key      *string
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	tasks              map[int]struct{}
+	removedtasks       map[int]struct{}
+	clearedtasks       bool
+	done               bool
+	oldValue           func(context.Context) (*BackupTarget, error)
+	predicates         []predicate.BackupTarget
+}
+
+var _ ent.Mutation = (*BackupTargetMutation)(nil)
+
+// backuptargetOption allows management of the mutation configuration using functional options.
+type backuptargetOption func(*BackupTargetMutation)
+
+// newBackupTargetMutation creates new mutation for the BackupTarget entity.
+func newBackupTargetMutation(c config, op Op, opts ...backuptargetOption) *BackupTargetMutation {
+	m := &BackupTargetMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBackupTarget,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBackupTargetID sets the ID field of the mutation.
+func withBackupTargetID(id int) backuptargetOption {
+	return func(m *BackupTargetMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *BackupTarget
+		)
+		m.oldValue = func(ctx context.Context) (*BackupTarget, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().BackupTarget.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBackupTarget sets the old BackupTarget of the mutation.
+func withBackupTarget(node *BackupTarget) backuptargetOption {
+	return func(m *BackupTargetMutation) {
+		m.oldValue = func(context.Context) (*BackupTarget, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BackupTargetMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BackupTargetMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BackupTargetMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *BackupTargetMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().BackupTarget.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *BackupTargetMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *BackupTargetMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *BackupTargetMutation) ResetName() {
+	m.name = nil
+}
+
+// SetType sets the "type" field.
+func (m *BackupTargetMutation) SetType(s string) {
+	m._type = &s
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *BackupTargetMutation) GetType() (r string, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *BackupTargetMutation) ResetType() {
+	m._type = nil
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *BackupTargetMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *BackupTargetMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *BackupTargetMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetLastBackupStatus sets the "last_backup_status" field.
+func (m *BackupTargetMutation) SetLastBackupStatus(s string) {
+	m.last_backup_status = &s
+}
+
+// LastBackupStatus returns the value of the "last_backup_status" field in the mutation.
+func (m *BackupTargetMutation) LastBackupStatus() (r string, exists bool) {
+	v := m.last_backup_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastBackupStatus returns the old "last_backup_status" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldLastBackupStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastBackupStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastBackupStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastBackupStatus: %w", err)
+	}
+	return oldValue.LastBackupStatus, nil
+}
+
+// ResetLastBackupStatus resets all changes to the "last_backup_status" field.
+func (m *BackupTargetMutation) ResetLastBackupStatus() {
+	m.last_backup_status = nil
+}
+
+// SetLastBackupError sets the "last_backup_error" field.
+func (m *BackupTargetMutation) SetLastBackupError(s string) {
+	m.last_backup_error = &s
+}
+
+// LastBackupError returns the value of the "last_backup_error" field in the mutation.
+func (m *BackupTargetMutation) LastBackupError() (r string, exists bool) {
+	v := m.last_backup_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastBackupError returns the old "last_backup_error" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldLastBackupError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastBackupError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastBackupError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastBackupError: %w", err)
+	}
+	return oldValue.LastBackupError, nil
+}
+
+// ClearLastBackupError clears the value of the "last_backup_error" field.
+func (m *BackupTargetMutation) ClearLastBackupError() {
+	m.last_backup_error = nil
+	m.clearedFields[backuptarget.FieldLastBackupError] = struct{}{}
+}
+
+// LastBackupErrorCleared returns if the "last_backup_error" field was cleared in this mutation.
+func (m *BackupTargetMutation) LastBackupErrorCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldLastBackupError]
+	return ok
+}
+
+// ResetLastBackupError resets all changes to the "last_backup_error" field.
+func (m *BackupTargetMutation) ResetLastBackupError() {
+	m.last_backup_error = nil
+	delete(m.clearedFields, backuptarget.FieldLastBackupError)
+}
+
+// SetLastBackupAt sets the "last_backup_at" field.
+func (m *BackupTargetMutation) SetLastBackupAt(t time.Time) {
+	m.last_backup_at = &t
+}
+
+// LastBackupAt returns the value of the "last_backup_at" field in the mutation.
+func (m *BackupTargetMutation) LastBackupAt() (r time.Time, exists bool) {
+	v := m.last_backup_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastBackupAt returns the old "last_backup_at" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldLastBackupAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastBackupAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastBackupAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastBackupAt: %w", err)
+	}
+	return oldValue.LastBackupAt, nil
+}
+
+// ClearLastBackupAt clears the value of the "last_backup_at" field.
+func (m *BackupTargetMutation) ClearLastBackupAt() {
+	m.last_backup_at = nil
+	m.clearedFields[backuptarget.FieldLastBackupAt] = struct{}{}
+}
+
+// LastBackupAtCleared returns if the "last_backup_at" field was cleared in this mutation.
+func (m *BackupTargetMutation) LastBackupAtCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldLastBackupAt]
+	return ok
+}
+
+// ResetLastBackupAt resets all changes to the "last_backup_at" field.
+func (m *BackupTargetMutation) ResetLastBackupAt() {
+	m.last_backup_at = nil
+	delete(m.clearedFields, backuptarget.FieldLastBackupAt)
+}
+
+// SetLastTestStatus sets the "last_test_status" field.
+func (m *BackupTargetMutation) SetLastTestStatus(s string) {
+	m.last_test_status = &s
+}
+
+// LastTestStatus returns the value of the "last_test_status" field in the mutation.
+func (m *BackupTargetMutation) LastTestStatus() (r string, exists bool) {
+	v := m.last_test_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastTestStatus returns the old "last_test_status" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldLastTestStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastTestStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastTestStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastTestStatus: %w", err)
+	}
+	return oldValue.LastTestStatus, nil
+}
+
+// ResetLastTestStatus resets all changes to the "last_test_status" field.
+func (m *BackupTargetMutation) ResetLastTestStatus() {
+	m.last_test_status = nil
+}
+
+// SetLastTestError sets the "last_test_error" field.
+func (m *BackupTargetMutation) SetLastTestError(s string) {
+	m.last_test_error = &s
+}
+
+// LastTestError returns the value of the "last_test_error" field in the mutation.
+func (m *BackupTargetMutation) LastTestError() (r string, exists bool) {
+	v := m.last_test_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastTestError returns the old "last_test_error" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldLastTestError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastTestError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastTestError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastTestError: %w", err)
+	}
+	return oldValue.LastTestError, nil
+}
+
+// ClearLastTestError clears the value of the "last_test_error" field.
+func (m *BackupTargetMutation) ClearLastTestError() {
+	m.last_test_error = nil
+	m.clearedFields[backuptarget.FieldLastTestError] = struct{}{}
+}
+
+// LastTestErrorCleared returns if the "last_test_error" field was cleared in this mutation.
+func (m *BackupTargetMutation) LastTestErrorCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldLastTestError]
+	return ok
+}
+
+// ResetLastTestError resets all changes to the "last_test_error" field.
+func (m *BackupTargetMutation) ResetLastTestError() {
+	m.last_test_error = nil
+	delete(m.clearedFields, backuptarget.FieldLastTestError)
+}
+
+// SetLastTestAt sets the "last_test_at" field.
+func (m *BackupTargetMutation) SetLastTestAt(t time.Time) {
+	m.last_test_at = &t
+}
+
+// LastTestAt returns the value of the "last_test_at" field in the mutation.
+func (m *BackupTargetMutation) LastTestAt() (r time.Time, exists bool) {
+	v := m.last_test_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastTestAt returns the old "last_test_at" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldLastTestAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastTestAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastTestAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastTestAt: %w", err)
+	}
+	return oldValue.LastTestAt, nil
+}
+
+// ClearLastTestAt clears the value of the "last_test_at" field.
+func (m *BackupTargetMutation) ClearLastTestAt() {
+	m.last_test_at = nil
+	m.clearedFields[backuptarget.FieldLastTestAt] = struct{}{}
+}
+
+// LastTestAtCleared returns if the "last_test_at" field was cleared in this mutation.
+func (m *BackupTargetMutation) LastTestAtCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldLastTestAt]
+	return ok
+}
+
+// ResetLastTestAt resets all changes to the "last_test_at" field.
+func (m *BackupTargetMutation) ResetLastTestAt() {
+	m.last_test_at = nil
+	delete(m.clearedFields, backuptarget.FieldLastTestAt)
+}
+
+// SetWebdavURL sets the "webdav_url" field.
+func (m *BackupTargetMutation) SetWebdavURL(s string) {
+	m.webdav_url = &s
+}
+
+// WebdavURL returns the value of the "webdav_url" field in the mutation.
+func (m *BackupTargetMutation) WebdavURL() (r string, exists bool) {
+	v := m.webdav_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebdavURL returns the old "webdav_url" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldWebdavURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebdavURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebdavURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebdavURL: %w", err)
+	}
+	return oldValue.WebdavURL, nil
+}
+
+// ClearWebdavURL clears the value of the "webdav_url" field.
+func (m *BackupTargetMutation) ClearWebdavURL() {
+	m.webdav_url = nil
+	m.clearedFields[backuptarget.FieldWebdavURL] = struct{}{}
+}
+
+// WebdavURLCleared returns if the "webdav_url" field was cleared in this mutation.
+func (m *BackupTargetMutation) WebdavURLCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldWebdavURL]
+	return ok
+}
+
+// ResetWebdavURL resets all changes to the "webdav_url" field.
+func (m *BackupTargetMutation) ResetWebdavURL() {
+	m.webdav_url = nil
+	delete(m.clearedFields, backuptarget.FieldWebdavURL)
+}
+
+// SetWebdavUser sets the "webdav_user" field.
+func (m *BackupTargetMutation) SetWebdavUser(s string) {
+	m.webdav_user = &s
+}
+
+// WebdavUser returns the value of the "webdav_user" field in the mutation.
+func (m *BackupTargetMutation) WebdavUser() (r string, exists bool) {
+	v := m.webdav_user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebdavUser returns the old "webdav_user" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldWebdavUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebdavUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebdavUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebdavUser: %w", err)
+	}
+	return oldValue.WebdavUser, nil
+}
+
+// ClearWebdavUser clears the value of the "webdav_user" field.
+func (m *BackupTargetMutation) ClearWebdavUser() {
+	m.webdav_user = nil
+	m.clearedFields[backuptarget.FieldWebdavUser] = struct{}{}
+}
+
+// WebdavUserCleared returns if the "webdav_user" field was cleared in this mutation.
+func (m *BackupTargetMutation) WebdavUserCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldWebdavUser]
+	return ok
+}
+
+// ResetWebdavUser resets all changes to the "webdav_user" field.
+func (m *BackupTargetMutation) ResetWebdavUser() {
+	m.webdav_user = nil
+	delete(m.clearedFields, backuptarget.FieldWebdavUser)
+}
+
+// SetWebdavPassword sets the "webdav_password" field.
+func (m *BackupTargetMutation) SetWebdavPassword(s string) {
+	m.webdav_password = &s
+}
+
+// WebdavPassword returns the value of the "webdav_password" field in the mutation.
+func (m *BackupTargetMutation) WebdavPassword() (r string, exists bool) {
+	v := m.webdav_password
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWebdavPassword returns the old "webdav_password" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldWebdavPassword(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWebdavPassword is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWebdavPassword requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWebdavPassword: %w", err)
+	}
+	return oldValue.WebdavPassword, nil
+}
+
+// ClearWebdavPassword clears the value of the "webdav_password" field.
+func (m *BackupTargetMutation) ClearWebdavPassword() {
+	m.webdav_password = nil
+	m.clearedFields[backuptarget.FieldWebdavPassword] = struct{}{}
+}
+
+// WebdavPasswordCleared returns if the "webdav_password" field was cleared in this mutation.
+func (m *BackupTargetMutation) WebdavPasswordCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldWebdavPassword]
+	return ok
+}
+
+// ResetWebdavPassword resets all changes to the "webdav_password" field.
+func (m *BackupTargetMutation) ResetWebdavPassword() {
+	m.webdav_password = nil
+	delete(m.clearedFields, backuptarget.FieldWebdavPassword)
+}
+
+// SetS3Endpoint sets the "s3_endpoint" field.
+func (m *BackupTargetMutation) SetS3Endpoint(s string) {
+	m.s3_endpoint = &s
+}
+
+// S3Endpoint returns the value of the "s3_endpoint" field in the mutation.
+func (m *BackupTargetMutation) S3Endpoint() (r string, exists bool) {
+	v := m.s3_endpoint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldS3Endpoint returns the old "s3_endpoint" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldS3Endpoint(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldS3Endpoint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldS3Endpoint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldS3Endpoint: %w", err)
+	}
+	return oldValue.S3Endpoint, nil
+}
+
+// ClearS3Endpoint clears the value of the "s3_endpoint" field.
+func (m *BackupTargetMutation) ClearS3Endpoint() {
+	m.s3_endpoint = nil
+	m.clearedFields[backuptarget.FieldS3Endpoint] = struct{}{}
+}
+
+// S3EndpointCleared returns if the "s3_endpoint" field was cleared in this mutation.
+func (m *BackupTargetMutation) S3EndpointCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldS3Endpoint]
+	return ok
+}
+
+// ResetS3Endpoint resets all changes to the "s3_endpoint" field.
+func (m *BackupTargetMutation) ResetS3Endpoint() {
+	m.s3_endpoint = nil
+	delete(m.clearedFields, backuptarget.FieldS3Endpoint)
+}
+
+// SetS3Region sets the "s3_region" field.
+func (m *BackupTargetMutation) SetS3Region(s string) {
+	m.s3_region = &s
+}
+
+// S3Region returns the value of the "s3_region" field in the mutation.
+func (m *BackupTargetMutation) S3Region() (r string, exists bool) {
+	v := m.s3_region
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldS3Region returns the old "s3_region" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldS3Region(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldS3Region is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldS3Region requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldS3Region: %w", err)
+	}
+	return oldValue.S3Region, nil
+}
+
+// ClearS3Region clears the value of the "s3_region" field.
+func (m *BackupTargetMutation) ClearS3Region() {
+	m.s3_region = nil
+	m.clearedFields[backuptarget.FieldS3Region] = struct{}{}
+}
+
+// S3RegionCleared returns if the "s3_region" field was cleared in this mutation.
+func (m *BackupTargetMutation) S3RegionCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldS3Region]
+	return ok
+}
+
+// ResetS3Region resets all changes to the "s3_region" field.
+func (m *BackupTargetMutation) ResetS3Region() {
+	m.s3_region = nil
+	delete(m.clearedFields, backuptarget.FieldS3Region)
+}
+
+// SetS3Bucket sets the "s3_bucket" field.
+func (m *BackupTargetMutation) SetS3Bucket(s string) {
+	m.s3_bucket = &s
+}
+
+// S3Bucket returns the value of the "s3_bucket" field in the mutation.
+func (m *BackupTargetMutation) S3Bucket() (r string, exists bool) {
+	v := m.s3_bucket
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldS3Bucket returns the old "s3_bucket" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldS3Bucket(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldS3Bucket is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldS3Bucket requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldS3Bucket: %w", err)
+	}
+	return oldValue.S3Bucket, nil
+}
+
+// ClearS3Bucket clears the value of the "s3_bucket" field.
+func (m *BackupTargetMutation) ClearS3Bucket() {
+	m.s3_bucket = nil
+	m.clearedFields[backuptarget.FieldS3Bucket] = struct{}{}
+}
+
+// S3BucketCleared returns if the "s3_bucket" field was cleared in this mutation.
+func (m *BackupTargetMutation) S3BucketCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldS3Bucket]
+	return ok
+}
+
+// ResetS3Bucket resets all changes to the "s3_bucket" field.
+func (m *BackupTargetMutation) ResetS3Bucket() {
+	m.s3_bucket = nil
+	delete(m.clearedFields, backuptarget.FieldS3Bucket)
+}
+
+// SetS3AccessKey sets the "s3_access_key" field.
+func (m *BackupTargetMutation) SetS3AccessKey(s string) {
+	m.s3_access_key = &s
+}
+
+// S3AccessKey returns the value of the "s3_access_key" field in the mutation.
+func (m *BackupTargetMutation) S3AccessKey() (r string, exists bool) {
+	v := m.s3_access_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldS3AccessKey returns the old "s3_access_key" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldS3AccessKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldS3AccessKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldS3AccessKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldS3AccessKey: %w", err)
+	}
+	return oldValue.S3AccessKey, nil
+}
+
+// ClearS3AccessKey clears the value of the "s3_access_key" field.
+func (m *BackupTargetMutation) ClearS3AccessKey() {
+	m.s3_access_key = nil
+	m.clearedFields[backuptarget.FieldS3AccessKey] = struct{}{}
+}
+
+// S3AccessKeyCleared returns if the "s3_access_key" field was cleared in this mutation.
+func (m *BackupTargetMutation) S3AccessKeyCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldS3AccessKey]
+	return ok
+}
+
+// ResetS3AccessKey resets all changes to the "s3_access_key" field.
+func (m *BackupTargetMutation) ResetS3AccessKey() {
+	m.s3_access_key = nil
+	delete(m.clearedFields, backuptarget.FieldS3AccessKey)
+}
+
+// SetS3SecretKey sets the "s3_secret_key" field.
+func (m *BackupTargetMutation) SetS3SecretKey(s string) {
+	m.s3_secret_key = &s
+}
+
+// S3SecretKey returns the value of the "s3_secret_key" field in the mutation.
+func (m *BackupTargetMutation) S3SecretKey() (r string, exists bool) {
+	v := m.s3_secret_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldS3SecretKey returns the old "s3_secret_key" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldS3SecretKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldS3SecretKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldS3SecretKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldS3SecretKey: %w", err)
+	}
+	return oldValue.S3SecretKey, nil
+}
+
+// ClearS3SecretKey clears the value of the "s3_secret_key" field.
+func (m *BackupTargetMutation) ClearS3SecretKey() {
+	m.s3_secret_key = nil
+	m.clearedFields[backuptarget.FieldS3SecretKey] = struct{}{}
+}
+
+// S3SecretKeyCleared returns if the "s3_secret_key" field was cleared in this mutation.
+func (m *BackupTargetMutation) S3SecretKeyCleared() bool {
+	_, ok := m.clearedFields[backuptarget.FieldS3SecretKey]
+	return ok
+}
+
+// ResetS3SecretKey resets all changes to the "s3_secret_key" field.
+func (m *BackupTargetMutation) ResetS3SecretKey() {
+	m.s3_secret_key = nil
+	delete(m.clearedFields, backuptarget.FieldS3SecretKey)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *BackupTargetMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *BackupTargetMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *BackupTargetMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *BackupTargetMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *BackupTargetMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the BackupTarget entity.
+// If the BackupTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTargetMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *BackupTargetMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// AddTaskIDs adds the "tasks" edge to the BackupTask entity by ids.
+func (m *BackupTargetMutation) AddTaskIDs(ids ...int) {
+	if m.tasks == nil {
+		m.tasks = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.tasks[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTasks clears the "tasks" edge to the BackupTask entity.
+func (m *BackupTargetMutation) ClearTasks() {
+	m.clearedtasks = true
+}
+
+// TasksCleared reports if the "tasks" edge to the BackupTask entity was cleared.
+func (m *BackupTargetMutation) TasksCleared() bool {
+	return m.clearedtasks
+}
+
+// RemoveTaskIDs removes the "tasks" edge to the BackupTask entity by IDs.
+func (m *BackupTargetMutation) RemoveTaskIDs(ids ...int) {
+	if m.removedtasks == nil {
+		m.removedtasks = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.tasks, ids[i])
+		m.removedtasks[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTasks returns the removed IDs of the "tasks" edge to the BackupTask entity.
+func (m *BackupTargetMutation) RemovedTasksIDs() (ids []int) {
+	for id := range m.removedtasks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TasksIDs returns the "tasks" edge IDs in the mutation.
+func (m *BackupTargetMutation) TasksIDs() (ids []int) {
+	for id := range m.tasks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTasks resets all changes to the "tasks" edge.
+func (m *BackupTargetMutation) ResetTasks() {
+	m.tasks = nil
+	m.clearedtasks = false
+	m.removedtasks = nil
+}
+
+// Where appends a list predicates to the BackupTargetMutation builder.
+func (m *BackupTargetMutation) Where(ps ...predicate.BackupTarget) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the BackupTargetMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BackupTargetMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.BackupTarget, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *BackupTargetMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BackupTargetMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (BackupTarget).
+func (m *BackupTargetMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BackupTargetMutation) Fields() []string {
+	fields := make([]string, 0, 19)
+	if m.name != nil {
+		fields = append(fields, backuptarget.FieldName)
+	}
+	if m._type != nil {
+		fields = append(fields, backuptarget.FieldType)
+	}
+	if m.enabled != nil {
+		fields = append(fields, backuptarget.FieldEnabled)
+	}
+	if m.last_backup_status != nil {
+		fields = append(fields, backuptarget.FieldLastBackupStatus)
+	}
+	if m.last_backup_error != nil {
+		fields = append(fields, backuptarget.FieldLastBackupError)
+	}
+	if m.last_backup_at != nil {
+		fields = append(fields, backuptarget.FieldLastBackupAt)
+	}
+	if m.last_test_status != nil {
+		fields = append(fields, backuptarget.FieldLastTestStatus)
+	}
+	if m.last_test_error != nil {
+		fields = append(fields, backuptarget.FieldLastTestError)
+	}
+	if m.last_test_at != nil {
+		fields = append(fields, backuptarget.FieldLastTestAt)
+	}
+	if m.webdav_url != nil {
+		fields = append(fields, backuptarget.FieldWebdavURL)
+	}
+	if m.webdav_user != nil {
+		fields = append(fields, backuptarget.FieldWebdavUser)
+	}
+	if m.webdav_password != nil {
+		fields = append(fields, backuptarget.FieldWebdavPassword)
+	}
+	if m.s3_endpoint != nil {
+		fields = append(fields, backuptarget.FieldS3Endpoint)
+	}
+	if m.s3_region != nil {
+		fields = append(fields, backuptarget.FieldS3Region)
+	}
+	if m.s3_bucket != nil {
+		fields = append(fields, backuptarget.FieldS3Bucket)
+	}
+	if m.s3_access_key != nil {
+		fields = append(fields, backuptarget.FieldS3AccessKey)
+	}
+	if m.s3_secret_key != nil {
+		fields = append(fields, backuptarget.FieldS3SecretKey)
+	}
+	if m.created_at != nil {
+		fields = append(fields, backuptarget.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, backuptarget.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BackupTargetMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case backuptarget.FieldName:
+		return m.Name()
+	case backuptarget.FieldType:
+		return m.GetType()
+	case backuptarget.FieldEnabled:
+		return m.Enabled()
+	case backuptarget.FieldLastBackupStatus:
+		return m.LastBackupStatus()
+	case backuptarget.FieldLastBackupError:
+		return m.LastBackupError()
+	case backuptarget.FieldLastBackupAt:
+		return m.LastBackupAt()
+	case backuptarget.FieldLastTestStatus:
+		return m.LastTestStatus()
+	case backuptarget.FieldLastTestError:
+		return m.LastTestError()
+	case backuptarget.FieldLastTestAt:
+		return m.LastTestAt()
+	case backuptarget.FieldWebdavURL:
+		return m.WebdavURL()
+	case backuptarget.FieldWebdavUser:
+		return m.WebdavUser()
+	case backuptarget.FieldWebdavPassword:
+		return m.WebdavPassword()
+	case backuptarget.FieldS3Endpoint:
+		return m.S3Endpoint()
+	case backuptarget.FieldS3Region:
+		return m.S3Region()
+	case backuptarget.FieldS3Bucket:
+		return m.S3Bucket()
+	case backuptarget.FieldS3AccessKey:
+		return m.S3AccessKey()
+	case backuptarget.FieldS3SecretKey:
+		return m.S3SecretKey()
+	case backuptarget.FieldCreatedAt:
+		return m.CreatedAt()
+	case backuptarget.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BackupTargetMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case backuptarget.FieldName:
+		return m.OldName(ctx)
+	case backuptarget.FieldType:
+		return m.OldType(ctx)
+	case backuptarget.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case backuptarget.FieldLastBackupStatus:
+		return m.OldLastBackupStatus(ctx)
+	case backuptarget.FieldLastBackupError:
+		return m.OldLastBackupError(ctx)
+	case backuptarget.FieldLastBackupAt:
+		return m.OldLastBackupAt(ctx)
+	case backuptarget.FieldLastTestStatus:
+		return m.OldLastTestStatus(ctx)
+	case backuptarget.FieldLastTestError:
+		return m.OldLastTestError(ctx)
+	case backuptarget.FieldLastTestAt:
+		return m.OldLastTestAt(ctx)
+	case backuptarget.FieldWebdavURL:
+		return m.OldWebdavURL(ctx)
+	case backuptarget.FieldWebdavUser:
+		return m.OldWebdavUser(ctx)
+	case backuptarget.FieldWebdavPassword:
+		return m.OldWebdavPassword(ctx)
+	case backuptarget.FieldS3Endpoint:
+		return m.OldS3Endpoint(ctx)
+	case backuptarget.FieldS3Region:
+		return m.OldS3Region(ctx)
+	case backuptarget.FieldS3Bucket:
+		return m.OldS3Bucket(ctx)
+	case backuptarget.FieldS3AccessKey:
+		return m.OldS3AccessKey(ctx)
+	case backuptarget.FieldS3SecretKey:
+		return m.OldS3SecretKey(ctx)
+	case backuptarget.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case backuptarget.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown BackupTarget field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BackupTargetMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case backuptarget.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case backuptarget.FieldType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	case backuptarget.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case backuptarget.FieldLastBackupStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastBackupStatus(v)
+		return nil
+	case backuptarget.FieldLastBackupError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastBackupError(v)
+		return nil
+	case backuptarget.FieldLastBackupAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastBackupAt(v)
+		return nil
+	case backuptarget.FieldLastTestStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastTestStatus(v)
+		return nil
+	case backuptarget.FieldLastTestError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastTestError(v)
+		return nil
+	case backuptarget.FieldLastTestAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastTestAt(v)
+		return nil
+	case backuptarget.FieldWebdavURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebdavURL(v)
+		return nil
+	case backuptarget.FieldWebdavUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebdavUser(v)
+		return nil
+	case backuptarget.FieldWebdavPassword:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWebdavPassword(v)
+		return nil
+	case backuptarget.FieldS3Endpoint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetS3Endpoint(v)
+		return nil
+	case backuptarget.FieldS3Region:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetS3Region(v)
+		return nil
+	case backuptarget.FieldS3Bucket:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetS3Bucket(v)
+		return nil
+	case backuptarget.FieldS3AccessKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetS3AccessKey(v)
+		return nil
+	case backuptarget.FieldS3SecretKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetS3SecretKey(v)
+		return nil
+	case backuptarget.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case backuptarget.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTarget field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BackupTargetMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BackupTargetMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BackupTargetMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown BackupTarget numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BackupTargetMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(backuptarget.FieldLastBackupError) {
+		fields = append(fields, backuptarget.FieldLastBackupError)
+	}
+	if m.FieldCleared(backuptarget.FieldLastBackupAt) {
+		fields = append(fields, backuptarget.FieldLastBackupAt)
+	}
+	if m.FieldCleared(backuptarget.FieldLastTestError) {
+		fields = append(fields, backuptarget.FieldLastTestError)
+	}
+	if m.FieldCleared(backuptarget.FieldLastTestAt) {
+		fields = append(fields, backuptarget.FieldLastTestAt)
+	}
+	if m.FieldCleared(backuptarget.FieldWebdavURL) {
+		fields = append(fields, backuptarget.FieldWebdavURL)
+	}
+	if m.FieldCleared(backuptarget.FieldWebdavUser) {
+		fields = append(fields, backuptarget.FieldWebdavUser)
+	}
+	if m.FieldCleared(backuptarget.FieldWebdavPassword) {
+		fields = append(fields, backuptarget.FieldWebdavPassword)
+	}
+	if m.FieldCleared(backuptarget.FieldS3Endpoint) {
+		fields = append(fields, backuptarget.FieldS3Endpoint)
+	}
+	if m.FieldCleared(backuptarget.FieldS3Region) {
+		fields = append(fields, backuptarget.FieldS3Region)
+	}
+	if m.FieldCleared(backuptarget.FieldS3Bucket) {
+		fields = append(fields, backuptarget.FieldS3Bucket)
+	}
+	if m.FieldCleared(backuptarget.FieldS3AccessKey) {
+		fields = append(fields, backuptarget.FieldS3AccessKey)
+	}
+	if m.FieldCleared(backuptarget.FieldS3SecretKey) {
+		fields = append(fields, backuptarget.FieldS3SecretKey)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BackupTargetMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BackupTargetMutation) ClearField(name string) error {
+	switch name {
+	case backuptarget.FieldLastBackupError:
+		m.ClearLastBackupError()
+		return nil
+	case backuptarget.FieldLastBackupAt:
+		m.ClearLastBackupAt()
+		return nil
+	case backuptarget.FieldLastTestError:
+		m.ClearLastTestError()
+		return nil
+	case backuptarget.FieldLastTestAt:
+		m.ClearLastTestAt()
+		return nil
+	case backuptarget.FieldWebdavURL:
+		m.ClearWebdavURL()
+		return nil
+	case backuptarget.FieldWebdavUser:
+		m.ClearWebdavUser()
+		return nil
+	case backuptarget.FieldWebdavPassword:
+		m.ClearWebdavPassword()
+		return nil
+	case backuptarget.FieldS3Endpoint:
+		m.ClearS3Endpoint()
+		return nil
+	case backuptarget.FieldS3Region:
+		m.ClearS3Region()
+		return nil
+	case backuptarget.FieldS3Bucket:
+		m.ClearS3Bucket()
+		return nil
+	case backuptarget.FieldS3AccessKey:
+		m.ClearS3AccessKey()
+		return nil
+	case backuptarget.FieldS3SecretKey:
+		m.ClearS3SecretKey()
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTarget nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BackupTargetMutation) ResetField(name string) error {
+	switch name {
+	case backuptarget.FieldName:
+		m.ResetName()
+		return nil
+	case backuptarget.FieldType:
+		m.ResetType()
+		return nil
+	case backuptarget.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case backuptarget.FieldLastBackupStatus:
+		m.ResetLastBackupStatus()
+		return nil
+	case backuptarget.FieldLastBackupError:
+		m.ResetLastBackupError()
+		return nil
+	case backuptarget.FieldLastBackupAt:
+		m.ResetLastBackupAt()
+		return nil
+	case backuptarget.FieldLastTestStatus:
+		m.ResetLastTestStatus()
+		return nil
+	case backuptarget.FieldLastTestError:
+		m.ResetLastTestError()
+		return nil
+	case backuptarget.FieldLastTestAt:
+		m.ResetLastTestAt()
+		return nil
+	case backuptarget.FieldWebdavURL:
+		m.ResetWebdavURL()
+		return nil
+	case backuptarget.FieldWebdavUser:
+		m.ResetWebdavUser()
+		return nil
+	case backuptarget.FieldWebdavPassword:
+		m.ResetWebdavPassword()
+		return nil
+	case backuptarget.FieldS3Endpoint:
+		m.ResetS3Endpoint()
+		return nil
+	case backuptarget.FieldS3Region:
+		m.ResetS3Region()
+		return nil
+	case backuptarget.FieldS3Bucket:
+		m.ResetS3Bucket()
+		return nil
+	case backuptarget.FieldS3AccessKey:
+		m.ResetS3AccessKey()
+		return nil
+	case backuptarget.FieldS3SecretKey:
+		m.ResetS3SecretKey()
+		return nil
+	case backuptarget.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case backuptarget.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTarget field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BackupTargetMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.tasks != nil {
+		edges = append(edges, backuptarget.EdgeTasks)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BackupTargetMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case backuptarget.EdgeTasks:
+		ids := make([]ent.Value, 0, len(m.tasks))
+		for id := range m.tasks {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BackupTargetMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedtasks != nil {
+		edges = append(edges, backuptarget.EdgeTasks)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BackupTargetMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case backuptarget.EdgeTasks:
+		ids := make([]ent.Value, 0, len(m.removedtasks))
+		for id := range m.removedtasks {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BackupTargetMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedtasks {
+		edges = append(edges, backuptarget.EdgeTasks)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BackupTargetMutation) EdgeCleared(name string) bool {
+	switch name {
+	case backuptarget.EdgeTasks:
+		return m.clearedtasks
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BackupTargetMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown BackupTarget unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BackupTargetMutation) ResetEdge(name string) error {
+	switch name {
+	case backuptarget.EdgeTasks:
+		m.ResetTasks()
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTarget edge %s", name)
+}
+
+// BackupTaskMutation represents an operation that mutates the BackupTask nodes in the graph.
+type BackupTaskMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *int
+	name               *string
+	enabled            *bool
+	schedule           *string
+	retention_days     *int
+	addretention_days  *int
+	max_count          *int
+	addmax_count       *int
+	last_backup_status *string
+	last_backup_error  *string
+	last_backup_at     *time.Time
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	targets            map[int]struct{}
+	removedtargets     map[int]struct{}
+	clearedtargets     bool
+	done               bool
+	oldValue           func(context.Context) (*BackupTask, error)
+	predicates         []predicate.BackupTask
+}
+
+var _ ent.Mutation = (*BackupTaskMutation)(nil)
+
+// backuptaskOption allows management of the mutation configuration using functional options.
+type backuptaskOption func(*BackupTaskMutation)
+
+// newBackupTaskMutation creates new mutation for the BackupTask entity.
+func newBackupTaskMutation(c config, op Op, opts ...backuptaskOption) *BackupTaskMutation {
+	m := &BackupTaskMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBackupTask,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBackupTaskID sets the ID field of the mutation.
+func withBackupTaskID(id int) backuptaskOption {
+	return func(m *BackupTaskMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *BackupTask
+		)
+		m.oldValue = func(ctx context.Context) (*BackupTask, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().BackupTask.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBackupTask sets the old BackupTask of the mutation.
+func withBackupTask(node *BackupTask) backuptaskOption {
+	return func(m *BackupTaskMutation) {
+		m.oldValue = func(context.Context) (*BackupTask, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BackupTaskMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BackupTaskMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BackupTaskMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *BackupTaskMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().BackupTask.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *BackupTaskMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *BackupTaskMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *BackupTaskMutation) ResetName() {
+	m.name = nil
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *BackupTaskMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *BackupTaskMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *BackupTaskMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetSchedule sets the "schedule" field.
+func (m *BackupTaskMutation) SetSchedule(s string) {
+	m.schedule = &s
+}
+
+// Schedule returns the value of the "schedule" field in the mutation.
+func (m *BackupTaskMutation) Schedule() (r string, exists bool) {
+	v := m.schedule
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSchedule returns the old "schedule" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldSchedule(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSchedule is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSchedule requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSchedule: %w", err)
+	}
+	return oldValue.Schedule, nil
+}
+
+// ResetSchedule resets all changes to the "schedule" field.
+func (m *BackupTaskMutation) ResetSchedule() {
+	m.schedule = nil
+}
+
+// SetRetentionDays sets the "retention_days" field.
+func (m *BackupTaskMutation) SetRetentionDays(i int) {
+	m.retention_days = &i
+	m.addretention_days = nil
+}
+
+// RetentionDays returns the value of the "retention_days" field in the mutation.
+func (m *BackupTaskMutation) RetentionDays() (r int, exists bool) {
+	v := m.retention_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRetentionDays returns the old "retention_days" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldRetentionDays(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRetentionDays is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRetentionDays requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRetentionDays: %w", err)
+	}
+	return oldValue.RetentionDays, nil
+}
+
+// AddRetentionDays adds i to the "retention_days" field.
+func (m *BackupTaskMutation) AddRetentionDays(i int) {
+	if m.addretention_days != nil {
+		*m.addretention_days += i
+	} else {
+		m.addretention_days = &i
+	}
+}
+
+// AddedRetentionDays returns the value that was added to the "retention_days" field in this mutation.
+func (m *BackupTaskMutation) AddedRetentionDays() (r int, exists bool) {
+	v := m.addretention_days
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRetentionDays resets all changes to the "retention_days" field.
+func (m *BackupTaskMutation) ResetRetentionDays() {
+	m.retention_days = nil
+	m.addretention_days = nil
+}
+
+// SetMaxCount sets the "max_count" field.
+func (m *BackupTaskMutation) SetMaxCount(i int) {
+	m.max_count = &i
+	m.addmax_count = nil
+}
+
+// MaxCount returns the value of the "max_count" field in the mutation.
+func (m *BackupTaskMutation) MaxCount() (r int, exists bool) {
+	v := m.max_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMaxCount returns the old "max_count" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldMaxCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMaxCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMaxCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMaxCount: %w", err)
+	}
+	return oldValue.MaxCount, nil
+}
+
+// AddMaxCount adds i to the "max_count" field.
+func (m *BackupTaskMutation) AddMaxCount(i int) {
+	if m.addmax_count != nil {
+		*m.addmax_count += i
+	} else {
+		m.addmax_count = &i
+	}
+}
+
+// AddedMaxCount returns the value that was added to the "max_count" field in this mutation.
+func (m *BackupTaskMutation) AddedMaxCount() (r int, exists bool) {
+	v := m.addmax_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMaxCount resets all changes to the "max_count" field.
+func (m *BackupTaskMutation) ResetMaxCount() {
+	m.max_count = nil
+	m.addmax_count = nil
+}
+
+// SetLastBackupStatus sets the "last_backup_status" field.
+func (m *BackupTaskMutation) SetLastBackupStatus(s string) {
+	m.last_backup_status = &s
+}
+
+// LastBackupStatus returns the value of the "last_backup_status" field in the mutation.
+func (m *BackupTaskMutation) LastBackupStatus() (r string, exists bool) {
+	v := m.last_backup_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastBackupStatus returns the old "last_backup_status" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldLastBackupStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastBackupStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastBackupStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastBackupStatus: %w", err)
+	}
+	return oldValue.LastBackupStatus, nil
+}
+
+// ResetLastBackupStatus resets all changes to the "last_backup_status" field.
+func (m *BackupTaskMutation) ResetLastBackupStatus() {
+	m.last_backup_status = nil
+}
+
+// SetLastBackupError sets the "last_backup_error" field.
+func (m *BackupTaskMutation) SetLastBackupError(s string) {
+	m.last_backup_error = &s
+}
+
+// LastBackupError returns the value of the "last_backup_error" field in the mutation.
+func (m *BackupTaskMutation) LastBackupError() (r string, exists bool) {
+	v := m.last_backup_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastBackupError returns the old "last_backup_error" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldLastBackupError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastBackupError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastBackupError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastBackupError: %w", err)
+	}
+	return oldValue.LastBackupError, nil
+}
+
+// ClearLastBackupError clears the value of the "last_backup_error" field.
+func (m *BackupTaskMutation) ClearLastBackupError() {
+	m.last_backup_error = nil
+	m.clearedFields[backuptask.FieldLastBackupError] = struct{}{}
+}
+
+// LastBackupErrorCleared returns if the "last_backup_error" field was cleared in this mutation.
+func (m *BackupTaskMutation) LastBackupErrorCleared() bool {
+	_, ok := m.clearedFields[backuptask.FieldLastBackupError]
+	return ok
+}
+
+// ResetLastBackupError resets all changes to the "last_backup_error" field.
+func (m *BackupTaskMutation) ResetLastBackupError() {
+	m.last_backup_error = nil
+	delete(m.clearedFields, backuptask.FieldLastBackupError)
+}
+
+// SetLastBackupAt sets the "last_backup_at" field.
+func (m *BackupTaskMutation) SetLastBackupAt(t time.Time) {
+	m.last_backup_at = &t
+}
+
+// LastBackupAt returns the value of the "last_backup_at" field in the mutation.
+func (m *BackupTaskMutation) LastBackupAt() (r time.Time, exists bool) {
+	v := m.last_backup_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastBackupAt returns the old "last_backup_at" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldLastBackupAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastBackupAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastBackupAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastBackupAt: %w", err)
+	}
+	return oldValue.LastBackupAt, nil
+}
+
+// ClearLastBackupAt clears the value of the "last_backup_at" field.
+func (m *BackupTaskMutation) ClearLastBackupAt() {
+	m.last_backup_at = nil
+	m.clearedFields[backuptask.FieldLastBackupAt] = struct{}{}
+}
+
+// LastBackupAtCleared returns if the "last_backup_at" field was cleared in this mutation.
+func (m *BackupTaskMutation) LastBackupAtCleared() bool {
+	_, ok := m.clearedFields[backuptask.FieldLastBackupAt]
+	return ok
+}
+
+// ResetLastBackupAt resets all changes to the "last_backup_at" field.
+func (m *BackupTaskMutation) ResetLastBackupAt() {
+	m.last_backup_at = nil
+	delete(m.clearedFields, backuptask.FieldLastBackupAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *BackupTaskMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *BackupTaskMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *BackupTaskMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *BackupTaskMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *BackupTaskMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the BackupTask entity.
+// If the BackupTask object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BackupTaskMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *BackupTaskMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// AddTargetIDs adds the "targets" edge to the BackupTarget entity by ids.
+func (m *BackupTaskMutation) AddTargetIDs(ids ...int) {
+	if m.targets == nil {
+		m.targets = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.targets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTargets clears the "targets" edge to the BackupTarget entity.
+func (m *BackupTaskMutation) ClearTargets() {
+	m.clearedtargets = true
+}
+
+// TargetsCleared reports if the "targets" edge to the BackupTarget entity was cleared.
+func (m *BackupTaskMutation) TargetsCleared() bool {
+	return m.clearedtargets
+}
+
+// RemoveTargetIDs removes the "targets" edge to the BackupTarget entity by IDs.
+func (m *BackupTaskMutation) RemoveTargetIDs(ids ...int) {
+	if m.removedtargets == nil {
+		m.removedtargets = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.targets, ids[i])
+		m.removedtargets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTargets returns the removed IDs of the "targets" edge to the BackupTarget entity.
+func (m *BackupTaskMutation) RemovedTargetsIDs() (ids []int) {
+	for id := range m.removedtargets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TargetsIDs returns the "targets" edge IDs in the mutation.
+func (m *BackupTaskMutation) TargetsIDs() (ids []int) {
+	for id := range m.targets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTargets resets all changes to the "targets" edge.
+func (m *BackupTaskMutation) ResetTargets() {
+	m.targets = nil
+	m.clearedtargets = false
+	m.removedtargets = nil
+}
+
+// Where appends a list predicates to the BackupTaskMutation builder.
+func (m *BackupTaskMutation) Where(ps ...predicate.BackupTask) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the BackupTaskMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BackupTaskMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.BackupTask, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *BackupTaskMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BackupTaskMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (BackupTask).
+func (m *BackupTaskMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BackupTaskMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.name != nil {
+		fields = append(fields, backuptask.FieldName)
+	}
+	if m.enabled != nil {
+		fields = append(fields, backuptask.FieldEnabled)
+	}
+	if m.schedule != nil {
+		fields = append(fields, backuptask.FieldSchedule)
+	}
+	if m.retention_days != nil {
+		fields = append(fields, backuptask.FieldRetentionDays)
+	}
+	if m.max_count != nil {
+		fields = append(fields, backuptask.FieldMaxCount)
+	}
+	if m.last_backup_status != nil {
+		fields = append(fields, backuptask.FieldLastBackupStatus)
+	}
+	if m.last_backup_error != nil {
+		fields = append(fields, backuptask.FieldLastBackupError)
+	}
+	if m.last_backup_at != nil {
+		fields = append(fields, backuptask.FieldLastBackupAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, backuptask.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, backuptask.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BackupTaskMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case backuptask.FieldName:
+		return m.Name()
+	case backuptask.FieldEnabled:
+		return m.Enabled()
+	case backuptask.FieldSchedule:
+		return m.Schedule()
+	case backuptask.FieldRetentionDays:
+		return m.RetentionDays()
+	case backuptask.FieldMaxCount:
+		return m.MaxCount()
+	case backuptask.FieldLastBackupStatus:
+		return m.LastBackupStatus()
+	case backuptask.FieldLastBackupError:
+		return m.LastBackupError()
+	case backuptask.FieldLastBackupAt:
+		return m.LastBackupAt()
+	case backuptask.FieldCreatedAt:
+		return m.CreatedAt()
+	case backuptask.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BackupTaskMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case backuptask.FieldName:
+		return m.OldName(ctx)
+	case backuptask.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case backuptask.FieldSchedule:
+		return m.OldSchedule(ctx)
+	case backuptask.FieldRetentionDays:
+		return m.OldRetentionDays(ctx)
+	case backuptask.FieldMaxCount:
+		return m.OldMaxCount(ctx)
+	case backuptask.FieldLastBackupStatus:
+		return m.OldLastBackupStatus(ctx)
+	case backuptask.FieldLastBackupError:
+		return m.OldLastBackupError(ctx)
+	case backuptask.FieldLastBackupAt:
+		return m.OldLastBackupAt(ctx)
+	case backuptask.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case backuptask.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown BackupTask field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BackupTaskMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case backuptask.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case backuptask.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case backuptask.FieldSchedule:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSchedule(v)
+		return nil
+	case backuptask.FieldRetentionDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRetentionDays(v)
+		return nil
+	case backuptask.FieldMaxCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMaxCount(v)
+		return nil
+	case backuptask.FieldLastBackupStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastBackupStatus(v)
+		return nil
+	case backuptask.FieldLastBackupError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastBackupError(v)
+		return nil
+	case backuptask.FieldLastBackupAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastBackupAt(v)
+		return nil
+	case backuptask.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case backuptask.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTask field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BackupTaskMutation) AddedFields() []string {
+	var fields []string
+	if m.addretention_days != nil {
+		fields = append(fields, backuptask.FieldRetentionDays)
+	}
+	if m.addmax_count != nil {
+		fields = append(fields, backuptask.FieldMaxCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BackupTaskMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case backuptask.FieldRetentionDays:
+		return m.AddedRetentionDays()
+	case backuptask.FieldMaxCount:
+		return m.AddedMaxCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BackupTaskMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case backuptask.FieldRetentionDays:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRetentionDays(v)
+		return nil
+	case backuptask.FieldMaxCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMaxCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTask numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BackupTaskMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(backuptask.FieldLastBackupError) {
+		fields = append(fields, backuptask.FieldLastBackupError)
+	}
+	if m.FieldCleared(backuptask.FieldLastBackupAt) {
+		fields = append(fields, backuptask.FieldLastBackupAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BackupTaskMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BackupTaskMutation) ClearField(name string) error {
+	switch name {
+	case backuptask.FieldLastBackupError:
+		m.ClearLastBackupError()
+		return nil
+	case backuptask.FieldLastBackupAt:
+		m.ClearLastBackupAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTask nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BackupTaskMutation) ResetField(name string) error {
+	switch name {
+	case backuptask.FieldName:
+		m.ResetName()
+		return nil
+	case backuptask.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case backuptask.FieldSchedule:
+		m.ResetSchedule()
+		return nil
+	case backuptask.FieldRetentionDays:
+		m.ResetRetentionDays()
+		return nil
+	case backuptask.FieldMaxCount:
+		m.ResetMaxCount()
+		return nil
+	case backuptask.FieldLastBackupStatus:
+		m.ResetLastBackupStatus()
+		return nil
+	case backuptask.FieldLastBackupError:
+		m.ResetLastBackupError()
+		return nil
+	case backuptask.FieldLastBackupAt:
+		m.ResetLastBackupAt()
+		return nil
+	case backuptask.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case backuptask.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTask field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BackupTaskMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.targets != nil {
+		edges = append(edges, backuptask.EdgeTargets)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BackupTaskMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case backuptask.EdgeTargets:
+		ids := make([]ent.Value, 0, len(m.targets))
+		for id := range m.targets {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BackupTaskMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedtargets != nil {
+		edges = append(edges, backuptask.EdgeTargets)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BackupTaskMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case backuptask.EdgeTargets:
+		ids := make([]ent.Value, 0, len(m.removedtargets))
+		for id := range m.removedtargets {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BackupTaskMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedtargets {
+		edges = append(edges, backuptask.EdgeTargets)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BackupTaskMutation) EdgeCleared(name string) bool {
+	switch name {
+	case backuptask.EdgeTargets:
+		return m.clearedtargets
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BackupTaskMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown BackupTask unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BackupTaskMutation) ResetEdge(name string) error {
+	switch name {
+	case backuptask.EdgeTargets:
+		m.ResetTargets()
+		return nil
+	}
+	return fmt.Errorf("unknown BackupTask edge %s", name)
 }
 
 // ExcalidrawLibraryMutation represents an operation that mutates the ExcalidrawLibrary nodes in the graph.
@@ -7547,6 +10248,12 @@ type NoteMutation struct {
 	backlinks                map[uuid.UUID]struct{}
 	removedbacklinks         map[uuid.UUID]struct{}
 	clearedbacklinks         bool
+	connection_maps          map[int]struct{}
+	removedconnection_maps   map[int]struct{}
+	clearedconnection_maps   bool
+	connection_jobs          map[int]struct{}
+	removedconnection_jobs   map[int]struct{}
+	clearedconnection_jobs   bool
 	tags                     map[uuid.UUID]struct{}
 	removedtags              map[uuid.UUID]struct{}
 	clearedtags              bool
@@ -8561,6 +11268,114 @@ func (m *NoteMutation) ResetBacklinks() {
 	m.removedbacklinks = nil
 }
 
+// AddConnectionMapIDs adds the "connection_maps" edge to the NoteConnectionItemMap entity by ids.
+func (m *NoteMutation) AddConnectionMapIDs(ids ...int) {
+	if m.connection_maps == nil {
+		m.connection_maps = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.connection_maps[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConnectionMaps clears the "connection_maps" edge to the NoteConnectionItemMap entity.
+func (m *NoteMutation) ClearConnectionMaps() {
+	m.clearedconnection_maps = true
+}
+
+// ConnectionMapsCleared reports if the "connection_maps" edge to the NoteConnectionItemMap entity was cleared.
+func (m *NoteMutation) ConnectionMapsCleared() bool {
+	return m.clearedconnection_maps
+}
+
+// RemoveConnectionMapIDs removes the "connection_maps" edge to the NoteConnectionItemMap entity by IDs.
+func (m *NoteMutation) RemoveConnectionMapIDs(ids ...int) {
+	if m.removedconnection_maps == nil {
+		m.removedconnection_maps = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.connection_maps, ids[i])
+		m.removedconnection_maps[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConnectionMaps returns the removed IDs of the "connection_maps" edge to the NoteConnectionItemMap entity.
+func (m *NoteMutation) RemovedConnectionMapsIDs() (ids []int) {
+	for id := range m.removedconnection_maps {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConnectionMapsIDs returns the "connection_maps" edge IDs in the mutation.
+func (m *NoteMutation) ConnectionMapsIDs() (ids []int) {
+	for id := range m.connection_maps {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConnectionMaps resets all changes to the "connection_maps" edge.
+func (m *NoteMutation) ResetConnectionMaps() {
+	m.connection_maps = nil
+	m.clearedconnection_maps = false
+	m.removedconnection_maps = nil
+}
+
+// AddConnectionJobIDs adds the "connection_jobs" edge to the NoteConnectionJob entity by ids.
+func (m *NoteMutation) AddConnectionJobIDs(ids ...int) {
+	if m.connection_jobs == nil {
+		m.connection_jobs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.connection_jobs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConnectionJobs clears the "connection_jobs" edge to the NoteConnectionJob entity.
+func (m *NoteMutation) ClearConnectionJobs() {
+	m.clearedconnection_jobs = true
+}
+
+// ConnectionJobsCleared reports if the "connection_jobs" edge to the NoteConnectionJob entity was cleared.
+func (m *NoteMutation) ConnectionJobsCleared() bool {
+	return m.clearedconnection_jobs
+}
+
+// RemoveConnectionJobIDs removes the "connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (m *NoteMutation) RemoveConnectionJobIDs(ids ...int) {
+	if m.removedconnection_jobs == nil {
+		m.removedconnection_jobs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.connection_jobs, ids[i])
+		m.removedconnection_jobs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConnectionJobs returns the removed IDs of the "connection_jobs" edge to the NoteConnectionJob entity.
+func (m *NoteMutation) RemovedConnectionJobsIDs() (ids []int) {
+	for id := range m.removedconnection_jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConnectionJobsIDs returns the "connection_jobs" edge IDs in the mutation.
+func (m *NoteMutation) ConnectionJobsIDs() (ids []int) {
+	for id := range m.connection_jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConnectionJobs resets all changes to the "connection_jobs" edge.
+func (m *NoteMutation) ResetConnectionJobs() {
+	m.connection_jobs = nil
+	m.clearedconnection_jobs = false
+	m.removedconnection_jobs = nil
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by ids.
 func (m *NoteMutation) AddTagIDs(ids ...uuid.UUID) {
 	if m.tags == nil {
@@ -9020,7 +11835,7 @@ func (m *NoteMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NoteMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.user != nil {
 		edges = append(edges, note.EdgeUser)
 	}
@@ -9038,6 +11853,12 @@ func (m *NoteMutation) AddedEdges() []string {
 	}
 	if m.backlinks != nil {
 		edges = append(edges, note.EdgeBacklinks)
+	}
+	if m.connection_maps != nil {
+		edges = append(edges, note.EdgeConnectionMaps)
+	}
+	if m.connection_jobs != nil {
+		edges = append(edges, note.EdgeConnectionJobs)
 	}
 	if m.tags != nil {
 		edges = append(edges, note.EdgeTags)
@@ -9081,6 +11902,18 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case note.EdgeConnectionMaps:
+		ids := make([]ent.Value, 0, len(m.connection_maps))
+		for id := range m.connection_maps {
+			ids = append(ids, id)
+		}
+		return ids
+	case note.EdgeConnectionJobs:
+		ids := make([]ent.Value, 0, len(m.connection_jobs))
+		for id := range m.connection_jobs {
+			ids = append(ids, id)
+		}
+		return ids
 	case note.EdgeTags:
 		ids := make([]ent.Value, 0, len(m.tags))
 		for id := range m.tags {
@@ -9093,7 +11926,7 @@ func (m *NoteMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *NoteMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.removedattachments != nil {
 		edges = append(edges, note.EdgeAttachments)
 	}
@@ -9105,6 +11938,12 @@ func (m *NoteMutation) RemovedEdges() []string {
 	}
 	if m.removedbacklinks != nil {
 		edges = append(edges, note.EdgeBacklinks)
+	}
+	if m.removedconnection_maps != nil {
+		edges = append(edges, note.EdgeConnectionMaps)
+	}
+	if m.removedconnection_jobs != nil {
+		edges = append(edges, note.EdgeConnectionJobs)
 	}
 	if m.removedtags != nil {
 		edges = append(edges, note.EdgeTags)
@@ -9140,6 +11979,18 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case note.EdgeConnectionMaps:
+		ids := make([]ent.Value, 0, len(m.removedconnection_maps))
+		for id := range m.removedconnection_maps {
+			ids = append(ids, id)
+		}
+		return ids
+	case note.EdgeConnectionJobs:
+		ids := make([]ent.Value, 0, len(m.removedconnection_jobs))
+		for id := range m.removedconnection_jobs {
+			ids = append(ids, id)
+		}
+		return ids
 	case note.EdgeTags:
 		ids := make([]ent.Value, 0, len(m.removedtags))
 		for id := range m.removedtags {
@@ -9152,7 +12003,7 @@ func (m *NoteMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NoteMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.cleareduser {
 		edges = append(edges, note.EdgeUser)
 	}
@@ -9170,6 +12021,12 @@ func (m *NoteMutation) ClearedEdges() []string {
 	}
 	if m.clearedbacklinks {
 		edges = append(edges, note.EdgeBacklinks)
+	}
+	if m.clearedconnection_maps {
+		edges = append(edges, note.EdgeConnectionMaps)
+	}
+	if m.clearedconnection_jobs {
+		edges = append(edges, note.EdgeConnectionJobs)
 	}
 	if m.clearedtags {
 		edges = append(edges, note.EdgeTags)
@@ -9193,6 +12050,10 @@ func (m *NoteMutation) EdgeCleared(name string) bool {
 		return m.clearedoutgoing_links
 	case note.EdgeBacklinks:
 		return m.clearedbacklinks
+	case note.EdgeConnectionMaps:
+		return m.clearedconnection_maps
+	case note.EdgeConnectionJobs:
+		return m.clearedconnection_jobs
 	case note.EdgeTags:
 		return m.clearedtags
 	}
@@ -9235,11 +12096,4348 @@ func (m *NoteMutation) ResetEdge(name string) error {
 	case note.EdgeBacklinks:
 		m.ResetBacklinks()
 		return nil
+	case note.EdgeConnectionMaps:
+		m.ResetConnectionMaps()
+		return nil
+	case note.EdgeConnectionJobs:
+		m.ResetConnectionJobs()
+		return nil
 	case note.EdgeTags:
 		m.ResetTags()
 		return nil
 	}
 	return fmt.Errorf("unknown Note edge %s", name)
+}
+
+// NoteConnectionAccountMutation represents an operation that mutates the NoteConnectionAccount nodes in the graph.
+type NoteConnectionAccountMutation struct {
+	config
+	op                    Op
+	typ                   string
+	id                    *int
+	name                  *string
+	provider              *string
+	endpoint              *string
+	enabled               *bool
+	auth_type             *string
+	encrypted_credentials *string
+	credential_alg        *string
+	default_target_id     *string
+	default_target_name   *string
+	metadata_json         *string
+	last_test_status      *string
+	last_test_error       *string
+	last_test_at          *time.Time
+	created_at            *time.Time
+	updated_at            *time.Time
+	clearedFields         map[string]struct{}
+	user                  *int
+	cleareduser           bool
+	item_maps             map[int]struct{}
+	removeditem_maps      map[int]struct{}
+	cleareditem_maps      bool
+	jobs                  map[int]struct{}
+	removedjobs           map[int]struct{}
+	clearedjobs           bool
+	done                  bool
+	oldValue              func(context.Context) (*NoteConnectionAccount, error)
+	predicates            []predicate.NoteConnectionAccount
+}
+
+var _ ent.Mutation = (*NoteConnectionAccountMutation)(nil)
+
+// noteconnectionaccountOption allows management of the mutation configuration using functional options.
+type noteconnectionaccountOption func(*NoteConnectionAccountMutation)
+
+// newNoteConnectionAccountMutation creates new mutation for the NoteConnectionAccount entity.
+func newNoteConnectionAccountMutation(c config, op Op, opts ...noteconnectionaccountOption) *NoteConnectionAccountMutation {
+	m := &NoteConnectionAccountMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeNoteConnectionAccount,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withNoteConnectionAccountID sets the ID field of the mutation.
+func withNoteConnectionAccountID(id int) noteconnectionaccountOption {
+	return func(m *NoteConnectionAccountMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NoteConnectionAccount
+		)
+		m.oldValue = func(ctx context.Context) (*NoteConnectionAccount, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NoteConnectionAccount.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNoteConnectionAccount sets the old NoteConnectionAccount of the mutation.
+func withNoteConnectionAccount(node *NoteConnectionAccount) noteconnectionaccountOption {
+	return func(m *NoteConnectionAccountMutation) {
+		m.oldValue = func(context.Context) (*NoteConnectionAccount, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NoteConnectionAccountMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NoteConnectionAccountMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NoteConnectionAccountMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NoteConnectionAccountMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().NoteConnectionAccount.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *NoteConnectionAccountMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *NoteConnectionAccountMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *NoteConnectionAccountMutation) ResetName() {
+	m.name = nil
+}
+
+// SetProvider sets the "provider" field.
+func (m *NoteConnectionAccountMutation) SetProvider(s string) {
+	m.provider = &s
+}
+
+// Provider returns the value of the "provider" field in the mutation.
+func (m *NoteConnectionAccountMutation) Provider() (r string, exists bool) {
+	v := m.provider
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProvider returns the old "provider" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldProvider(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProvider is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProvider requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProvider: %w", err)
+	}
+	return oldValue.Provider, nil
+}
+
+// ResetProvider resets all changes to the "provider" field.
+func (m *NoteConnectionAccountMutation) ResetProvider() {
+	m.provider = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *NoteConnectionAccountMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *NoteConnectionAccountMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *NoteConnectionAccountMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetEndpoint sets the "endpoint" field.
+func (m *NoteConnectionAccountMutation) SetEndpoint(s string) {
+	m.endpoint = &s
+}
+
+// Endpoint returns the value of the "endpoint" field in the mutation.
+func (m *NoteConnectionAccountMutation) Endpoint() (r string, exists bool) {
+	v := m.endpoint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndpoint returns the old "endpoint" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldEndpoint(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndpoint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndpoint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndpoint: %w", err)
+	}
+	return oldValue.Endpoint, nil
+}
+
+// ClearEndpoint clears the value of the "endpoint" field.
+func (m *NoteConnectionAccountMutation) ClearEndpoint() {
+	m.endpoint = nil
+	m.clearedFields[noteconnectionaccount.FieldEndpoint] = struct{}{}
+}
+
+// EndpointCleared returns if the "endpoint" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) EndpointCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldEndpoint]
+	return ok
+}
+
+// ResetEndpoint resets all changes to the "endpoint" field.
+func (m *NoteConnectionAccountMutation) ResetEndpoint() {
+	m.endpoint = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldEndpoint)
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *NoteConnectionAccountMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *NoteConnectionAccountMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *NoteConnectionAccountMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetAuthType sets the "auth_type" field.
+func (m *NoteConnectionAccountMutation) SetAuthType(s string) {
+	m.auth_type = &s
+}
+
+// AuthType returns the value of the "auth_type" field in the mutation.
+func (m *NoteConnectionAccountMutation) AuthType() (r string, exists bool) {
+	v := m.auth_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAuthType returns the old "auth_type" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldAuthType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAuthType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAuthType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAuthType: %w", err)
+	}
+	return oldValue.AuthType, nil
+}
+
+// ResetAuthType resets all changes to the "auth_type" field.
+func (m *NoteConnectionAccountMutation) ResetAuthType() {
+	m.auth_type = nil
+}
+
+// SetEncryptedCredentials sets the "encrypted_credentials" field.
+func (m *NoteConnectionAccountMutation) SetEncryptedCredentials(s string) {
+	m.encrypted_credentials = &s
+}
+
+// EncryptedCredentials returns the value of the "encrypted_credentials" field in the mutation.
+func (m *NoteConnectionAccountMutation) EncryptedCredentials() (r string, exists bool) {
+	v := m.encrypted_credentials
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptedCredentials returns the old "encrypted_credentials" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldEncryptedCredentials(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptedCredentials is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptedCredentials requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptedCredentials: %w", err)
+	}
+	return oldValue.EncryptedCredentials, nil
+}
+
+// ClearEncryptedCredentials clears the value of the "encrypted_credentials" field.
+func (m *NoteConnectionAccountMutation) ClearEncryptedCredentials() {
+	m.encrypted_credentials = nil
+	m.clearedFields[noteconnectionaccount.FieldEncryptedCredentials] = struct{}{}
+}
+
+// EncryptedCredentialsCleared returns if the "encrypted_credentials" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) EncryptedCredentialsCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldEncryptedCredentials]
+	return ok
+}
+
+// ResetEncryptedCredentials resets all changes to the "encrypted_credentials" field.
+func (m *NoteConnectionAccountMutation) ResetEncryptedCredentials() {
+	m.encrypted_credentials = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldEncryptedCredentials)
+}
+
+// SetCredentialAlg sets the "credential_alg" field.
+func (m *NoteConnectionAccountMutation) SetCredentialAlg(s string) {
+	m.credential_alg = &s
+}
+
+// CredentialAlg returns the value of the "credential_alg" field in the mutation.
+func (m *NoteConnectionAccountMutation) CredentialAlg() (r string, exists bool) {
+	v := m.credential_alg
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCredentialAlg returns the old "credential_alg" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldCredentialAlg(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCredentialAlg is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCredentialAlg requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCredentialAlg: %w", err)
+	}
+	return oldValue.CredentialAlg, nil
+}
+
+// ClearCredentialAlg clears the value of the "credential_alg" field.
+func (m *NoteConnectionAccountMutation) ClearCredentialAlg() {
+	m.credential_alg = nil
+	m.clearedFields[noteconnectionaccount.FieldCredentialAlg] = struct{}{}
+}
+
+// CredentialAlgCleared returns if the "credential_alg" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) CredentialAlgCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldCredentialAlg]
+	return ok
+}
+
+// ResetCredentialAlg resets all changes to the "credential_alg" field.
+func (m *NoteConnectionAccountMutation) ResetCredentialAlg() {
+	m.credential_alg = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldCredentialAlg)
+}
+
+// SetDefaultTargetID sets the "default_target_id" field.
+func (m *NoteConnectionAccountMutation) SetDefaultTargetID(s string) {
+	m.default_target_id = &s
+}
+
+// DefaultTargetID returns the value of the "default_target_id" field in the mutation.
+func (m *NoteConnectionAccountMutation) DefaultTargetID() (r string, exists bool) {
+	v := m.default_target_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultTargetID returns the old "default_target_id" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldDefaultTargetID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultTargetID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultTargetID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultTargetID: %w", err)
+	}
+	return oldValue.DefaultTargetID, nil
+}
+
+// ClearDefaultTargetID clears the value of the "default_target_id" field.
+func (m *NoteConnectionAccountMutation) ClearDefaultTargetID() {
+	m.default_target_id = nil
+	m.clearedFields[noteconnectionaccount.FieldDefaultTargetID] = struct{}{}
+}
+
+// DefaultTargetIDCleared returns if the "default_target_id" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) DefaultTargetIDCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldDefaultTargetID]
+	return ok
+}
+
+// ResetDefaultTargetID resets all changes to the "default_target_id" field.
+func (m *NoteConnectionAccountMutation) ResetDefaultTargetID() {
+	m.default_target_id = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldDefaultTargetID)
+}
+
+// SetDefaultTargetName sets the "default_target_name" field.
+func (m *NoteConnectionAccountMutation) SetDefaultTargetName(s string) {
+	m.default_target_name = &s
+}
+
+// DefaultTargetName returns the value of the "default_target_name" field in the mutation.
+func (m *NoteConnectionAccountMutation) DefaultTargetName() (r string, exists bool) {
+	v := m.default_target_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultTargetName returns the old "default_target_name" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldDefaultTargetName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultTargetName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultTargetName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultTargetName: %w", err)
+	}
+	return oldValue.DefaultTargetName, nil
+}
+
+// ClearDefaultTargetName clears the value of the "default_target_name" field.
+func (m *NoteConnectionAccountMutation) ClearDefaultTargetName() {
+	m.default_target_name = nil
+	m.clearedFields[noteconnectionaccount.FieldDefaultTargetName] = struct{}{}
+}
+
+// DefaultTargetNameCleared returns if the "default_target_name" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) DefaultTargetNameCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldDefaultTargetName]
+	return ok
+}
+
+// ResetDefaultTargetName resets all changes to the "default_target_name" field.
+func (m *NoteConnectionAccountMutation) ResetDefaultTargetName() {
+	m.default_target_name = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldDefaultTargetName)
+}
+
+// SetMetadataJSON sets the "metadata_json" field.
+func (m *NoteConnectionAccountMutation) SetMetadataJSON(s string) {
+	m.metadata_json = &s
+}
+
+// MetadataJSON returns the value of the "metadata_json" field in the mutation.
+func (m *NoteConnectionAccountMutation) MetadataJSON() (r string, exists bool) {
+	v := m.metadata_json
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetadataJSON returns the old "metadata_json" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldMetadataJSON(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetadataJSON is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetadataJSON requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetadataJSON: %w", err)
+	}
+	return oldValue.MetadataJSON, nil
+}
+
+// ClearMetadataJSON clears the value of the "metadata_json" field.
+func (m *NoteConnectionAccountMutation) ClearMetadataJSON() {
+	m.metadata_json = nil
+	m.clearedFields[noteconnectionaccount.FieldMetadataJSON] = struct{}{}
+}
+
+// MetadataJSONCleared returns if the "metadata_json" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) MetadataJSONCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldMetadataJSON]
+	return ok
+}
+
+// ResetMetadataJSON resets all changes to the "metadata_json" field.
+func (m *NoteConnectionAccountMutation) ResetMetadataJSON() {
+	m.metadata_json = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldMetadataJSON)
+}
+
+// SetLastTestStatus sets the "last_test_status" field.
+func (m *NoteConnectionAccountMutation) SetLastTestStatus(s string) {
+	m.last_test_status = &s
+}
+
+// LastTestStatus returns the value of the "last_test_status" field in the mutation.
+func (m *NoteConnectionAccountMutation) LastTestStatus() (r string, exists bool) {
+	v := m.last_test_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastTestStatus returns the old "last_test_status" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldLastTestStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastTestStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastTestStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastTestStatus: %w", err)
+	}
+	return oldValue.LastTestStatus, nil
+}
+
+// ResetLastTestStatus resets all changes to the "last_test_status" field.
+func (m *NoteConnectionAccountMutation) ResetLastTestStatus() {
+	m.last_test_status = nil
+}
+
+// SetLastTestError sets the "last_test_error" field.
+func (m *NoteConnectionAccountMutation) SetLastTestError(s string) {
+	m.last_test_error = &s
+}
+
+// LastTestError returns the value of the "last_test_error" field in the mutation.
+func (m *NoteConnectionAccountMutation) LastTestError() (r string, exists bool) {
+	v := m.last_test_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastTestError returns the old "last_test_error" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldLastTestError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastTestError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastTestError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastTestError: %w", err)
+	}
+	return oldValue.LastTestError, nil
+}
+
+// ClearLastTestError clears the value of the "last_test_error" field.
+func (m *NoteConnectionAccountMutation) ClearLastTestError() {
+	m.last_test_error = nil
+	m.clearedFields[noteconnectionaccount.FieldLastTestError] = struct{}{}
+}
+
+// LastTestErrorCleared returns if the "last_test_error" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) LastTestErrorCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldLastTestError]
+	return ok
+}
+
+// ResetLastTestError resets all changes to the "last_test_error" field.
+func (m *NoteConnectionAccountMutation) ResetLastTestError() {
+	m.last_test_error = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldLastTestError)
+}
+
+// SetLastTestAt sets the "last_test_at" field.
+func (m *NoteConnectionAccountMutation) SetLastTestAt(t time.Time) {
+	m.last_test_at = &t
+}
+
+// LastTestAt returns the value of the "last_test_at" field in the mutation.
+func (m *NoteConnectionAccountMutation) LastTestAt() (r time.Time, exists bool) {
+	v := m.last_test_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastTestAt returns the old "last_test_at" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldLastTestAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastTestAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastTestAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastTestAt: %w", err)
+	}
+	return oldValue.LastTestAt, nil
+}
+
+// ClearLastTestAt clears the value of the "last_test_at" field.
+func (m *NoteConnectionAccountMutation) ClearLastTestAt() {
+	m.last_test_at = nil
+	m.clearedFields[noteconnectionaccount.FieldLastTestAt] = struct{}{}
+}
+
+// LastTestAtCleared returns if the "last_test_at" field was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) LastTestAtCleared() bool {
+	_, ok := m.clearedFields[noteconnectionaccount.FieldLastTestAt]
+	return ok
+}
+
+// ResetLastTestAt resets all changes to the "last_test_at" field.
+func (m *NoteConnectionAccountMutation) ResetLastTestAt() {
+	m.last_test_at = nil
+	delete(m.clearedFields, noteconnectionaccount.FieldLastTestAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *NoteConnectionAccountMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *NoteConnectionAccountMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *NoteConnectionAccountMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *NoteConnectionAccountMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *NoteConnectionAccountMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the NoteConnectionAccount entity.
+// If the NoteConnectionAccount object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionAccountMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *NoteConnectionAccountMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *NoteConnectionAccountMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[noteconnectionaccount.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *NoteConnectionAccountMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *NoteConnectionAccountMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *NoteConnectionAccountMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// AddItemMapIDs adds the "item_maps" edge to the NoteConnectionItemMap entity by ids.
+func (m *NoteConnectionAccountMutation) AddItemMapIDs(ids ...int) {
+	if m.item_maps == nil {
+		m.item_maps = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.item_maps[ids[i]] = struct{}{}
+	}
+}
+
+// ClearItemMaps clears the "item_maps" edge to the NoteConnectionItemMap entity.
+func (m *NoteConnectionAccountMutation) ClearItemMaps() {
+	m.cleareditem_maps = true
+}
+
+// ItemMapsCleared reports if the "item_maps" edge to the NoteConnectionItemMap entity was cleared.
+func (m *NoteConnectionAccountMutation) ItemMapsCleared() bool {
+	return m.cleareditem_maps
+}
+
+// RemoveItemMapIDs removes the "item_maps" edge to the NoteConnectionItemMap entity by IDs.
+func (m *NoteConnectionAccountMutation) RemoveItemMapIDs(ids ...int) {
+	if m.removeditem_maps == nil {
+		m.removeditem_maps = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.item_maps, ids[i])
+		m.removeditem_maps[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedItemMaps returns the removed IDs of the "item_maps" edge to the NoteConnectionItemMap entity.
+func (m *NoteConnectionAccountMutation) RemovedItemMapsIDs() (ids []int) {
+	for id := range m.removeditem_maps {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ItemMapsIDs returns the "item_maps" edge IDs in the mutation.
+func (m *NoteConnectionAccountMutation) ItemMapsIDs() (ids []int) {
+	for id := range m.item_maps {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetItemMaps resets all changes to the "item_maps" edge.
+func (m *NoteConnectionAccountMutation) ResetItemMaps() {
+	m.item_maps = nil
+	m.cleareditem_maps = false
+	m.removeditem_maps = nil
+}
+
+// AddJobIDs adds the "jobs" edge to the NoteConnectionJob entity by ids.
+func (m *NoteConnectionAccountMutation) AddJobIDs(ids ...int) {
+	if m.jobs == nil {
+		m.jobs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.jobs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearJobs clears the "jobs" edge to the NoteConnectionJob entity.
+func (m *NoteConnectionAccountMutation) ClearJobs() {
+	m.clearedjobs = true
+}
+
+// JobsCleared reports if the "jobs" edge to the NoteConnectionJob entity was cleared.
+func (m *NoteConnectionAccountMutation) JobsCleared() bool {
+	return m.clearedjobs
+}
+
+// RemoveJobIDs removes the "jobs" edge to the NoteConnectionJob entity by IDs.
+func (m *NoteConnectionAccountMutation) RemoveJobIDs(ids ...int) {
+	if m.removedjobs == nil {
+		m.removedjobs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.jobs, ids[i])
+		m.removedjobs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedJobs returns the removed IDs of the "jobs" edge to the NoteConnectionJob entity.
+func (m *NoteConnectionAccountMutation) RemovedJobsIDs() (ids []int) {
+	for id := range m.removedjobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// JobsIDs returns the "jobs" edge IDs in the mutation.
+func (m *NoteConnectionAccountMutation) JobsIDs() (ids []int) {
+	for id := range m.jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetJobs resets all changes to the "jobs" edge.
+func (m *NoteConnectionAccountMutation) ResetJobs() {
+	m.jobs = nil
+	m.clearedjobs = false
+	m.removedjobs = nil
+}
+
+// Where appends a list predicates to the NoteConnectionAccountMutation builder.
+func (m *NoteConnectionAccountMutation) Where(ps ...predicate.NoteConnectionAccount) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the NoteConnectionAccountMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *NoteConnectionAccountMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.NoteConnectionAccount, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *NoteConnectionAccountMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *NoteConnectionAccountMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (NoteConnectionAccount).
+func (m *NoteConnectionAccountMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *NoteConnectionAccountMutation) Fields() []string {
+	fields := make([]string, 0, 16)
+	if m.name != nil {
+		fields = append(fields, noteconnectionaccount.FieldName)
+	}
+	if m.provider != nil {
+		fields = append(fields, noteconnectionaccount.FieldProvider)
+	}
+	if m.user != nil {
+		fields = append(fields, noteconnectionaccount.FieldUserID)
+	}
+	if m.endpoint != nil {
+		fields = append(fields, noteconnectionaccount.FieldEndpoint)
+	}
+	if m.enabled != nil {
+		fields = append(fields, noteconnectionaccount.FieldEnabled)
+	}
+	if m.auth_type != nil {
+		fields = append(fields, noteconnectionaccount.FieldAuthType)
+	}
+	if m.encrypted_credentials != nil {
+		fields = append(fields, noteconnectionaccount.FieldEncryptedCredentials)
+	}
+	if m.credential_alg != nil {
+		fields = append(fields, noteconnectionaccount.FieldCredentialAlg)
+	}
+	if m.default_target_id != nil {
+		fields = append(fields, noteconnectionaccount.FieldDefaultTargetID)
+	}
+	if m.default_target_name != nil {
+		fields = append(fields, noteconnectionaccount.FieldDefaultTargetName)
+	}
+	if m.metadata_json != nil {
+		fields = append(fields, noteconnectionaccount.FieldMetadataJSON)
+	}
+	if m.last_test_status != nil {
+		fields = append(fields, noteconnectionaccount.FieldLastTestStatus)
+	}
+	if m.last_test_error != nil {
+		fields = append(fields, noteconnectionaccount.FieldLastTestError)
+	}
+	if m.last_test_at != nil {
+		fields = append(fields, noteconnectionaccount.FieldLastTestAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, noteconnectionaccount.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, noteconnectionaccount.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *NoteConnectionAccountMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case noteconnectionaccount.FieldName:
+		return m.Name()
+	case noteconnectionaccount.FieldProvider:
+		return m.Provider()
+	case noteconnectionaccount.FieldUserID:
+		return m.UserID()
+	case noteconnectionaccount.FieldEndpoint:
+		return m.Endpoint()
+	case noteconnectionaccount.FieldEnabled:
+		return m.Enabled()
+	case noteconnectionaccount.FieldAuthType:
+		return m.AuthType()
+	case noteconnectionaccount.FieldEncryptedCredentials:
+		return m.EncryptedCredentials()
+	case noteconnectionaccount.FieldCredentialAlg:
+		return m.CredentialAlg()
+	case noteconnectionaccount.FieldDefaultTargetID:
+		return m.DefaultTargetID()
+	case noteconnectionaccount.FieldDefaultTargetName:
+		return m.DefaultTargetName()
+	case noteconnectionaccount.FieldMetadataJSON:
+		return m.MetadataJSON()
+	case noteconnectionaccount.FieldLastTestStatus:
+		return m.LastTestStatus()
+	case noteconnectionaccount.FieldLastTestError:
+		return m.LastTestError()
+	case noteconnectionaccount.FieldLastTestAt:
+		return m.LastTestAt()
+	case noteconnectionaccount.FieldCreatedAt:
+		return m.CreatedAt()
+	case noteconnectionaccount.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NoteConnectionAccountMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case noteconnectionaccount.FieldName:
+		return m.OldName(ctx)
+	case noteconnectionaccount.FieldProvider:
+		return m.OldProvider(ctx)
+	case noteconnectionaccount.FieldUserID:
+		return m.OldUserID(ctx)
+	case noteconnectionaccount.FieldEndpoint:
+		return m.OldEndpoint(ctx)
+	case noteconnectionaccount.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case noteconnectionaccount.FieldAuthType:
+		return m.OldAuthType(ctx)
+	case noteconnectionaccount.FieldEncryptedCredentials:
+		return m.OldEncryptedCredentials(ctx)
+	case noteconnectionaccount.FieldCredentialAlg:
+		return m.OldCredentialAlg(ctx)
+	case noteconnectionaccount.FieldDefaultTargetID:
+		return m.OldDefaultTargetID(ctx)
+	case noteconnectionaccount.FieldDefaultTargetName:
+		return m.OldDefaultTargetName(ctx)
+	case noteconnectionaccount.FieldMetadataJSON:
+		return m.OldMetadataJSON(ctx)
+	case noteconnectionaccount.FieldLastTestStatus:
+		return m.OldLastTestStatus(ctx)
+	case noteconnectionaccount.FieldLastTestError:
+		return m.OldLastTestError(ctx)
+	case noteconnectionaccount.FieldLastTestAt:
+		return m.OldLastTestAt(ctx)
+	case noteconnectionaccount.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case noteconnectionaccount.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown NoteConnectionAccount field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteConnectionAccountMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case noteconnectionaccount.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case noteconnectionaccount.FieldProvider:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProvider(v)
+		return nil
+	case noteconnectionaccount.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case noteconnectionaccount.FieldEndpoint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndpoint(v)
+		return nil
+	case noteconnectionaccount.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case noteconnectionaccount.FieldAuthType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAuthType(v)
+		return nil
+	case noteconnectionaccount.FieldEncryptedCredentials:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptedCredentials(v)
+		return nil
+	case noteconnectionaccount.FieldCredentialAlg:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCredentialAlg(v)
+		return nil
+	case noteconnectionaccount.FieldDefaultTargetID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultTargetID(v)
+		return nil
+	case noteconnectionaccount.FieldDefaultTargetName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultTargetName(v)
+		return nil
+	case noteconnectionaccount.FieldMetadataJSON:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetadataJSON(v)
+		return nil
+	case noteconnectionaccount.FieldLastTestStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastTestStatus(v)
+		return nil
+	case noteconnectionaccount.FieldLastTestError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastTestError(v)
+		return nil
+	case noteconnectionaccount.FieldLastTestAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastTestAt(v)
+		return nil
+	case noteconnectionaccount.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case noteconnectionaccount.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionAccount field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *NoteConnectionAccountMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *NoteConnectionAccountMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteConnectionAccountMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown NoteConnectionAccount numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *NoteConnectionAccountMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(noteconnectionaccount.FieldEndpoint) {
+		fields = append(fields, noteconnectionaccount.FieldEndpoint)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldEncryptedCredentials) {
+		fields = append(fields, noteconnectionaccount.FieldEncryptedCredentials)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldCredentialAlg) {
+		fields = append(fields, noteconnectionaccount.FieldCredentialAlg)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldDefaultTargetID) {
+		fields = append(fields, noteconnectionaccount.FieldDefaultTargetID)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldDefaultTargetName) {
+		fields = append(fields, noteconnectionaccount.FieldDefaultTargetName)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldMetadataJSON) {
+		fields = append(fields, noteconnectionaccount.FieldMetadataJSON)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldLastTestError) {
+		fields = append(fields, noteconnectionaccount.FieldLastTestError)
+	}
+	if m.FieldCleared(noteconnectionaccount.FieldLastTestAt) {
+		fields = append(fields, noteconnectionaccount.FieldLastTestAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *NoteConnectionAccountMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *NoteConnectionAccountMutation) ClearField(name string) error {
+	switch name {
+	case noteconnectionaccount.FieldEndpoint:
+		m.ClearEndpoint()
+		return nil
+	case noteconnectionaccount.FieldEncryptedCredentials:
+		m.ClearEncryptedCredentials()
+		return nil
+	case noteconnectionaccount.FieldCredentialAlg:
+		m.ClearCredentialAlg()
+		return nil
+	case noteconnectionaccount.FieldDefaultTargetID:
+		m.ClearDefaultTargetID()
+		return nil
+	case noteconnectionaccount.FieldDefaultTargetName:
+		m.ClearDefaultTargetName()
+		return nil
+	case noteconnectionaccount.FieldMetadataJSON:
+		m.ClearMetadataJSON()
+		return nil
+	case noteconnectionaccount.FieldLastTestError:
+		m.ClearLastTestError()
+		return nil
+	case noteconnectionaccount.FieldLastTestAt:
+		m.ClearLastTestAt()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionAccount nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *NoteConnectionAccountMutation) ResetField(name string) error {
+	switch name {
+	case noteconnectionaccount.FieldName:
+		m.ResetName()
+		return nil
+	case noteconnectionaccount.FieldProvider:
+		m.ResetProvider()
+		return nil
+	case noteconnectionaccount.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case noteconnectionaccount.FieldEndpoint:
+		m.ResetEndpoint()
+		return nil
+	case noteconnectionaccount.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case noteconnectionaccount.FieldAuthType:
+		m.ResetAuthType()
+		return nil
+	case noteconnectionaccount.FieldEncryptedCredentials:
+		m.ResetEncryptedCredentials()
+		return nil
+	case noteconnectionaccount.FieldCredentialAlg:
+		m.ResetCredentialAlg()
+		return nil
+	case noteconnectionaccount.FieldDefaultTargetID:
+		m.ResetDefaultTargetID()
+		return nil
+	case noteconnectionaccount.FieldDefaultTargetName:
+		m.ResetDefaultTargetName()
+		return nil
+	case noteconnectionaccount.FieldMetadataJSON:
+		m.ResetMetadataJSON()
+		return nil
+	case noteconnectionaccount.FieldLastTestStatus:
+		m.ResetLastTestStatus()
+		return nil
+	case noteconnectionaccount.FieldLastTestError:
+		m.ResetLastTestError()
+		return nil
+	case noteconnectionaccount.FieldLastTestAt:
+		m.ResetLastTestAt()
+		return nil
+	case noteconnectionaccount.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case noteconnectionaccount.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionAccount field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *NoteConnectionAccountMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.user != nil {
+		edges = append(edges, noteconnectionaccount.EdgeUser)
+	}
+	if m.item_maps != nil {
+		edges = append(edges, noteconnectionaccount.EdgeItemMaps)
+	}
+	if m.jobs != nil {
+		edges = append(edges, noteconnectionaccount.EdgeJobs)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *NoteConnectionAccountMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case noteconnectionaccount.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case noteconnectionaccount.EdgeItemMaps:
+		ids := make([]ent.Value, 0, len(m.item_maps))
+		for id := range m.item_maps {
+			ids = append(ids, id)
+		}
+		return ids
+	case noteconnectionaccount.EdgeJobs:
+		ids := make([]ent.Value, 0, len(m.jobs))
+		for id := range m.jobs {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *NoteConnectionAccountMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removeditem_maps != nil {
+		edges = append(edges, noteconnectionaccount.EdgeItemMaps)
+	}
+	if m.removedjobs != nil {
+		edges = append(edges, noteconnectionaccount.EdgeJobs)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *NoteConnectionAccountMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case noteconnectionaccount.EdgeItemMaps:
+		ids := make([]ent.Value, 0, len(m.removeditem_maps))
+		for id := range m.removeditem_maps {
+			ids = append(ids, id)
+		}
+		return ids
+	case noteconnectionaccount.EdgeJobs:
+		ids := make([]ent.Value, 0, len(m.removedjobs))
+		for id := range m.removedjobs {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *NoteConnectionAccountMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.cleareduser {
+		edges = append(edges, noteconnectionaccount.EdgeUser)
+	}
+	if m.cleareditem_maps {
+		edges = append(edges, noteconnectionaccount.EdgeItemMaps)
+	}
+	if m.clearedjobs {
+		edges = append(edges, noteconnectionaccount.EdgeJobs)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *NoteConnectionAccountMutation) EdgeCleared(name string) bool {
+	switch name {
+	case noteconnectionaccount.EdgeUser:
+		return m.cleareduser
+	case noteconnectionaccount.EdgeItemMaps:
+		return m.cleareditem_maps
+	case noteconnectionaccount.EdgeJobs:
+		return m.clearedjobs
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *NoteConnectionAccountMutation) ClearEdge(name string) error {
+	switch name {
+	case noteconnectionaccount.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionAccount unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *NoteConnectionAccountMutation) ResetEdge(name string) error {
+	switch name {
+	case noteconnectionaccount.EdgeUser:
+		m.ResetUser()
+		return nil
+	case noteconnectionaccount.EdgeItemMaps:
+		m.ResetItemMaps()
+		return nil
+	case noteconnectionaccount.EdgeJobs:
+		m.ResetJobs()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionAccount edge %s", name)
+}
+
+// NoteConnectionItemMapMutation represents an operation that mutates the NoteConnectionItemMap nodes in the graph.
+type NoteConnectionItemMapMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	provider            *string
+	external_id         *string
+	external_target_id  *string
+	external_path       *string
+	external_url        *string
+	last_sync_direction *string
+	last_imported_at    *time.Time
+	last_pushed_at      *time.Time
+	metadata_json       *string
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	account             *int
+	clearedaccount      bool
+	note                *uuid.UUID
+	clearednote         bool
+	done                bool
+	oldValue            func(context.Context) (*NoteConnectionItemMap, error)
+	predicates          []predicate.NoteConnectionItemMap
+}
+
+var _ ent.Mutation = (*NoteConnectionItemMapMutation)(nil)
+
+// noteconnectionitemmapOption allows management of the mutation configuration using functional options.
+type noteconnectionitemmapOption func(*NoteConnectionItemMapMutation)
+
+// newNoteConnectionItemMapMutation creates new mutation for the NoteConnectionItemMap entity.
+func newNoteConnectionItemMapMutation(c config, op Op, opts ...noteconnectionitemmapOption) *NoteConnectionItemMapMutation {
+	m := &NoteConnectionItemMapMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeNoteConnectionItemMap,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withNoteConnectionItemMapID sets the ID field of the mutation.
+func withNoteConnectionItemMapID(id int) noteconnectionitemmapOption {
+	return func(m *NoteConnectionItemMapMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NoteConnectionItemMap
+		)
+		m.oldValue = func(ctx context.Context) (*NoteConnectionItemMap, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NoteConnectionItemMap.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNoteConnectionItemMap sets the old NoteConnectionItemMap of the mutation.
+func withNoteConnectionItemMap(node *NoteConnectionItemMap) noteconnectionitemmapOption {
+	return func(m *NoteConnectionItemMapMutation) {
+		m.oldValue = func(context.Context) (*NoteConnectionItemMap, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NoteConnectionItemMapMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NoteConnectionItemMapMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NoteConnectionItemMapMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NoteConnectionItemMapMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().NoteConnectionItemMap.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetProvider sets the "provider" field.
+func (m *NoteConnectionItemMapMutation) SetProvider(s string) {
+	m.provider = &s
+}
+
+// Provider returns the value of the "provider" field in the mutation.
+func (m *NoteConnectionItemMapMutation) Provider() (r string, exists bool) {
+	v := m.provider
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProvider returns the old "provider" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldProvider(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProvider is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProvider requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProvider: %w", err)
+	}
+	return oldValue.Provider, nil
+}
+
+// ResetProvider resets all changes to the "provider" field.
+func (m *NoteConnectionItemMapMutation) ResetProvider() {
+	m.provider = nil
+}
+
+// SetExternalID sets the "external_id" field.
+func (m *NoteConnectionItemMapMutation) SetExternalID(s string) {
+	m.external_id = &s
+}
+
+// ExternalID returns the value of the "external_id" field in the mutation.
+func (m *NoteConnectionItemMapMutation) ExternalID() (r string, exists bool) {
+	v := m.external_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalID returns the old "external_id" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldExternalID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalID: %w", err)
+	}
+	return oldValue.ExternalID, nil
+}
+
+// ResetExternalID resets all changes to the "external_id" field.
+func (m *NoteConnectionItemMapMutation) ResetExternalID() {
+	m.external_id = nil
+}
+
+// SetAccountID sets the "account_id" field.
+func (m *NoteConnectionItemMapMutation) SetAccountID(i int) {
+	m.account = &i
+}
+
+// AccountID returns the value of the "account_id" field in the mutation.
+func (m *NoteConnectionItemMapMutation) AccountID() (r int, exists bool) {
+	v := m.account
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccountID returns the old "account_id" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldAccountID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccountID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccountID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccountID: %w", err)
+	}
+	return oldValue.AccountID, nil
+}
+
+// ResetAccountID resets all changes to the "account_id" field.
+func (m *NoteConnectionItemMapMutation) ResetAccountID() {
+	m.account = nil
+}
+
+// SetNoteID sets the "note_id" field.
+func (m *NoteConnectionItemMapMutation) SetNoteID(u uuid.UUID) {
+	m.note = &u
+}
+
+// NoteID returns the value of the "note_id" field in the mutation.
+func (m *NoteConnectionItemMapMutation) NoteID() (r uuid.UUID, exists bool) {
+	v := m.note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNoteID returns the old "note_id" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldNoteID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNoteID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNoteID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNoteID: %w", err)
+	}
+	return oldValue.NoteID, nil
+}
+
+// ResetNoteID resets all changes to the "note_id" field.
+func (m *NoteConnectionItemMapMutation) ResetNoteID() {
+	m.note = nil
+}
+
+// SetExternalTargetID sets the "external_target_id" field.
+func (m *NoteConnectionItemMapMutation) SetExternalTargetID(s string) {
+	m.external_target_id = &s
+}
+
+// ExternalTargetID returns the value of the "external_target_id" field in the mutation.
+func (m *NoteConnectionItemMapMutation) ExternalTargetID() (r string, exists bool) {
+	v := m.external_target_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalTargetID returns the old "external_target_id" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldExternalTargetID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalTargetID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalTargetID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalTargetID: %w", err)
+	}
+	return oldValue.ExternalTargetID, nil
+}
+
+// ClearExternalTargetID clears the value of the "external_target_id" field.
+func (m *NoteConnectionItemMapMutation) ClearExternalTargetID() {
+	m.external_target_id = nil
+	m.clearedFields[noteconnectionitemmap.FieldExternalTargetID] = struct{}{}
+}
+
+// ExternalTargetIDCleared returns if the "external_target_id" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) ExternalTargetIDCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldExternalTargetID]
+	return ok
+}
+
+// ResetExternalTargetID resets all changes to the "external_target_id" field.
+func (m *NoteConnectionItemMapMutation) ResetExternalTargetID() {
+	m.external_target_id = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldExternalTargetID)
+}
+
+// SetExternalPath sets the "external_path" field.
+func (m *NoteConnectionItemMapMutation) SetExternalPath(s string) {
+	m.external_path = &s
+}
+
+// ExternalPath returns the value of the "external_path" field in the mutation.
+func (m *NoteConnectionItemMapMutation) ExternalPath() (r string, exists bool) {
+	v := m.external_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalPath returns the old "external_path" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldExternalPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalPath: %w", err)
+	}
+	return oldValue.ExternalPath, nil
+}
+
+// ClearExternalPath clears the value of the "external_path" field.
+func (m *NoteConnectionItemMapMutation) ClearExternalPath() {
+	m.external_path = nil
+	m.clearedFields[noteconnectionitemmap.FieldExternalPath] = struct{}{}
+}
+
+// ExternalPathCleared returns if the "external_path" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) ExternalPathCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldExternalPath]
+	return ok
+}
+
+// ResetExternalPath resets all changes to the "external_path" field.
+func (m *NoteConnectionItemMapMutation) ResetExternalPath() {
+	m.external_path = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldExternalPath)
+}
+
+// SetExternalURL sets the "external_url" field.
+func (m *NoteConnectionItemMapMutation) SetExternalURL(s string) {
+	m.external_url = &s
+}
+
+// ExternalURL returns the value of the "external_url" field in the mutation.
+func (m *NoteConnectionItemMapMutation) ExternalURL() (r string, exists bool) {
+	v := m.external_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalURL returns the old "external_url" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldExternalURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalURL: %w", err)
+	}
+	return oldValue.ExternalURL, nil
+}
+
+// ClearExternalURL clears the value of the "external_url" field.
+func (m *NoteConnectionItemMapMutation) ClearExternalURL() {
+	m.external_url = nil
+	m.clearedFields[noteconnectionitemmap.FieldExternalURL] = struct{}{}
+}
+
+// ExternalURLCleared returns if the "external_url" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) ExternalURLCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldExternalURL]
+	return ok
+}
+
+// ResetExternalURL resets all changes to the "external_url" field.
+func (m *NoteConnectionItemMapMutation) ResetExternalURL() {
+	m.external_url = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldExternalURL)
+}
+
+// SetLastSyncDirection sets the "last_sync_direction" field.
+func (m *NoteConnectionItemMapMutation) SetLastSyncDirection(s string) {
+	m.last_sync_direction = &s
+}
+
+// LastSyncDirection returns the value of the "last_sync_direction" field in the mutation.
+func (m *NoteConnectionItemMapMutation) LastSyncDirection() (r string, exists bool) {
+	v := m.last_sync_direction
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSyncDirection returns the old "last_sync_direction" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldLastSyncDirection(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSyncDirection is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSyncDirection requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSyncDirection: %w", err)
+	}
+	return oldValue.LastSyncDirection, nil
+}
+
+// ClearLastSyncDirection clears the value of the "last_sync_direction" field.
+func (m *NoteConnectionItemMapMutation) ClearLastSyncDirection() {
+	m.last_sync_direction = nil
+	m.clearedFields[noteconnectionitemmap.FieldLastSyncDirection] = struct{}{}
+}
+
+// LastSyncDirectionCleared returns if the "last_sync_direction" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) LastSyncDirectionCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldLastSyncDirection]
+	return ok
+}
+
+// ResetLastSyncDirection resets all changes to the "last_sync_direction" field.
+func (m *NoteConnectionItemMapMutation) ResetLastSyncDirection() {
+	m.last_sync_direction = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldLastSyncDirection)
+}
+
+// SetLastImportedAt sets the "last_imported_at" field.
+func (m *NoteConnectionItemMapMutation) SetLastImportedAt(t time.Time) {
+	m.last_imported_at = &t
+}
+
+// LastImportedAt returns the value of the "last_imported_at" field in the mutation.
+func (m *NoteConnectionItemMapMutation) LastImportedAt() (r time.Time, exists bool) {
+	v := m.last_imported_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastImportedAt returns the old "last_imported_at" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldLastImportedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastImportedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastImportedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastImportedAt: %w", err)
+	}
+	return oldValue.LastImportedAt, nil
+}
+
+// ClearLastImportedAt clears the value of the "last_imported_at" field.
+func (m *NoteConnectionItemMapMutation) ClearLastImportedAt() {
+	m.last_imported_at = nil
+	m.clearedFields[noteconnectionitemmap.FieldLastImportedAt] = struct{}{}
+}
+
+// LastImportedAtCleared returns if the "last_imported_at" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) LastImportedAtCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldLastImportedAt]
+	return ok
+}
+
+// ResetLastImportedAt resets all changes to the "last_imported_at" field.
+func (m *NoteConnectionItemMapMutation) ResetLastImportedAt() {
+	m.last_imported_at = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldLastImportedAt)
+}
+
+// SetLastPushedAt sets the "last_pushed_at" field.
+func (m *NoteConnectionItemMapMutation) SetLastPushedAt(t time.Time) {
+	m.last_pushed_at = &t
+}
+
+// LastPushedAt returns the value of the "last_pushed_at" field in the mutation.
+func (m *NoteConnectionItemMapMutation) LastPushedAt() (r time.Time, exists bool) {
+	v := m.last_pushed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPushedAt returns the old "last_pushed_at" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldLastPushedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPushedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPushedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPushedAt: %w", err)
+	}
+	return oldValue.LastPushedAt, nil
+}
+
+// ClearLastPushedAt clears the value of the "last_pushed_at" field.
+func (m *NoteConnectionItemMapMutation) ClearLastPushedAt() {
+	m.last_pushed_at = nil
+	m.clearedFields[noteconnectionitemmap.FieldLastPushedAt] = struct{}{}
+}
+
+// LastPushedAtCleared returns if the "last_pushed_at" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) LastPushedAtCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldLastPushedAt]
+	return ok
+}
+
+// ResetLastPushedAt resets all changes to the "last_pushed_at" field.
+func (m *NoteConnectionItemMapMutation) ResetLastPushedAt() {
+	m.last_pushed_at = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldLastPushedAt)
+}
+
+// SetMetadataJSON sets the "metadata_json" field.
+func (m *NoteConnectionItemMapMutation) SetMetadataJSON(s string) {
+	m.metadata_json = &s
+}
+
+// MetadataJSON returns the value of the "metadata_json" field in the mutation.
+func (m *NoteConnectionItemMapMutation) MetadataJSON() (r string, exists bool) {
+	v := m.metadata_json
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetadataJSON returns the old "metadata_json" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldMetadataJSON(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetadataJSON is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetadataJSON requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetadataJSON: %w", err)
+	}
+	return oldValue.MetadataJSON, nil
+}
+
+// ClearMetadataJSON clears the value of the "metadata_json" field.
+func (m *NoteConnectionItemMapMutation) ClearMetadataJSON() {
+	m.metadata_json = nil
+	m.clearedFields[noteconnectionitemmap.FieldMetadataJSON] = struct{}{}
+}
+
+// MetadataJSONCleared returns if the "metadata_json" field was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) MetadataJSONCleared() bool {
+	_, ok := m.clearedFields[noteconnectionitemmap.FieldMetadataJSON]
+	return ok
+}
+
+// ResetMetadataJSON resets all changes to the "metadata_json" field.
+func (m *NoteConnectionItemMapMutation) ResetMetadataJSON() {
+	m.metadata_json = nil
+	delete(m.clearedFields, noteconnectionitemmap.FieldMetadataJSON)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *NoteConnectionItemMapMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *NoteConnectionItemMapMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *NoteConnectionItemMapMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *NoteConnectionItemMapMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *NoteConnectionItemMapMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the NoteConnectionItemMap entity.
+// If the NoteConnectionItemMap object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionItemMapMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *NoteConnectionItemMapMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearAccount clears the "account" edge to the NoteConnectionAccount entity.
+func (m *NoteConnectionItemMapMutation) ClearAccount() {
+	m.clearedaccount = true
+	m.clearedFields[noteconnectionitemmap.FieldAccountID] = struct{}{}
+}
+
+// AccountCleared reports if the "account" edge to the NoteConnectionAccount entity was cleared.
+func (m *NoteConnectionItemMapMutation) AccountCleared() bool {
+	return m.clearedaccount
+}
+
+// AccountIDs returns the "account" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AccountID instead. It exists only for internal usage by the builders.
+func (m *NoteConnectionItemMapMutation) AccountIDs() (ids []int) {
+	if id := m.account; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAccount resets all changes to the "account" edge.
+func (m *NoteConnectionItemMapMutation) ResetAccount() {
+	m.account = nil
+	m.clearedaccount = false
+}
+
+// ClearNote clears the "note" edge to the Note entity.
+func (m *NoteConnectionItemMapMutation) ClearNote() {
+	m.clearednote = true
+	m.clearedFields[noteconnectionitemmap.FieldNoteID] = struct{}{}
+}
+
+// NoteCleared reports if the "note" edge to the Note entity was cleared.
+func (m *NoteConnectionItemMapMutation) NoteCleared() bool {
+	return m.clearednote
+}
+
+// NoteIDs returns the "note" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// NoteID instead. It exists only for internal usage by the builders.
+func (m *NoteConnectionItemMapMutation) NoteIDs() (ids []uuid.UUID) {
+	if id := m.note; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetNote resets all changes to the "note" edge.
+func (m *NoteConnectionItemMapMutation) ResetNote() {
+	m.note = nil
+	m.clearednote = false
+}
+
+// Where appends a list predicates to the NoteConnectionItemMapMutation builder.
+func (m *NoteConnectionItemMapMutation) Where(ps ...predicate.NoteConnectionItemMap) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the NoteConnectionItemMapMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *NoteConnectionItemMapMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.NoteConnectionItemMap, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *NoteConnectionItemMapMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *NoteConnectionItemMapMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (NoteConnectionItemMap).
+func (m *NoteConnectionItemMapMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *NoteConnectionItemMapMutation) Fields() []string {
+	fields := make([]string, 0, 13)
+	if m.provider != nil {
+		fields = append(fields, noteconnectionitemmap.FieldProvider)
+	}
+	if m.external_id != nil {
+		fields = append(fields, noteconnectionitemmap.FieldExternalID)
+	}
+	if m.account != nil {
+		fields = append(fields, noteconnectionitemmap.FieldAccountID)
+	}
+	if m.note != nil {
+		fields = append(fields, noteconnectionitemmap.FieldNoteID)
+	}
+	if m.external_target_id != nil {
+		fields = append(fields, noteconnectionitemmap.FieldExternalTargetID)
+	}
+	if m.external_path != nil {
+		fields = append(fields, noteconnectionitemmap.FieldExternalPath)
+	}
+	if m.external_url != nil {
+		fields = append(fields, noteconnectionitemmap.FieldExternalURL)
+	}
+	if m.last_sync_direction != nil {
+		fields = append(fields, noteconnectionitemmap.FieldLastSyncDirection)
+	}
+	if m.last_imported_at != nil {
+		fields = append(fields, noteconnectionitemmap.FieldLastImportedAt)
+	}
+	if m.last_pushed_at != nil {
+		fields = append(fields, noteconnectionitemmap.FieldLastPushedAt)
+	}
+	if m.metadata_json != nil {
+		fields = append(fields, noteconnectionitemmap.FieldMetadataJSON)
+	}
+	if m.created_at != nil {
+		fields = append(fields, noteconnectionitemmap.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, noteconnectionitemmap.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *NoteConnectionItemMapMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case noteconnectionitemmap.FieldProvider:
+		return m.Provider()
+	case noteconnectionitemmap.FieldExternalID:
+		return m.ExternalID()
+	case noteconnectionitemmap.FieldAccountID:
+		return m.AccountID()
+	case noteconnectionitemmap.FieldNoteID:
+		return m.NoteID()
+	case noteconnectionitemmap.FieldExternalTargetID:
+		return m.ExternalTargetID()
+	case noteconnectionitemmap.FieldExternalPath:
+		return m.ExternalPath()
+	case noteconnectionitemmap.FieldExternalURL:
+		return m.ExternalURL()
+	case noteconnectionitemmap.FieldLastSyncDirection:
+		return m.LastSyncDirection()
+	case noteconnectionitemmap.FieldLastImportedAt:
+		return m.LastImportedAt()
+	case noteconnectionitemmap.FieldLastPushedAt:
+		return m.LastPushedAt()
+	case noteconnectionitemmap.FieldMetadataJSON:
+		return m.MetadataJSON()
+	case noteconnectionitemmap.FieldCreatedAt:
+		return m.CreatedAt()
+	case noteconnectionitemmap.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NoteConnectionItemMapMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case noteconnectionitemmap.FieldProvider:
+		return m.OldProvider(ctx)
+	case noteconnectionitemmap.FieldExternalID:
+		return m.OldExternalID(ctx)
+	case noteconnectionitemmap.FieldAccountID:
+		return m.OldAccountID(ctx)
+	case noteconnectionitemmap.FieldNoteID:
+		return m.OldNoteID(ctx)
+	case noteconnectionitemmap.FieldExternalTargetID:
+		return m.OldExternalTargetID(ctx)
+	case noteconnectionitemmap.FieldExternalPath:
+		return m.OldExternalPath(ctx)
+	case noteconnectionitemmap.FieldExternalURL:
+		return m.OldExternalURL(ctx)
+	case noteconnectionitemmap.FieldLastSyncDirection:
+		return m.OldLastSyncDirection(ctx)
+	case noteconnectionitemmap.FieldLastImportedAt:
+		return m.OldLastImportedAt(ctx)
+	case noteconnectionitemmap.FieldLastPushedAt:
+		return m.OldLastPushedAt(ctx)
+	case noteconnectionitemmap.FieldMetadataJSON:
+		return m.OldMetadataJSON(ctx)
+	case noteconnectionitemmap.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case noteconnectionitemmap.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown NoteConnectionItemMap field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteConnectionItemMapMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case noteconnectionitemmap.FieldProvider:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProvider(v)
+		return nil
+	case noteconnectionitemmap.FieldExternalID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalID(v)
+		return nil
+	case noteconnectionitemmap.FieldAccountID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccountID(v)
+		return nil
+	case noteconnectionitemmap.FieldNoteID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNoteID(v)
+		return nil
+	case noteconnectionitemmap.FieldExternalTargetID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalTargetID(v)
+		return nil
+	case noteconnectionitemmap.FieldExternalPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalPath(v)
+		return nil
+	case noteconnectionitemmap.FieldExternalURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalURL(v)
+		return nil
+	case noteconnectionitemmap.FieldLastSyncDirection:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSyncDirection(v)
+		return nil
+	case noteconnectionitemmap.FieldLastImportedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastImportedAt(v)
+		return nil
+	case noteconnectionitemmap.FieldLastPushedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPushedAt(v)
+		return nil
+	case noteconnectionitemmap.FieldMetadataJSON:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetadataJSON(v)
+		return nil
+	case noteconnectionitemmap.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case noteconnectionitemmap.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionItemMap field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *NoteConnectionItemMapMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *NoteConnectionItemMapMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteConnectionItemMapMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown NoteConnectionItemMap numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *NoteConnectionItemMapMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(noteconnectionitemmap.FieldExternalTargetID) {
+		fields = append(fields, noteconnectionitemmap.FieldExternalTargetID)
+	}
+	if m.FieldCleared(noteconnectionitemmap.FieldExternalPath) {
+		fields = append(fields, noteconnectionitemmap.FieldExternalPath)
+	}
+	if m.FieldCleared(noteconnectionitemmap.FieldExternalURL) {
+		fields = append(fields, noteconnectionitemmap.FieldExternalURL)
+	}
+	if m.FieldCleared(noteconnectionitemmap.FieldLastSyncDirection) {
+		fields = append(fields, noteconnectionitemmap.FieldLastSyncDirection)
+	}
+	if m.FieldCleared(noteconnectionitemmap.FieldLastImportedAt) {
+		fields = append(fields, noteconnectionitemmap.FieldLastImportedAt)
+	}
+	if m.FieldCleared(noteconnectionitemmap.FieldLastPushedAt) {
+		fields = append(fields, noteconnectionitemmap.FieldLastPushedAt)
+	}
+	if m.FieldCleared(noteconnectionitemmap.FieldMetadataJSON) {
+		fields = append(fields, noteconnectionitemmap.FieldMetadataJSON)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *NoteConnectionItemMapMutation) ClearField(name string) error {
+	switch name {
+	case noteconnectionitemmap.FieldExternalTargetID:
+		m.ClearExternalTargetID()
+		return nil
+	case noteconnectionitemmap.FieldExternalPath:
+		m.ClearExternalPath()
+		return nil
+	case noteconnectionitemmap.FieldExternalURL:
+		m.ClearExternalURL()
+		return nil
+	case noteconnectionitemmap.FieldLastSyncDirection:
+		m.ClearLastSyncDirection()
+		return nil
+	case noteconnectionitemmap.FieldLastImportedAt:
+		m.ClearLastImportedAt()
+		return nil
+	case noteconnectionitemmap.FieldLastPushedAt:
+		m.ClearLastPushedAt()
+		return nil
+	case noteconnectionitemmap.FieldMetadataJSON:
+		m.ClearMetadataJSON()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionItemMap nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *NoteConnectionItemMapMutation) ResetField(name string) error {
+	switch name {
+	case noteconnectionitemmap.FieldProvider:
+		m.ResetProvider()
+		return nil
+	case noteconnectionitemmap.FieldExternalID:
+		m.ResetExternalID()
+		return nil
+	case noteconnectionitemmap.FieldAccountID:
+		m.ResetAccountID()
+		return nil
+	case noteconnectionitemmap.FieldNoteID:
+		m.ResetNoteID()
+		return nil
+	case noteconnectionitemmap.FieldExternalTargetID:
+		m.ResetExternalTargetID()
+		return nil
+	case noteconnectionitemmap.FieldExternalPath:
+		m.ResetExternalPath()
+		return nil
+	case noteconnectionitemmap.FieldExternalURL:
+		m.ResetExternalURL()
+		return nil
+	case noteconnectionitemmap.FieldLastSyncDirection:
+		m.ResetLastSyncDirection()
+		return nil
+	case noteconnectionitemmap.FieldLastImportedAt:
+		m.ResetLastImportedAt()
+		return nil
+	case noteconnectionitemmap.FieldLastPushedAt:
+		m.ResetLastPushedAt()
+		return nil
+	case noteconnectionitemmap.FieldMetadataJSON:
+		m.ResetMetadataJSON()
+		return nil
+	case noteconnectionitemmap.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case noteconnectionitemmap.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionItemMap field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *NoteConnectionItemMapMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.account != nil {
+		edges = append(edges, noteconnectionitemmap.EdgeAccount)
+	}
+	if m.note != nil {
+		edges = append(edges, noteconnectionitemmap.EdgeNote)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *NoteConnectionItemMapMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case noteconnectionitemmap.EdgeAccount:
+		if id := m.account; id != nil {
+			return []ent.Value{*id}
+		}
+	case noteconnectionitemmap.EdgeNote:
+		if id := m.note; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *NoteConnectionItemMapMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *NoteConnectionItemMapMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedaccount {
+		edges = append(edges, noteconnectionitemmap.EdgeAccount)
+	}
+	if m.clearednote {
+		edges = append(edges, noteconnectionitemmap.EdgeNote)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *NoteConnectionItemMapMutation) EdgeCleared(name string) bool {
+	switch name {
+	case noteconnectionitemmap.EdgeAccount:
+		return m.clearedaccount
+	case noteconnectionitemmap.EdgeNote:
+		return m.clearednote
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *NoteConnectionItemMapMutation) ClearEdge(name string) error {
+	switch name {
+	case noteconnectionitemmap.EdgeAccount:
+		m.ClearAccount()
+		return nil
+	case noteconnectionitemmap.EdgeNote:
+		m.ClearNote()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionItemMap unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *NoteConnectionItemMapMutation) ResetEdge(name string) error {
+	switch name {
+	case noteconnectionitemmap.EdgeAccount:
+		m.ResetAccount()
+		return nil
+	case noteconnectionitemmap.EdgeNote:
+		m.ResetNote()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionItemMap edge %s", name)
+}
+
+// NoteConnectionJobMutation represents an operation that mutates the NoteConnectionJob nodes in the graph.
+type NoteConnectionJobMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	provider          *string
+	operation         *string
+	status            *string
+	total_count       *int
+	addtotal_count    *int
+	imported_count    *int
+	addimported_count *int
+	pushed_count      *int
+	addpushed_count   *int
+	skipped_count     *int
+	addskipped_count  *int
+	failed_count      *int
+	addfailed_count   *int
+	message           *string
+	options_json      *string
+	started_at        *time.Time
+	completed_at      *time.Time
+	created_at        *time.Time
+	updated_at        *time.Time
+	clearedFields     map[string]struct{}
+	user              *int
+	cleareduser       bool
+	account           *int
+	clearedaccount    bool
+	note              *uuid.UUID
+	clearednote       bool
+	done              bool
+	oldValue          func(context.Context) (*NoteConnectionJob, error)
+	predicates        []predicate.NoteConnectionJob
+}
+
+var _ ent.Mutation = (*NoteConnectionJobMutation)(nil)
+
+// noteconnectionjobOption allows management of the mutation configuration using functional options.
+type noteconnectionjobOption func(*NoteConnectionJobMutation)
+
+// newNoteConnectionJobMutation creates new mutation for the NoteConnectionJob entity.
+func newNoteConnectionJobMutation(c config, op Op, opts ...noteconnectionjobOption) *NoteConnectionJobMutation {
+	m := &NoteConnectionJobMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeNoteConnectionJob,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withNoteConnectionJobID sets the ID field of the mutation.
+func withNoteConnectionJobID(id int) noteconnectionjobOption {
+	return func(m *NoteConnectionJobMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NoteConnectionJob
+		)
+		m.oldValue = func(ctx context.Context) (*NoteConnectionJob, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NoteConnectionJob.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNoteConnectionJob sets the old NoteConnectionJob of the mutation.
+func withNoteConnectionJob(node *NoteConnectionJob) noteconnectionjobOption {
+	return func(m *NoteConnectionJobMutation) {
+		m.oldValue = func(context.Context) (*NoteConnectionJob, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NoteConnectionJobMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NoteConnectionJobMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NoteConnectionJobMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NoteConnectionJobMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().NoteConnectionJob.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetProvider sets the "provider" field.
+func (m *NoteConnectionJobMutation) SetProvider(s string) {
+	m.provider = &s
+}
+
+// Provider returns the value of the "provider" field in the mutation.
+func (m *NoteConnectionJobMutation) Provider() (r string, exists bool) {
+	v := m.provider
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProvider returns the old "provider" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldProvider(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProvider is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProvider requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProvider: %w", err)
+	}
+	return oldValue.Provider, nil
+}
+
+// ResetProvider resets all changes to the "provider" field.
+func (m *NoteConnectionJobMutation) ResetProvider() {
+	m.provider = nil
+}
+
+// SetOperation sets the "operation" field.
+func (m *NoteConnectionJobMutation) SetOperation(s string) {
+	m.operation = &s
+}
+
+// Operation returns the value of the "operation" field in the mutation.
+func (m *NoteConnectionJobMutation) Operation() (r string, exists bool) {
+	v := m.operation
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOperation returns the old "operation" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldOperation(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOperation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOperation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOperation: %w", err)
+	}
+	return oldValue.Operation, nil
+}
+
+// ResetOperation resets all changes to the "operation" field.
+func (m *NoteConnectionJobMutation) ResetOperation() {
+	m.operation = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *NoteConnectionJobMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *NoteConnectionJobMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *NoteConnectionJobMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetAccountID sets the "account_id" field.
+func (m *NoteConnectionJobMutation) SetAccountID(i int) {
+	m.account = &i
+}
+
+// AccountID returns the value of the "account_id" field in the mutation.
+func (m *NoteConnectionJobMutation) AccountID() (r int, exists bool) {
+	v := m.account
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccountID returns the old "account_id" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldAccountID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccountID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccountID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccountID: %w", err)
+	}
+	return oldValue.AccountID, nil
+}
+
+// ResetAccountID resets all changes to the "account_id" field.
+func (m *NoteConnectionJobMutation) ResetAccountID() {
+	m.account = nil
+}
+
+// SetNoteID sets the "note_id" field.
+func (m *NoteConnectionJobMutation) SetNoteID(u uuid.UUID) {
+	m.note = &u
+}
+
+// NoteID returns the value of the "note_id" field in the mutation.
+func (m *NoteConnectionJobMutation) NoteID() (r uuid.UUID, exists bool) {
+	v := m.note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNoteID returns the old "note_id" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldNoteID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNoteID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNoteID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNoteID: %w", err)
+	}
+	return oldValue.NoteID, nil
+}
+
+// ClearNoteID clears the value of the "note_id" field.
+func (m *NoteConnectionJobMutation) ClearNoteID() {
+	m.note = nil
+	m.clearedFields[noteconnectionjob.FieldNoteID] = struct{}{}
+}
+
+// NoteIDCleared returns if the "note_id" field was cleared in this mutation.
+func (m *NoteConnectionJobMutation) NoteIDCleared() bool {
+	_, ok := m.clearedFields[noteconnectionjob.FieldNoteID]
+	return ok
+}
+
+// ResetNoteID resets all changes to the "note_id" field.
+func (m *NoteConnectionJobMutation) ResetNoteID() {
+	m.note = nil
+	delete(m.clearedFields, noteconnectionjob.FieldNoteID)
+}
+
+// SetStatus sets the "status" field.
+func (m *NoteConnectionJobMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *NoteConnectionJobMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *NoteConnectionJobMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetTotalCount sets the "total_count" field.
+func (m *NoteConnectionJobMutation) SetTotalCount(i int) {
+	m.total_count = &i
+	m.addtotal_count = nil
+}
+
+// TotalCount returns the value of the "total_count" field in the mutation.
+func (m *NoteConnectionJobMutation) TotalCount() (r int, exists bool) {
+	v := m.total_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalCount returns the old "total_count" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldTotalCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalCount: %w", err)
+	}
+	return oldValue.TotalCount, nil
+}
+
+// AddTotalCount adds i to the "total_count" field.
+func (m *NoteConnectionJobMutation) AddTotalCount(i int) {
+	if m.addtotal_count != nil {
+		*m.addtotal_count += i
+	} else {
+		m.addtotal_count = &i
+	}
+}
+
+// AddedTotalCount returns the value that was added to the "total_count" field in this mutation.
+func (m *NoteConnectionJobMutation) AddedTotalCount() (r int, exists bool) {
+	v := m.addtotal_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalCount resets all changes to the "total_count" field.
+func (m *NoteConnectionJobMutation) ResetTotalCount() {
+	m.total_count = nil
+	m.addtotal_count = nil
+}
+
+// SetImportedCount sets the "imported_count" field.
+func (m *NoteConnectionJobMutation) SetImportedCount(i int) {
+	m.imported_count = &i
+	m.addimported_count = nil
+}
+
+// ImportedCount returns the value of the "imported_count" field in the mutation.
+func (m *NoteConnectionJobMutation) ImportedCount() (r int, exists bool) {
+	v := m.imported_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldImportedCount returns the old "imported_count" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldImportedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldImportedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldImportedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldImportedCount: %w", err)
+	}
+	return oldValue.ImportedCount, nil
+}
+
+// AddImportedCount adds i to the "imported_count" field.
+func (m *NoteConnectionJobMutation) AddImportedCount(i int) {
+	if m.addimported_count != nil {
+		*m.addimported_count += i
+	} else {
+		m.addimported_count = &i
+	}
+}
+
+// AddedImportedCount returns the value that was added to the "imported_count" field in this mutation.
+func (m *NoteConnectionJobMutation) AddedImportedCount() (r int, exists bool) {
+	v := m.addimported_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetImportedCount resets all changes to the "imported_count" field.
+func (m *NoteConnectionJobMutation) ResetImportedCount() {
+	m.imported_count = nil
+	m.addimported_count = nil
+}
+
+// SetPushedCount sets the "pushed_count" field.
+func (m *NoteConnectionJobMutation) SetPushedCount(i int) {
+	m.pushed_count = &i
+	m.addpushed_count = nil
+}
+
+// PushedCount returns the value of the "pushed_count" field in the mutation.
+func (m *NoteConnectionJobMutation) PushedCount() (r int, exists bool) {
+	v := m.pushed_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPushedCount returns the old "pushed_count" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldPushedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPushedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPushedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPushedCount: %w", err)
+	}
+	return oldValue.PushedCount, nil
+}
+
+// AddPushedCount adds i to the "pushed_count" field.
+func (m *NoteConnectionJobMutation) AddPushedCount(i int) {
+	if m.addpushed_count != nil {
+		*m.addpushed_count += i
+	} else {
+		m.addpushed_count = &i
+	}
+}
+
+// AddedPushedCount returns the value that was added to the "pushed_count" field in this mutation.
+func (m *NoteConnectionJobMutation) AddedPushedCount() (r int, exists bool) {
+	v := m.addpushed_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPushedCount resets all changes to the "pushed_count" field.
+func (m *NoteConnectionJobMutation) ResetPushedCount() {
+	m.pushed_count = nil
+	m.addpushed_count = nil
+}
+
+// SetSkippedCount sets the "skipped_count" field.
+func (m *NoteConnectionJobMutation) SetSkippedCount(i int) {
+	m.skipped_count = &i
+	m.addskipped_count = nil
+}
+
+// SkippedCount returns the value of the "skipped_count" field in the mutation.
+func (m *NoteConnectionJobMutation) SkippedCount() (r int, exists bool) {
+	v := m.skipped_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkippedCount returns the old "skipped_count" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldSkippedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkippedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkippedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkippedCount: %w", err)
+	}
+	return oldValue.SkippedCount, nil
+}
+
+// AddSkippedCount adds i to the "skipped_count" field.
+func (m *NoteConnectionJobMutation) AddSkippedCount(i int) {
+	if m.addskipped_count != nil {
+		*m.addskipped_count += i
+	} else {
+		m.addskipped_count = &i
+	}
+}
+
+// AddedSkippedCount returns the value that was added to the "skipped_count" field in this mutation.
+func (m *NoteConnectionJobMutation) AddedSkippedCount() (r int, exists bool) {
+	v := m.addskipped_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSkippedCount resets all changes to the "skipped_count" field.
+func (m *NoteConnectionJobMutation) ResetSkippedCount() {
+	m.skipped_count = nil
+	m.addskipped_count = nil
+}
+
+// SetFailedCount sets the "failed_count" field.
+func (m *NoteConnectionJobMutation) SetFailedCount(i int) {
+	m.failed_count = &i
+	m.addfailed_count = nil
+}
+
+// FailedCount returns the value of the "failed_count" field in the mutation.
+func (m *NoteConnectionJobMutation) FailedCount() (r int, exists bool) {
+	v := m.failed_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFailedCount returns the old "failed_count" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldFailedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFailedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFailedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFailedCount: %w", err)
+	}
+	return oldValue.FailedCount, nil
+}
+
+// AddFailedCount adds i to the "failed_count" field.
+func (m *NoteConnectionJobMutation) AddFailedCount(i int) {
+	if m.addfailed_count != nil {
+		*m.addfailed_count += i
+	} else {
+		m.addfailed_count = &i
+	}
+}
+
+// AddedFailedCount returns the value that was added to the "failed_count" field in this mutation.
+func (m *NoteConnectionJobMutation) AddedFailedCount() (r int, exists bool) {
+	v := m.addfailed_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFailedCount resets all changes to the "failed_count" field.
+func (m *NoteConnectionJobMutation) ResetFailedCount() {
+	m.failed_count = nil
+	m.addfailed_count = nil
+}
+
+// SetMessage sets the "message" field.
+func (m *NoteConnectionJobMutation) SetMessage(s string) {
+	m.message = &s
+}
+
+// Message returns the value of the "message" field in the mutation.
+func (m *NoteConnectionJobMutation) Message() (r string, exists bool) {
+	v := m.message
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessage returns the old "message" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldMessage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessage: %w", err)
+	}
+	return oldValue.Message, nil
+}
+
+// ClearMessage clears the value of the "message" field.
+func (m *NoteConnectionJobMutation) ClearMessage() {
+	m.message = nil
+	m.clearedFields[noteconnectionjob.FieldMessage] = struct{}{}
+}
+
+// MessageCleared returns if the "message" field was cleared in this mutation.
+func (m *NoteConnectionJobMutation) MessageCleared() bool {
+	_, ok := m.clearedFields[noteconnectionjob.FieldMessage]
+	return ok
+}
+
+// ResetMessage resets all changes to the "message" field.
+func (m *NoteConnectionJobMutation) ResetMessage() {
+	m.message = nil
+	delete(m.clearedFields, noteconnectionjob.FieldMessage)
+}
+
+// SetOptionsJSON sets the "options_json" field.
+func (m *NoteConnectionJobMutation) SetOptionsJSON(s string) {
+	m.options_json = &s
+}
+
+// OptionsJSON returns the value of the "options_json" field in the mutation.
+func (m *NoteConnectionJobMutation) OptionsJSON() (r string, exists bool) {
+	v := m.options_json
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOptionsJSON returns the old "options_json" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldOptionsJSON(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOptionsJSON is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOptionsJSON requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOptionsJSON: %w", err)
+	}
+	return oldValue.OptionsJSON, nil
+}
+
+// ClearOptionsJSON clears the value of the "options_json" field.
+func (m *NoteConnectionJobMutation) ClearOptionsJSON() {
+	m.options_json = nil
+	m.clearedFields[noteconnectionjob.FieldOptionsJSON] = struct{}{}
+}
+
+// OptionsJSONCleared returns if the "options_json" field was cleared in this mutation.
+func (m *NoteConnectionJobMutation) OptionsJSONCleared() bool {
+	_, ok := m.clearedFields[noteconnectionjob.FieldOptionsJSON]
+	return ok
+}
+
+// ResetOptionsJSON resets all changes to the "options_json" field.
+func (m *NoteConnectionJobMutation) ResetOptionsJSON() {
+	m.options_json = nil
+	delete(m.clearedFields, noteconnectionjob.FieldOptionsJSON)
+}
+
+// SetStartedAt sets the "started_at" field.
+func (m *NoteConnectionJobMutation) SetStartedAt(t time.Time) {
+	m.started_at = &t
+}
+
+// StartedAt returns the value of the "started_at" field in the mutation.
+func (m *NoteConnectionJobMutation) StartedAt() (r time.Time, exists bool) {
+	v := m.started_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartedAt returns the old "started_at" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldStartedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartedAt: %w", err)
+	}
+	return oldValue.StartedAt, nil
+}
+
+// ClearStartedAt clears the value of the "started_at" field.
+func (m *NoteConnectionJobMutation) ClearStartedAt() {
+	m.started_at = nil
+	m.clearedFields[noteconnectionjob.FieldStartedAt] = struct{}{}
+}
+
+// StartedAtCleared returns if the "started_at" field was cleared in this mutation.
+func (m *NoteConnectionJobMutation) StartedAtCleared() bool {
+	_, ok := m.clearedFields[noteconnectionjob.FieldStartedAt]
+	return ok
+}
+
+// ResetStartedAt resets all changes to the "started_at" field.
+func (m *NoteConnectionJobMutation) ResetStartedAt() {
+	m.started_at = nil
+	delete(m.clearedFields, noteconnectionjob.FieldStartedAt)
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (m *NoteConnectionJobMutation) SetCompletedAt(t time.Time) {
+	m.completed_at = &t
+}
+
+// CompletedAt returns the value of the "completed_at" field in the mutation.
+func (m *NoteConnectionJobMutation) CompletedAt() (r time.Time, exists bool) {
+	v := m.completed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCompletedAt returns the old "completed_at" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldCompletedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCompletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCompletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompletedAt: %w", err)
+	}
+	return oldValue.CompletedAt, nil
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (m *NoteConnectionJobMutation) ClearCompletedAt() {
+	m.completed_at = nil
+	m.clearedFields[noteconnectionjob.FieldCompletedAt] = struct{}{}
+}
+
+// CompletedAtCleared returns if the "completed_at" field was cleared in this mutation.
+func (m *NoteConnectionJobMutation) CompletedAtCleared() bool {
+	_, ok := m.clearedFields[noteconnectionjob.FieldCompletedAt]
+	return ok
+}
+
+// ResetCompletedAt resets all changes to the "completed_at" field.
+func (m *NoteConnectionJobMutation) ResetCompletedAt() {
+	m.completed_at = nil
+	delete(m.clearedFields, noteconnectionjob.FieldCompletedAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *NoteConnectionJobMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *NoteConnectionJobMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *NoteConnectionJobMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *NoteConnectionJobMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *NoteConnectionJobMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the NoteConnectionJob entity.
+// If the NoteConnectionJob object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteConnectionJobMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *NoteConnectionJobMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *NoteConnectionJobMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[noteconnectionjob.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *NoteConnectionJobMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *NoteConnectionJobMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *NoteConnectionJobMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearAccount clears the "account" edge to the NoteConnectionAccount entity.
+func (m *NoteConnectionJobMutation) ClearAccount() {
+	m.clearedaccount = true
+	m.clearedFields[noteconnectionjob.FieldAccountID] = struct{}{}
+}
+
+// AccountCleared reports if the "account" edge to the NoteConnectionAccount entity was cleared.
+func (m *NoteConnectionJobMutation) AccountCleared() bool {
+	return m.clearedaccount
+}
+
+// AccountIDs returns the "account" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AccountID instead. It exists only for internal usage by the builders.
+func (m *NoteConnectionJobMutation) AccountIDs() (ids []int) {
+	if id := m.account; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAccount resets all changes to the "account" edge.
+func (m *NoteConnectionJobMutation) ResetAccount() {
+	m.account = nil
+	m.clearedaccount = false
+}
+
+// ClearNote clears the "note" edge to the Note entity.
+func (m *NoteConnectionJobMutation) ClearNote() {
+	m.clearednote = true
+	m.clearedFields[noteconnectionjob.FieldNoteID] = struct{}{}
+}
+
+// NoteCleared reports if the "note" edge to the Note entity was cleared.
+func (m *NoteConnectionJobMutation) NoteCleared() bool {
+	return m.NoteIDCleared() || m.clearednote
+}
+
+// NoteIDs returns the "note" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// NoteID instead. It exists only for internal usage by the builders.
+func (m *NoteConnectionJobMutation) NoteIDs() (ids []uuid.UUID) {
+	if id := m.note; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetNote resets all changes to the "note" edge.
+func (m *NoteConnectionJobMutation) ResetNote() {
+	m.note = nil
+	m.clearednote = false
+}
+
+// Where appends a list predicates to the NoteConnectionJobMutation builder.
+func (m *NoteConnectionJobMutation) Where(ps ...predicate.NoteConnectionJob) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the NoteConnectionJobMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *NoteConnectionJobMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.NoteConnectionJob, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *NoteConnectionJobMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *NoteConnectionJobMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (NoteConnectionJob).
+func (m *NoteConnectionJobMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *NoteConnectionJobMutation) Fields() []string {
+	fields := make([]string, 0, 17)
+	if m.provider != nil {
+		fields = append(fields, noteconnectionjob.FieldProvider)
+	}
+	if m.operation != nil {
+		fields = append(fields, noteconnectionjob.FieldOperation)
+	}
+	if m.user != nil {
+		fields = append(fields, noteconnectionjob.FieldUserID)
+	}
+	if m.account != nil {
+		fields = append(fields, noteconnectionjob.FieldAccountID)
+	}
+	if m.note != nil {
+		fields = append(fields, noteconnectionjob.FieldNoteID)
+	}
+	if m.status != nil {
+		fields = append(fields, noteconnectionjob.FieldStatus)
+	}
+	if m.total_count != nil {
+		fields = append(fields, noteconnectionjob.FieldTotalCount)
+	}
+	if m.imported_count != nil {
+		fields = append(fields, noteconnectionjob.FieldImportedCount)
+	}
+	if m.pushed_count != nil {
+		fields = append(fields, noteconnectionjob.FieldPushedCount)
+	}
+	if m.skipped_count != nil {
+		fields = append(fields, noteconnectionjob.FieldSkippedCount)
+	}
+	if m.failed_count != nil {
+		fields = append(fields, noteconnectionjob.FieldFailedCount)
+	}
+	if m.message != nil {
+		fields = append(fields, noteconnectionjob.FieldMessage)
+	}
+	if m.options_json != nil {
+		fields = append(fields, noteconnectionjob.FieldOptionsJSON)
+	}
+	if m.started_at != nil {
+		fields = append(fields, noteconnectionjob.FieldStartedAt)
+	}
+	if m.completed_at != nil {
+		fields = append(fields, noteconnectionjob.FieldCompletedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, noteconnectionjob.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, noteconnectionjob.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *NoteConnectionJobMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case noteconnectionjob.FieldProvider:
+		return m.Provider()
+	case noteconnectionjob.FieldOperation:
+		return m.Operation()
+	case noteconnectionjob.FieldUserID:
+		return m.UserID()
+	case noteconnectionjob.FieldAccountID:
+		return m.AccountID()
+	case noteconnectionjob.FieldNoteID:
+		return m.NoteID()
+	case noteconnectionjob.FieldStatus:
+		return m.Status()
+	case noteconnectionjob.FieldTotalCount:
+		return m.TotalCount()
+	case noteconnectionjob.FieldImportedCount:
+		return m.ImportedCount()
+	case noteconnectionjob.FieldPushedCount:
+		return m.PushedCount()
+	case noteconnectionjob.FieldSkippedCount:
+		return m.SkippedCount()
+	case noteconnectionjob.FieldFailedCount:
+		return m.FailedCount()
+	case noteconnectionjob.FieldMessage:
+		return m.Message()
+	case noteconnectionjob.FieldOptionsJSON:
+		return m.OptionsJSON()
+	case noteconnectionjob.FieldStartedAt:
+		return m.StartedAt()
+	case noteconnectionjob.FieldCompletedAt:
+		return m.CompletedAt()
+	case noteconnectionjob.FieldCreatedAt:
+		return m.CreatedAt()
+	case noteconnectionjob.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NoteConnectionJobMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case noteconnectionjob.FieldProvider:
+		return m.OldProvider(ctx)
+	case noteconnectionjob.FieldOperation:
+		return m.OldOperation(ctx)
+	case noteconnectionjob.FieldUserID:
+		return m.OldUserID(ctx)
+	case noteconnectionjob.FieldAccountID:
+		return m.OldAccountID(ctx)
+	case noteconnectionjob.FieldNoteID:
+		return m.OldNoteID(ctx)
+	case noteconnectionjob.FieldStatus:
+		return m.OldStatus(ctx)
+	case noteconnectionjob.FieldTotalCount:
+		return m.OldTotalCount(ctx)
+	case noteconnectionjob.FieldImportedCount:
+		return m.OldImportedCount(ctx)
+	case noteconnectionjob.FieldPushedCount:
+		return m.OldPushedCount(ctx)
+	case noteconnectionjob.FieldSkippedCount:
+		return m.OldSkippedCount(ctx)
+	case noteconnectionjob.FieldFailedCount:
+		return m.OldFailedCount(ctx)
+	case noteconnectionjob.FieldMessage:
+		return m.OldMessage(ctx)
+	case noteconnectionjob.FieldOptionsJSON:
+		return m.OldOptionsJSON(ctx)
+	case noteconnectionjob.FieldStartedAt:
+		return m.OldStartedAt(ctx)
+	case noteconnectionjob.FieldCompletedAt:
+		return m.OldCompletedAt(ctx)
+	case noteconnectionjob.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case noteconnectionjob.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown NoteConnectionJob field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteConnectionJobMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case noteconnectionjob.FieldProvider:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProvider(v)
+		return nil
+	case noteconnectionjob.FieldOperation:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOperation(v)
+		return nil
+	case noteconnectionjob.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case noteconnectionjob.FieldAccountID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccountID(v)
+		return nil
+	case noteconnectionjob.FieldNoteID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNoteID(v)
+		return nil
+	case noteconnectionjob.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case noteconnectionjob.FieldTotalCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalCount(v)
+		return nil
+	case noteconnectionjob.FieldImportedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetImportedCount(v)
+		return nil
+	case noteconnectionjob.FieldPushedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPushedCount(v)
+		return nil
+	case noteconnectionjob.FieldSkippedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkippedCount(v)
+		return nil
+	case noteconnectionjob.FieldFailedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFailedCount(v)
+		return nil
+	case noteconnectionjob.FieldMessage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessage(v)
+		return nil
+	case noteconnectionjob.FieldOptionsJSON:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOptionsJSON(v)
+		return nil
+	case noteconnectionjob.FieldStartedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartedAt(v)
+		return nil
+	case noteconnectionjob.FieldCompletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCompletedAt(v)
+		return nil
+	case noteconnectionjob.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case noteconnectionjob.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionJob field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *NoteConnectionJobMutation) AddedFields() []string {
+	var fields []string
+	if m.addtotal_count != nil {
+		fields = append(fields, noteconnectionjob.FieldTotalCount)
+	}
+	if m.addimported_count != nil {
+		fields = append(fields, noteconnectionjob.FieldImportedCount)
+	}
+	if m.addpushed_count != nil {
+		fields = append(fields, noteconnectionjob.FieldPushedCount)
+	}
+	if m.addskipped_count != nil {
+		fields = append(fields, noteconnectionjob.FieldSkippedCount)
+	}
+	if m.addfailed_count != nil {
+		fields = append(fields, noteconnectionjob.FieldFailedCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *NoteConnectionJobMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case noteconnectionjob.FieldTotalCount:
+		return m.AddedTotalCount()
+	case noteconnectionjob.FieldImportedCount:
+		return m.AddedImportedCount()
+	case noteconnectionjob.FieldPushedCount:
+		return m.AddedPushedCount()
+	case noteconnectionjob.FieldSkippedCount:
+		return m.AddedSkippedCount()
+	case noteconnectionjob.FieldFailedCount:
+		return m.AddedFailedCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *NoteConnectionJobMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case noteconnectionjob.FieldTotalCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalCount(v)
+		return nil
+	case noteconnectionjob.FieldImportedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddImportedCount(v)
+		return nil
+	case noteconnectionjob.FieldPushedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPushedCount(v)
+		return nil
+	case noteconnectionjob.FieldSkippedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSkippedCount(v)
+		return nil
+	case noteconnectionjob.FieldFailedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFailedCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionJob numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *NoteConnectionJobMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(noteconnectionjob.FieldNoteID) {
+		fields = append(fields, noteconnectionjob.FieldNoteID)
+	}
+	if m.FieldCleared(noteconnectionjob.FieldMessage) {
+		fields = append(fields, noteconnectionjob.FieldMessage)
+	}
+	if m.FieldCleared(noteconnectionjob.FieldOptionsJSON) {
+		fields = append(fields, noteconnectionjob.FieldOptionsJSON)
+	}
+	if m.FieldCleared(noteconnectionjob.FieldStartedAt) {
+		fields = append(fields, noteconnectionjob.FieldStartedAt)
+	}
+	if m.FieldCleared(noteconnectionjob.FieldCompletedAt) {
+		fields = append(fields, noteconnectionjob.FieldCompletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *NoteConnectionJobMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *NoteConnectionJobMutation) ClearField(name string) error {
+	switch name {
+	case noteconnectionjob.FieldNoteID:
+		m.ClearNoteID()
+		return nil
+	case noteconnectionjob.FieldMessage:
+		m.ClearMessage()
+		return nil
+	case noteconnectionjob.FieldOptionsJSON:
+		m.ClearOptionsJSON()
+		return nil
+	case noteconnectionjob.FieldStartedAt:
+		m.ClearStartedAt()
+		return nil
+	case noteconnectionjob.FieldCompletedAt:
+		m.ClearCompletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionJob nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *NoteConnectionJobMutation) ResetField(name string) error {
+	switch name {
+	case noteconnectionjob.FieldProvider:
+		m.ResetProvider()
+		return nil
+	case noteconnectionjob.FieldOperation:
+		m.ResetOperation()
+		return nil
+	case noteconnectionjob.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case noteconnectionjob.FieldAccountID:
+		m.ResetAccountID()
+		return nil
+	case noteconnectionjob.FieldNoteID:
+		m.ResetNoteID()
+		return nil
+	case noteconnectionjob.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case noteconnectionjob.FieldTotalCount:
+		m.ResetTotalCount()
+		return nil
+	case noteconnectionjob.FieldImportedCount:
+		m.ResetImportedCount()
+		return nil
+	case noteconnectionjob.FieldPushedCount:
+		m.ResetPushedCount()
+		return nil
+	case noteconnectionjob.FieldSkippedCount:
+		m.ResetSkippedCount()
+		return nil
+	case noteconnectionjob.FieldFailedCount:
+		m.ResetFailedCount()
+		return nil
+	case noteconnectionjob.FieldMessage:
+		m.ResetMessage()
+		return nil
+	case noteconnectionjob.FieldOptionsJSON:
+		m.ResetOptionsJSON()
+		return nil
+	case noteconnectionjob.FieldStartedAt:
+		m.ResetStartedAt()
+		return nil
+	case noteconnectionjob.FieldCompletedAt:
+		m.ResetCompletedAt()
+		return nil
+	case noteconnectionjob.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case noteconnectionjob.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionJob field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *NoteConnectionJobMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.user != nil {
+		edges = append(edges, noteconnectionjob.EdgeUser)
+	}
+	if m.account != nil {
+		edges = append(edges, noteconnectionjob.EdgeAccount)
+	}
+	if m.note != nil {
+		edges = append(edges, noteconnectionjob.EdgeNote)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *NoteConnectionJobMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case noteconnectionjob.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case noteconnectionjob.EdgeAccount:
+		if id := m.account; id != nil {
+			return []ent.Value{*id}
+		}
+	case noteconnectionjob.EdgeNote:
+		if id := m.note; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *NoteConnectionJobMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *NoteConnectionJobMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *NoteConnectionJobMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.cleareduser {
+		edges = append(edges, noteconnectionjob.EdgeUser)
+	}
+	if m.clearedaccount {
+		edges = append(edges, noteconnectionjob.EdgeAccount)
+	}
+	if m.clearednote {
+		edges = append(edges, noteconnectionjob.EdgeNote)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *NoteConnectionJobMutation) EdgeCleared(name string) bool {
+	switch name {
+	case noteconnectionjob.EdgeUser:
+		return m.cleareduser
+	case noteconnectionjob.EdgeAccount:
+		return m.clearedaccount
+	case noteconnectionjob.EdgeNote:
+		return m.clearednote
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *NoteConnectionJobMutation) ClearEdge(name string) error {
+	switch name {
+	case noteconnectionjob.EdgeUser:
+		m.ClearUser()
+		return nil
+	case noteconnectionjob.EdgeAccount:
+		m.ClearAccount()
+		return nil
+	case noteconnectionjob.EdgeNote:
+		m.ClearNote()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionJob unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *NoteConnectionJobMutation) ResetEdge(name string) error {
+	switch name {
+	case noteconnectionjob.EdgeUser:
+		m.ResetUser()
+		return nil
+	case noteconnectionjob.EdgeAccount:
+		m.ResetAccount()
+		return nil
+	case noteconnectionjob.EdgeNote:
+		m.ResetNote()
+		return nil
+	}
+	return fmt.Errorf("unknown NoteConnectionJob edge %s", name)
 }
 
 // NoteLinkMutation represents an operation that mutates the NoteLink nodes in the graph.
@@ -10989,56 +18187,62 @@ func (m *TagMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                        Op
-	typ                       string
-	id                        *int
-	username                  *string
-	password_hash             *string
-	email                     *string
-	nickname                  *string
-	role                      *user.Role
-	avatar                    *string
-	share_signature           *string
-	time_zone                 *string
-	lazycat_uid               *string
-	created_at                *time.Time
-	updated_at                *time.Time
-	clearedFields             map[string]struct{}
-	notes                     map[uuid.UUID]struct{}
-	removednotes              map[uuid.UUID]struct{}
-	clearednotes              bool
-	folders                   map[uuid.UUID]struct{}
-	removedfolders            map[uuid.UUID]struct{}
-	clearedfolders            bool
-	attachments               map[int]struct{}
-	removedattachments        map[int]struct{}
-	clearedattachments        bool
-	excalidraw_library        *uuid.UUID
-	clearedexcalidraw_library bool
-	whiteboards               map[uuid.UUID]struct{}
-	removedwhiteboards        map[uuid.UUID]struct{}
-	clearedwhiteboards        bool
-	tags                      map[uuid.UUID]struct{}
-	removedtags               map[uuid.UUID]struct{}
-	clearedtags               bool
-	fonts                     map[uuid.UUID]struct{}
-	removedfonts              map[uuid.UUID]struct{}
-	clearedfonts              bool
-	import_jobs               map[int]struct{}
-	removedimport_jobs        map[int]struct{}
-	clearedimport_jobs        bool
-	mcp_tokens                map[int]struct{}
-	removedmcp_tokens         map[int]struct{}
-	clearedmcp_tokens         bool
-	mcp_images                map[int]struct{}
-	removedmcp_images         map[int]struct{}
-	clearedmcp_images         bool
-	note_links                map[uuid.UUID]struct{}
-	removednote_links         map[uuid.UUID]struct{}
-	clearednote_links         bool
-	done                      bool
-	oldValue                  func(context.Context) (*User, error)
-	predicates                []predicate.User
+	op                              Op
+	typ                             string
+	id                              *int
+	username                        *string
+	password_hash                   *string
+	email                           *string
+	nickname                        *string
+	role                            *user.Role
+	avatar                          *string
+	share_signature                 *string
+	time_zone                       *string
+	lazycat_uid                     *string
+	created_at                      *time.Time
+	updated_at                      *time.Time
+	clearedFields                   map[string]struct{}
+	notes                           map[uuid.UUID]struct{}
+	removednotes                    map[uuid.UUID]struct{}
+	clearednotes                    bool
+	folders                         map[uuid.UUID]struct{}
+	removedfolders                  map[uuid.UUID]struct{}
+	clearedfolders                  bool
+	attachments                     map[int]struct{}
+	removedattachments              map[int]struct{}
+	clearedattachments              bool
+	excalidraw_library              *uuid.UUID
+	clearedexcalidraw_library       bool
+	whiteboards                     map[uuid.UUID]struct{}
+	removedwhiteboards              map[uuid.UUID]struct{}
+	clearedwhiteboards              bool
+	tags                            map[uuid.UUID]struct{}
+	removedtags                     map[uuid.UUID]struct{}
+	clearedtags                     bool
+	fonts                           map[uuid.UUID]struct{}
+	removedfonts                    map[uuid.UUID]struct{}
+	clearedfonts                    bool
+	import_jobs                     map[int]struct{}
+	removedimport_jobs              map[int]struct{}
+	clearedimport_jobs              bool
+	mcp_tokens                      map[int]struct{}
+	removedmcp_tokens               map[int]struct{}
+	clearedmcp_tokens               bool
+	mcp_images                      map[int]struct{}
+	removedmcp_images               map[int]struct{}
+	clearedmcp_images               bool
+	note_connection_accounts        map[int]struct{}
+	removednote_connection_accounts map[int]struct{}
+	clearednote_connection_accounts bool
+	note_connection_jobs            map[int]struct{}
+	removednote_connection_jobs     map[int]struct{}
+	clearednote_connection_jobs     bool
+	note_links                      map[uuid.UUID]struct{}
+	removednote_links               map[uuid.UUID]struct{}
+	clearednote_links               bool
+	done                            bool
+	oldValue                        func(context.Context) (*User, error)
+	predicates                      []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -12112,6 +19316,114 @@ func (m *UserMutation) ResetMcpImages() {
 	m.removedmcp_images = nil
 }
 
+// AddNoteConnectionAccountIDs adds the "note_connection_accounts" edge to the NoteConnectionAccount entity by ids.
+func (m *UserMutation) AddNoteConnectionAccountIDs(ids ...int) {
+	if m.note_connection_accounts == nil {
+		m.note_connection_accounts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.note_connection_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearNoteConnectionAccounts clears the "note_connection_accounts" edge to the NoteConnectionAccount entity.
+func (m *UserMutation) ClearNoteConnectionAccounts() {
+	m.clearednote_connection_accounts = true
+}
+
+// NoteConnectionAccountsCleared reports if the "note_connection_accounts" edge to the NoteConnectionAccount entity was cleared.
+func (m *UserMutation) NoteConnectionAccountsCleared() bool {
+	return m.clearednote_connection_accounts
+}
+
+// RemoveNoteConnectionAccountIDs removes the "note_connection_accounts" edge to the NoteConnectionAccount entity by IDs.
+func (m *UserMutation) RemoveNoteConnectionAccountIDs(ids ...int) {
+	if m.removednote_connection_accounts == nil {
+		m.removednote_connection_accounts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.note_connection_accounts, ids[i])
+		m.removednote_connection_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedNoteConnectionAccounts returns the removed IDs of the "note_connection_accounts" edge to the NoteConnectionAccount entity.
+func (m *UserMutation) RemovedNoteConnectionAccountsIDs() (ids []int) {
+	for id := range m.removednote_connection_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// NoteConnectionAccountsIDs returns the "note_connection_accounts" edge IDs in the mutation.
+func (m *UserMutation) NoteConnectionAccountsIDs() (ids []int) {
+	for id := range m.note_connection_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetNoteConnectionAccounts resets all changes to the "note_connection_accounts" edge.
+func (m *UserMutation) ResetNoteConnectionAccounts() {
+	m.note_connection_accounts = nil
+	m.clearednote_connection_accounts = false
+	m.removednote_connection_accounts = nil
+}
+
+// AddNoteConnectionJobIDs adds the "note_connection_jobs" edge to the NoteConnectionJob entity by ids.
+func (m *UserMutation) AddNoteConnectionJobIDs(ids ...int) {
+	if m.note_connection_jobs == nil {
+		m.note_connection_jobs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.note_connection_jobs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearNoteConnectionJobs clears the "note_connection_jobs" edge to the NoteConnectionJob entity.
+func (m *UserMutation) ClearNoteConnectionJobs() {
+	m.clearednote_connection_jobs = true
+}
+
+// NoteConnectionJobsCleared reports if the "note_connection_jobs" edge to the NoteConnectionJob entity was cleared.
+func (m *UserMutation) NoteConnectionJobsCleared() bool {
+	return m.clearednote_connection_jobs
+}
+
+// RemoveNoteConnectionJobIDs removes the "note_connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (m *UserMutation) RemoveNoteConnectionJobIDs(ids ...int) {
+	if m.removednote_connection_jobs == nil {
+		m.removednote_connection_jobs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.note_connection_jobs, ids[i])
+		m.removednote_connection_jobs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedNoteConnectionJobs returns the removed IDs of the "note_connection_jobs" edge to the NoteConnectionJob entity.
+func (m *UserMutation) RemovedNoteConnectionJobsIDs() (ids []int) {
+	for id := range m.removednote_connection_jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// NoteConnectionJobsIDs returns the "note_connection_jobs" edge IDs in the mutation.
+func (m *UserMutation) NoteConnectionJobsIDs() (ids []int) {
+	for id := range m.note_connection_jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetNoteConnectionJobs resets all changes to the "note_connection_jobs" edge.
+func (m *UserMutation) ResetNoteConnectionJobs() {
+	m.note_connection_jobs = nil
+	m.clearednote_connection_jobs = false
+	m.removednote_connection_jobs = nil
+}
+
 // AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by ids.
 func (m *UserMutation) AddNoteLinkIDs(ids ...uuid.UUID) {
 	if m.note_links == nil {
@@ -12496,7 +19808,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 13)
 	if m.notes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -12526,6 +19838,12 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.mcp_images != nil {
 		edges = append(edges, user.EdgeMcpImages)
+	}
+	if m.note_connection_accounts != nil {
+		edges = append(edges, user.EdgeNoteConnectionAccounts)
+	}
+	if m.note_connection_jobs != nil {
+		edges = append(edges, user.EdgeNoteConnectionJobs)
 	}
 	if m.note_links != nil {
 		edges = append(edges, user.EdgeNoteLinks)
@@ -12595,6 +19913,18 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeNoteConnectionAccounts:
+		ids := make([]ent.Value, 0, len(m.note_connection_accounts))
+		for id := range m.note_connection_accounts {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeNoteConnectionJobs:
+		ids := make([]ent.Value, 0, len(m.note_connection_jobs))
+		for id := range m.note_connection_jobs {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeNoteLinks:
 		ids := make([]ent.Value, 0, len(m.note_links))
 		for id := range m.note_links {
@@ -12607,7 +19937,7 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 13)
 	if m.removednotes != nil {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -12634,6 +19964,12 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedmcp_images != nil {
 		edges = append(edges, user.EdgeMcpImages)
+	}
+	if m.removednote_connection_accounts != nil {
+		edges = append(edges, user.EdgeNoteConnectionAccounts)
+	}
+	if m.removednote_connection_jobs != nil {
+		edges = append(edges, user.EdgeNoteConnectionJobs)
 	}
 	if m.removednote_links != nil {
 		edges = append(edges, user.EdgeNoteLinks)
@@ -12699,6 +20035,18 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeNoteConnectionAccounts:
+		ids := make([]ent.Value, 0, len(m.removednote_connection_accounts))
+		for id := range m.removednote_connection_accounts {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeNoteConnectionJobs:
+		ids := make([]ent.Value, 0, len(m.removednote_connection_jobs))
+		for id := range m.removednote_connection_jobs {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeNoteLinks:
 		ids := make([]ent.Value, 0, len(m.removednote_links))
 		for id := range m.removednote_links {
@@ -12711,7 +20059,7 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 13)
 	if m.clearednotes {
 		edges = append(edges, user.EdgeNotes)
 	}
@@ -12741,6 +20089,12 @@ func (m *UserMutation) ClearedEdges() []string {
 	}
 	if m.clearedmcp_images {
 		edges = append(edges, user.EdgeMcpImages)
+	}
+	if m.clearednote_connection_accounts {
+		edges = append(edges, user.EdgeNoteConnectionAccounts)
+	}
+	if m.clearednote_connection_jobs {
+		edges = append(edges, user.EdgeNoteConnectionJobs)
 	}
 	if m.clearednote_links {
 		edges = append(edges, user.EdgeNoteLinks)
@@ -12772,6 +20126,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedmcp_tokens
 	case user.EdgeMcpImages:
 		return m.clearedmcp_images
+	case user.EdgeNoteConnectionAccounts:
+		return m.clearednote_connection_accounts
+	case user.EdgeNoteConnectionJobs:
+		return m.clearednote_connection_jobs
 	case user.EdgeNoteLinks:
 		return m.clearednote_links
 	}
@@ -12822,6 +20180,12 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeMcpImages:
 		m.ResetMcpImages()
+		return nil
+	case user.EdgeNoteConnectionAccounts:
+		m.ResetNoteConnectionAccounts()
+		return nil
+	case user.EdgeNoteConnectionJobs:
+		m.ResetNoteConnectionJobs()
 		return nil
 	case user.EdgeNoteLinks:
 		m.ResetNoteLinks()

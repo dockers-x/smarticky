@@ -15,6 +15,8 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -30,21 +32,23 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx                   *QueryContext
-	order                 []user.OrderOption
-	inters                []Interceptor
-	predicates            []predicate.User
-	withNotes             *NoteQuery
-	withFolders           *FolderQuery
-	withAttachments       *AttachmentQuery
-	withExcalidrawLibrary *ExcalidrawLibraryQuery
-	withWhiteboards       *WhiteboardQuery
-	withTags              *TagQuery
-	withFonts             *FontQuery
-	withImportJobs        *ImportJobQuery
-	withMcpTokens         *MCPTokenQuery
-	withMcpImages         *MCPImageQuery
-	withNoteLinks         *NoteLinkQuery
+	ctx                        *QueryContext
+	order                      []user.OrderOption
+	inters                     []Interceptor
+	predicates                 []predicate.User
+	withNotes                  *NoteQuery
+	withFolders                *FolderQuery
+	withAttachments            *AttachmentQuery
+	withExcalidrawLibrary      *ExcalidrawLibraryQuery
+	withWhiteboards            *WhiteboardQuery
+	withTags                   *TagQuery
+	withFonts                  *FontQuery
+	withImportJobs             *ImportJobQuery
+	withMcpTokens              *MCPTokenQuery
+	withMcpImages              *MCPImageQuery
+	withNoteConnectionAccounts *NoteConnectionAccountQuery
+	withNoteConnectionJobs     *NoteConnectionJobQuery
+	withNoteLinks              *NoteLinkQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -301,6 +305,50 @@ func (_q *UserQuery) QueryMcpImages() *MCPImageQuery {
 	return query
 }
 
+// QueryNoteConnectionAccounts chains the current query on the "note_connection_accounts" edge.
+func (_q *UserQuery) QueryNoteConnectionAccounts() *NoteConnectionAccountQuery {
+	query := (&NoteConnectionAccountClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(noteconnectionaccount.Table, noteconnectionaccount.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteConnectionAccountsTable, user.NoteConnectionAccountsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryNoteConnectionJobs chains the current query on the "note_connection_jobs" edge.
+func (_q *UserQuery) QueryNoteConnectionJobs() *NoteConnectionJobQuery {
+	query := (&NoteConnectionJobClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(noteconnectionjob.Table, noteconnectionjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteConnectionJobsTable, user.NoteConnectionJobsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryNoteLinks chains the current query on the "note_links" edge.
 func (_q *UserQuery) QueryNoteLinks() *NoteLinkQuery {
 	query := (&NoteLinkClient{config: _q.config}).Query()
@@ -510,22 +558,24 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:                _q.config,
-		ctx:                   _q.ctx.Clone(),
-		order:                 append([]user.OrderOption{}, _q.order...),
-		inters:                append([]Interceptor{}, _q.inters...),
-		predicates:            append([]predicate.User{}, _q.predicates...),
-		withNotes:             _q.withNotes.Clone(),
-		withFolders:           _q.withFolders.Clone(),
-		withAttachments:       _q.withAttachments.Clone(),
-		withExcalidrawLibrary: _q.withExcalidrawLibrary.Clone(),
-		withWhiteboards:       _q.withWhiteboards.Clone(),
-		withTags:              _q.withTags.Clone(),
-		withFonts:             _q.withFonts.Clone(),
-		withImportJobs:        _q.withImportJobs.Clone(),
-		withMcpTokens:         _q.withMcpTokens.Clone(),
-		withMcpImages:         _q.withMcpImages.Clone(),
-		withNoteLinks:         _q.withNoteLinks.Clone(),
+		config:                     _q.config,
+		ctx:                        _q.ctx.Clone(),
+		order:                      append([]user.OrderOption{}, _q.order...),
+		inters:                     append([]Interceptor{}, _q.inters...),
+		predicates:                 append([]predicate.User{}, _q.predicates...),
+		withNotes:                  _q.withNotes.Clone(),
+		withFolders:                _q.withFolders.Clone(),
+		withAttachments:            _q.withAttachments.Clone(),
+		withExcalidrawLibrary:      _q.withExcalidrawLibrary.Clone(),
+		withWhiteboards:            _q.withWhiteboards.Clone(),
+		withTags:                   _q.withTags.Clone(),
+		withFonts:                  _q.withFonts.Clone(),
+		withImportJobs:             _q.withImportJobs.Clone(),
+		withMcpTokens:              _q.withMcpTokens.Clone(),
+		withMcpImages:              _q.withMcpImages.Clone(),
+		withNoteConnectionAccounts: _q.withNoteConnectionAccounts.Clone(),
+		withNoteConnectionJobs:     _q.withNoteConnectionJobs.Clone(),
+		withNoteLinks:              _q.withNoteLinks.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -642,6 +692,28 @@ func (_q *UserQuery) WithMcpImages(opts ...func(*MCPImageQuery)) *UserQuery {
 	return _q
 }
 
+// WithNoteConnectionAccounts tells the query-builder to eager-load the nodes that are connected to
+// the "note_connection_accounts" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNoteConnectionAccounts(opts ...func(*NoteConnectionAccountQuery)) *UserQuery {
+	query := (&NoteConnectionAccountClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withNoteConnectionAccounts = query
+	return _q
+}
+
+// WithNoteConnectionJobs tells the query-builder to eager-load the nodes that are connected to
+// the "note_connection_jobs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNoteConnectionJobs(opts ...func(*NoteConnectionJobQuery)) *UserQuery {
+	query := (&NoteConnectionJobClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withNoteConnectionJobs = query
+	return _q
+}
+
 // WithNoteLinks tells the query-builder to eager-load the nodes that are connected to
 // the "note_links" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *UserQuery) WithNoteLinks(opts ...func(*NoteLinkQuery)) *UserQuery {
@@ -731,7 +803,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [11]bool{
+		loadedTypes = [13]bool{
 			_q.withNotes != nil,
 			_q.withFolders != nil,
 			_q.withAttachments != nil,
@@ -742,6 +814,8 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withImportJobs != nil,
 			_q.withMcpTokens != nil,
 			_q.withMcpImages != nil,
+			_q.withNoteConnectionAccounts != nil,
+			_q.withNoteConnectionJobs != nil,
 			_q.withNoteLinks != nil,
 		}
 	)
@@ -829,6 +903,24 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadMcpImages(ctx, query, nodes,
 			func(n *User) { n.Edges.McpImages = []*MCPImage{} },
 			func(n *User, e *MCPImage) { n.Edges.McpImages = append(n.Edges.McpImages, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withNoteConnectionAccounts; query != nil {
+		if err := _q.loadNoteConnectionAccounts(ctx, query, nodes,
+			func(n *User) { n.Edges.NoteConnectionAccounts = []*NoteConnectionAccount{} },
+			func(n *User, e *NoteConnectionAccount) {
+				n.Edges.NoteConnectionAccounts = append(n.Edges.NoteConnectionAccounts, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withNoteConnectionJobs; query != nil {
+		if err := _q.loadNoteConnectionJobs(ctx, query, nodes,
+			func(n *User) { n.Edges.NoteConnectionJobs = []*NoteConnectionJob{} },
+			func(n *User, e *NoteConnectionJob) {
+				n.Edges.NoteConnectionJobs = append(n.Edges.NoteConnectionJobs, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -1144,6 +1236,66 @@ func (_q *UserQuery) loadMcpImages(ctx context.Context, query *MCPImageQuery, no
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_mcp_images" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadNoteConnectionAccounts(ctx context.Context, query *NoteConnectionAccountQuery, nodes []*User, init func(*User), assign func(*User, *NoteConnectionAccount)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(noteconnectionaccount.FieldUserID)
+	}
+	query.Where(predicate.NoteConnectionAccount(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.NoteConnectionAccountsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadNoteConnectionJobs(ctx context.Context, query *NoteConnectionJobQuery, nodes []*User, init func(*User), assign func(*User, *NoteConnectionJob)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(noteconnectionjob.FieldUserID)
+	}
+	query.Where(predicate.NoteConnectionJob(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.NoteConnectionJobsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

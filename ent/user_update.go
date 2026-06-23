@@ -14,6 +14,8 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -350,6 +352,36 @@ func (_u *UserUpdate) AddMcpImages(v ...*MCPImage) *UserUpdate {
 	return _u.AddMcpImageIDs(ids...)
 }
 
+// AddNoteConnectionAccountIDs adds the "note_connection_accounts" edge to the NoteConnectionAccount entity by IDs.
+func (_u *UserUpdate) AddNoteConnectionAccountIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddNoteConnectionAccountIDs(ids...)
+	return _u
+}
+
+// AddNoteConnectionAccounts adds the "note_connection_accounts" edges to the NoteConnectionAccount entity.
+func (_u *UserUpdate) AddNoteConnectionAccounts(v ...*NoteConnectionAccount) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNoteConnectionAccountIDs(ids...)
+}
+
+// AddNoteConnectionJobIDs adds the "note_connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (_u *UserUpdate) AddNoteConnectionJobIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddNoteConnectionJobIDs(ids...)
+	return _u
+}
+
+// AddNoteConnectionJobs adds the "note_connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *UserUpdate) AddNoteConnectionJobs(v ...*NoteConnectionJob) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNoteConnectionJobIDs(ids...)
+}
+
 // AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by IDs.
 func (_u *UserUpdate) AddNoteLinkIDs(ids ...uuid.UUID) *UserUpdate {
 	_u.mutation.AddNoteLinkIDs(ids...)
@@ -563,6 +595,48 @@ func (_u *UserUpdate) RemoveMcpImages(v ...*MCPImage) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMcpImageIDs(ids...)
+}
+
+// ClearNoteConnectionAccounts clears all "note_connection_accounts" edges to the NoteConnectionAccount entity.
+func (_u *UserUpdate) ClearNoteConnectionAccounts() *UserUpdate {
+	_u.mutation.ClearNoteConnectionAccounts()
+	return _u
+}
+
+// RemoveNoteConnectionAccountIDs removes the "note_connection_accounts" edge to NoteConnectionAccount entities by IDs.
+func (_u *UserUpdate) RemoveNoteConnectionAccountIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveNoteConnectionAccountIDs(ids...)
+	return _u
+}
+
+// RemoveNoteConnectionAccounts removes "note_connection_accounts" edges to NoteConnectionAccount entities.
+func (_u *UserUpdate) RemoveNoteConnectionAccounts(v ...*NoteConnectionAccount) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNoteConnectionAccountIDs(ids...)
+}
+
+// ClearNoteConnectionJobs clears all "note_connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *UserUpdate) ClearNoteConnectionJobs() *UserUpdate {
+	_u.mutation.ClearNoteConnectionJobs()
+	return _u
+}
+
+// RemoveNoteConnectionJobIDs removes the "note_connection_jobs" edge to NoteConnectionJob entities by IDs.
+func (_u *UserUpdate) RemoveNoteConnectionJobIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveNoteConnectionJobIDs(ids...)
+	return _u
+}
+
+// RemoveNoteConnectionJobs removes "note_connection_jobs" edges to NoteConnectionJob entities.
+func (_u *UserUpdate) RemoveNoteConnectionJobs(v ...*NoteConnectionJob) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNoteConnectionJobIDs(ids...)
 }
 
 // ClearNoteLinks clears all "note_links" edges to the NoteLink entity.
@@ -1130,6 +1204,96 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.NoteConnectionAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNoteConnectionAccountsIDs(); len(nodes) > 0 && !_u.mutation.NoteConnectionAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NoteConnectionAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.NoteConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNoteConnectionJobsIDs(); len(nodes) > 0 && !_u.mutation.NoteConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NoteConnectionJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.NoteLinksCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1505,6 +1669,36 @@ func (_u *UserUpdateOne) AddMcpImages(v ...*MCPImage) *UserUpdateOne {
 	return _u.AddMcpImageIDs(ids...)
 }
 
+// AddNoteConnectionAccountIDs adds the "note_connection_accounts" edge to the NoteConnectionAccount entity by IDs.
+func (_u *UserUpdateOne) AddNoteConnectionAccountIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddNoteConnectionAccountIDs(ids...)
+	return _u
+}
+
+// AddNoteConnectionAccounts adds the "note_connection_accounts" edges to the NoteConnectionAccount entity.
+func (_u *UserUpdateOne) AddNoteConnectionAccounts(v ...*NoteConnectionAccount) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNoteConnectionAccountIDs(ids...)
+}
+
+// AddNoteConnectionJobIDs adds the "note_connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (_u *UserUpdateOne) AddNoteConnectionJobIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddNoteConnectionJobIDs(ids...)
+	return _u
+}
+
+// AddNoteConnectionJobs adds the "note_connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *UserUpdateOne) AddNoteConnectionJobs(v ...*NoteConnectionJob) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNoteConnectionJobIDs(ids...)
+}
+
 // AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by IDs.
 func (_u *UserUpdateOne) AddNoteLinkIDs(ids ...uuid.UUID) *UserUpdateOne {
 	_u.mutation.AddNoteLinkIDs(ids...)
@@ -1718,6 +1912,48 @@ func (_u *UserUpdateOne) RemoveMcpImages(v ...*MCPImage) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMcpImageIDs(ids...)
+}
+
+// ClearNoteConnectionAccounts clears all "note_connection_accounts" edges to the NoteConnectionAccount entity.
+func (_u *UserUpdateOne) ClearNoteConnectionAccounts() *UserUpdateOne {
+	_u.mutation.ClearNoteConnectionAccounts()
+	return _u
+}
+
+// RemoveNoteConnectionAccountIDs removes the "note_connection_accounts" edge to NoteConnectionAccount entities by IDs.
+func (_u *UserUpdateOne) RemoveNoteConnectionAccountIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveNoteConnectionAccountIDs(ids...)
+	return _u
+}
+
+// RemoveNoteConnectionAccounts removes "note_connection_accounts" edges to NoteConnectionAccount entities.
+func (_u *UserUpdateOne) RemoveNoteConnectionAccounts(v ...*NoteConnectionAccount) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNoteConnectionAccountIDs(ids...)
+}
+
+// ClearNoteConnectionJobs clears all "note_connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *UserUpdateOne) ClearNoteConnectionJobs() *UserUpdateOne {
+	_u.mutation.ClearNoteConnectionJobs()
+	return _u
+}
+
+// RemoveNoteConnectionJobIDs removes the "note_connection_jobs" edge to NoteConnectionJob entities by IDs.
+func (_u *UserUpdateOne) RemoveNoteConnectionJobIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveNoteConnectionJobIDs(ids...)
+	return _u
+}
+
+// RemoveNoteConnectionJobs removes "note_connection_jobs" edges to NoteConnectionJob entities.
+func (_u *UserUpdateOne) RemoveNoteConnectionJobs(v ...*NoteConnectionJob) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNoteConnectionJobIDs(ids...)
 }
 
 // ClearNoteLinks clears all "note_links" edges to the NoteLink entity.
@@ -2308,6 +2544,96 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.NoteConnectionAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNoteConnectionAccountsIDs(); len(nodes) > 0 && !_u.mutation.NoteConnectionAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NoteConnectionAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.NoteConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNoteConnectionJobsIDs(); len(nodes) > 0 && !_u.mutation.NoteConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NoteConnectionJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

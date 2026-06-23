@@ -16,6 +16,10 @@ type Tx struct {
 	Attachment *AttachmentClient
 	// BackupConfig is the client for interacting with the BackupConfig builders.
 	BackupConfig *BackupConfigClient
+	// BackupTarget is the client for interacting with the BackupTarget builders.
+	BackupTarget *BackupTargetClient
+	// BackupTask is the client for interacting with the BackupTask builders.
+	BackupTask *BackupTaskClient
 	// ExcalidrawLibrary is the client for interacting with the ExcalidrawLibrary builders.
 	ExcalidrawLibrary *ExcalidrawLibraryClient
 	// Folder is the client for interacting with the Folder builders.
@@ -32,6 +36,12 @@ type Tx struct {
 	MCPToken *MCPTokenClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
+	// NoteConnectionAccount is the client for interacting with the NoteConnectionAccount builders.
+	NoteConnectionAccount *NoteConnectionAccountClient
+	// NoteConnectionItemMap is the client for interacting with the NoteConnectionItemMap builders.
+	NoteConnectionItemMap *NoteConnectionItemMapClient
+	// NoteConnectionJob is the client for interacting with the NoteConnectionJob builders.
+	NoteConnectionJob *NoteConnectionJobClient
 	// NoteLink is the client for interacting with the NoteLink builders.
 	NoteLink *NoteLinkClient
 	// Tag is the client for interacting with the Tag builders.
@@ -173,6 +183,8 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Attachment = NewAttachmentClient(tx.config)
 	tx.BackupConfig = NewBackupConfigClient(tx.config)
+	tx.BackupTarget = NewBackupTargetClient(tx.config)
+	tx.BackupTask = NewBackupTaskClient(tx.config)
 	tx.ExcalidrawLibrary = NewExcalidrawLibraryClient(tx.config)
 	tx.Folder = NewFolderClient(tx.config)
 	tx.Font = NewFontClient(tx.config)
@@ -181,6 +193,9 @@ func (tx *Tx) init() {
 	tx.MCPImage = NewMCPImageClient(tx.config)
 	tx.MCPToken = NewMCPTokenClient(tx.config)
 	tx.Note = NewNoteClient(tx.config)
+	tx.NoteConnectionAccount = NewNoteConnectionAccountClient(tx.config)
+	tx.NoteConnectionItemMap = NewNoteConnectionItemMapClient(tx.config)
+	tx.NoteConnectionJob = NewNoteConnectionJobClient(tx.config)
 	tx.NoteLink = NewNoteLinkClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)

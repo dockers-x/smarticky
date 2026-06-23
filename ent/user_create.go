@@ -14,6 +14,8 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -322,6 +324,36 @@ func (_c *UserCreate) AddMcpImages(v ...*MCPImage) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddMcpImageIDs(ids...)
+}
+
+// AddNoteConnectionAccountIDs adds the "note_connection_accounts" edge to the NoteConnectionAccount entity by IDs.
+func (_c *UserCreate) AddNoteConnectionAccountIDs(ids ...int) *UserCreate {
+	_c.mutation.AddNoteConnectionAccountIDs(ids...)
+	return _c
+}
+
+// AddNoteConnectionAccounts adds the "note_connection_accounts" edges to the NoteConnectionAccount entity.
+func (_c *UserCreate) AddNoteConnectionAccounts(v ...*NoteConnectionAccount) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddNoteConnectionAccountIDs(ids...)
+}
+
+// AddNoteConnectionJobIDs adds the "note_connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (_c *UserCreate) AddNoteConnectionJobIDs(ids ...int) *UserCreate {
+	_c.mutation.AddNoteConnectionJobIDs(ids...)
+	return _c
+}
+
+// AddNoteConnectionJobs adds the "note_connection_jobs" edges to the NoteConnectionJob entity.
+func (_c *UserCreate) AddNoteConnectionJobs(v ...*NoteConnectionJob) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddNoteConnectionJobIDs(ids...)
 }
 
 // AddNoteLinkIDs adds the "note_links" edge to the NoteLink entity by IDs.
@@ -665,6 +697,38 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(mcpimage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.NoteConnectionAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionAccountsTable,
+			Columns: []string{user.NoteConnectionAccountsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionaccount.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.NoteConnectionJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteConnectionJobsTable,
+			Columns: []string{user.NoteConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

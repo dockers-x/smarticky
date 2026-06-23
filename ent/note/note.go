@@ -56,6 +56,10 @@ const (
 	EdgeOutgoingLinks = "outgoing_links"
 	// EdgeBacklinks holds the string denoting the backlinks edge name in mutations.
 	EdgeBacklinks = "backlinks"
+	// EdgeConnectionMaps holds the string denoting the connection_maps edge name in mutations.
+	EdgeConnectionMaps = "connection_maps"
+	// EdgeConnectionJobs holds the string denoting the connection_jobs edge name in mutations.
+	EdgeConnectionJobs = "connection_jobs"
 	// EdgeTags holds the string denoting the tags edge name in mutations.
 	EdgeTags = "tags"
 	// Table holds the table name of the note in the database.
@@ -102,6 +106,20 @@ const (
 	BacklinksInverseTable = "note_links"
 	// BacklinksColumn is the table column denoting the backlinks relation/edge.
 	BacklinksColumn = "target_note_id"
+	// ConnectionMapsTable is the table that holds the connection_maps relation/edge.
+	ConnectionMapsTable = "note_connection_item_maps"
+	// ConnectionMapsInverseTable is the table name for the NoteConnectionItemMap entity.
+	// It exists in this package in order to avoid circular dependency with the "noteconnectionitemmap" package.
+	ConnectionMapsInverseTable = "note_connection_item_maps"
+	// ConnectionMapsColumn is the table column denoting the connection_maps relation/edge.
+	ConnectionMapsColumn = "note_id"
+	// ConnectionJobsTable is the table that holds the connection_jobs relation/edge.
+	ConnectionJobsTable = "note_connection_jobs"
+	// ConnectionJobsInverseTable is the table name for the NoteConnectionJob entity.
+	// It exists in this package in order to avoid circular dependency with the "noteconnectionjob" package.
+	ConnectionJobsInverseTable = "note_connection_jobs"
+	// ConnectionJobsColumn is the table column denoting the connection_jobs relation/edge.
+	ConnectionJobsColumn = "note_id"
 	// TagsTable is the table that holds the tags relation/edge. The primary key declared below.
 	TagsTable = "note_tags"
 	// TagsInverseTable is the table name for the Tag entity.
@@ -350,6 +368,34 @@ func ByBacklinks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByConnectionMapsCount orders the results by connection_maps count.
+func ByConnectionMapsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newConnectionMapsStep(), opts...)
+	}
+}
+
+// ByConnectionMaps orders the results by connection_maps terms.
+func ByConnectionMaps(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newConnectionMapsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByConnectionJobsCount orders the results by connection_jobs count.
+func ByConnectionJobsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newConnectionJobsStep(), opts...)
+	}
+}
+
+// ByConnectionJobs orders the results by connection_jobs terms.
+func ByConnectionJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newConnectionJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByTagsCount orders the results by tags count.
 func ByTagsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -403,6 +449,20 @@ func newBacklinksStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(BacklinksInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, BacklinksTable, BacklinksColumn),
+	)
+}
+func newConnectionMapsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ConnectionMapsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ConnectionMapsTable, ConnectionMapsColumn),
+	)
+}
+func newConnectionJobsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ConnectionJobsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ConnectionJobsTable, ConnectionJobsColumn),
 	)
 }
 func newTagsStep() *sqlgraph.Step {

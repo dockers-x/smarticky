@@ -202,6 +202,20 @@ func (_c *BackupConfigCreate) SetNillableFolderMaxDepth(v *int) *BackupConfigCre
 	return _c
 }
 
+// SetBackupTargetsMigrated sets the "backup_targets_migrated" field.
+func (_c *BackupConfigCreate) SetBackupTargetsMigrated(v bool) *BackupConfigCreate {
+	_c.mutation.SetBackupTargetsMigrated(v)
+	return _c
+}
+
+// SetNillableBackupTargetsMigrated sets the "backup_targets_migrated" field if the given value is not nil.
+func (_c *BackupConfigCreate) SetNillableBackupTargetsMigrated(v *bool) *BackupConfigCreate {
+	if v != nil {
+		_c.SetBackupTargetsMigrated(*v)
+	}
+	return _c
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_c *BackupConfigCreate) SetLastBackupAt(v time.Time) *BackupConfigCreate {
 	_c.mutation.SetLastBackupAt(v)
@@ -299,6 +313,10 @@ func (_c *BackupConfigCreate) defaults() {
 		v := backupconfig.DefaultFolderMaxDepth
 		_c.mutation.SetFolderMaxDepth(v)
 	}
+	if _, ok := _c.mutation.BackupTargetsMigrated(); !ok {
+		v := backupconfig.DefaultBackupTargetsMigrated
+		_c.mutation.SetBackupTargetsMigrated(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := backupconfig.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -325,6 +343,9 @@ func (_c *BackupConfigCreate) check() error {
 	}
 	if _, ok := _c.mutation.FolderMaxDepth(); !ok {
 		return &ValidationError{Name: "folder_max_depth", err: errors.New(`ent: missing required field "BackupConfig.folder_max_depth"`)}
+	}
+	if _, ok := _c.mutation.BackupTargetsMigrated(); !ok {
+		return &ValidationError{Name: "backup_targets_migrated", err: errors.New(`ent: missing required field "BackupConfig.backup_targets_migrated"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "BackupConfig.created_at"`)}
@@ -409,6 +430,10 @@ func (_c *BackupConfigCreate) createSpec() (*BackupConfig, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.FolderMaxDepth(); ok {
 		_spec.SetField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
 		_node.FolderMaxDepth = value
+	}
+	if value, ok := _c.mutation.BackupTargetsMigrated(); ok {
+		_spec.SetField(backupconfig.FieldBackupTargetsMigrated, field.TypeBool, value)
+		_node.BackupTargetsMigrated = value
 	}
 	if value, ok := _c.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)

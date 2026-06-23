@@ -11,12 +11,14 @@ require (
 	github.com/blevesearch/bleve/v2 v2.6.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
+	github.com/jomei/notionapi v1.13.3
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/lib-x/enex v1.1.0
 	github.com/lib-x/entsqlite v0.1.6
+	github.com/lib-x/siyuan v0.1.0
+	github.com/lib-x/timewheel v0.4.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/o1egl/govatar v0.4.1
-	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/afero v1.15.0
 	github.com/studio-b12/gowebdav v0.11.0
 	go.uber.org/zap v1.27.1

@@ -734,6 +734,136 @@ h6 {
   font-weight: 500;
 }
 
+.backup-list {
+  display: grid;
+  gap: 8px;
+}
+
+.backup-list-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-card);
+  padding: 12px;
+}
+
+.backup-list-row > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.backup-list-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-list-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-editor {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 14px;
+}
+
+.backup-target-picker {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-card);
+  padding: 12px;
+}
+
+.backup-target-picker > strong {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.backup-target-picker label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.backup-target-picker input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-brand);
+}
+
+.backup-restore-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 32%);
+  padding: 20px;
+}
+
+.backup-restore-dialog__panel {
+  width: min(560px, 100%);
+  max-height: min(720px, 92vh);
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--color-divider));
+  border-radius: 8px;
+  background: var(--color-card);
+  padding: 18px;
+  box-shadow: 0 18px 48px rgb(var(--color-shadow) / 22%);
+}
+
+.backup-restore-dialog__panel p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.backup-restore-dialog__input {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.backup-restore-dialog__input input {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  outline: 1px solid color-mix(in srgb, var(--color-danger) 36%, transparent);
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
 .font-preview {
   border: 1px solid var(--color-divider);
   border-radius: 8px;

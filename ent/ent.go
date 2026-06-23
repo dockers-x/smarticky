@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/backuptarget"
+	"smarticky/ent/backuptask"
 	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/folder"
 	"smarticky/ent/font"
@@ -17,6 +19,9 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -86,20 +91,25 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			attachment.Table:        attachment.ValidColumn,
-			backupconfig.Table:      backupconfig.ValidColumn,
-			excalidrawlibrary.Table: excalidrawlibrary.ValidColumn,
-			folder.Table:            folder.ValidColumn,
-			font.Table:              font.ValidColumn,
-			importitem.Table:        importitem.ValidColumn,
-			importjob.Table:         importjob.ValidColumn,
-			mcpimage.Table:          mcpimage.ValidColumn,
-			mcptoken.Table:          mcptoken.ValidColumn,
-			note.Table:              note.ValidColumn,
-			notelink.Table:          notelink.ValidColumn,
-			tag.Table:               tag.ValidColumn,
-			user.Table:              user.ValidColumn,
-			whiteboard.Table:        whiteboard.ValidColumn,
+			attachment.Table:            attachment.ValidColumn,
+			backupconfig.Table:          backupconfig.ValidColumn,
+			backuptarget.Table:          backuptarget.ValidColumn,
+			backuptask.Table:            backuptask.ValidColumn,
+			excalidrawlibrary.Table:     excalidrawlibrary.ValidColumn,
+			folder.Table:                folder.ValidColumn,
+			font.Table:                  font.ValidColumn,
+			importitem.Table:            importitem.ValidColumn,
+			importjob.Table:             importjob.ValidColumn,
+			mcpimage.Table:              mcpimage.ValidColumn,
+			mcptoken.Table:              mcptoken.ValidColumn,
+			note.Table:                  note.ValidColumn,
+			noteconnectionaccount.Table: noteconnectionaccount.ValidColumn,
+			noteconnectionitemmap.Table: noteconnectionitemmap.ValidColumn,
+			noteconnectionjob.Table:     noteconnectionjob.ValidColumn,
+			notelink.Table:              notelink.ValidColumn,
+			tag.Table:                   tag.ValidColumn,
+			user.Table:                  user.ValidColumn,
+			whiteboard.Table:            whiteboard.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

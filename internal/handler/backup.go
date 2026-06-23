@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,16 +17,25 @@ import (
 	"time"
 
 	"smarticky/ent"
+	"smarticky/ent/backuptask"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/robfig/cron/v3"
+	"github.com/lib-x/timewheel/scheduler"
 	"github.com/spf13/afero"
 	"github.com/studio-b12/gowebdav"
 )
+
+type backupScheduleData struct {
+	TaskID   int
+	Enabled  bool
+	Schedule string
+}
+
+var errBackupSchedulerUnavailable = errors.New("backup scheduler is not running")
 
 // getDBPath returns the database file path
 func (h *Handler) getDBPath() string {
@@ -124,7 +134,15 @@ func (h *Handler) createBackupArchive() (*bytes.Buffer, error) {
 	// Add uploads directory recursively
 	uploadsDir := filepath.Join(dataDir, "uploads")
 	exists, _ := h.fs.Exists(uploadsDir)
-	if exists {
+	if !exists {
+		if err := tarWriter.WriteHeader(&tar.Header{
+			Name:     "uploads",
+			Typeflag: tar.TypeDir,
+			Mode:     0755,
+		}); err != nil {
+			return nil, fmt.Errorf("failed to add empty uploads directory: %w", err)
+		}
+	} else {
 		err := afero.Walk(fs, uploadsDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -175,6 +193,9 @@ func (h *Handler) extractBackupArchive(data []byte) error {
 			return fmt.Errorf("failed to read tar header: %w", err)
 		}
 
+		if err := validateBackupArchiveName(header.Name); err != nil {
+			return err
+		}
 		target, err := safeArchiveTarget(dataDir, header.Name)
 		if err != nil {
 			return err
@@ -209,6 +230,17 @@ func safeArchiveTarget(dataDir, name string) (string, error) {
 	}
 
 	return filepath.Join(dataDir, filepath.FromSlash(cleanName)), nil
+}
+
+func validateBackupArchiveName(name string) error {
+	if _, err := safeArchiveTarget("/", name); err != nil {
+		return err
+	}
+	cleanName := path.Clean(strings.ReplaceAll(name, "\\", "/"))
+	if cleanName == "smarticky.db" || cleanName == "uploads" || strings.HasPrefix(cleanName, "uploads/") {
+		return nil
+	}
+	return fmt.Errorf("invalid backup archive entry %q", name)
 }
 
 func isBackupFilename(name string) bool {
@@ -691,48 +723,165 @@ func (h *Handler) performAutoBackup() {
 	fmt.Println("Auto backup failed: no valid backup backend configured")
 }
 
-// StartAutoBackup initializes and starts the automatic backup scheduler
-func (h *Handler) StartAutoBackup() *cron.Cron {
-	c := cron.New()
+// StartAutoBackup initializes and starts the automatic backup scheduler.
+func (h *Handler) StartAutoBackup() *scheduler.Scheduler[int, backupScheduleData] {
+	ctx := context.Background()
+	if err := h.ensureBackupTargetsMigrated(ctx); err != nil {
+		fmt.Printf("Failed to prepare auto backup scheduler: %v\n", err)
+		return nil
+	}
 
-	// Run every day at 2 AM to check if backup is needed
-	c.AddFunc("0 2 * * *", func() {
-		ctx := context.Background()
+	s, err := scheduler.NewScheduler[int, backupScheduleData](
+		scheduler.Options[int, backupScheduleData]{
+			Next: nextBackupRun,
+			Run:  h.runScheduledBackupTask,
+			OnFinish: func(key int, _ backupScheduleData, err error) {
+				if err != nil {
+					fmt.Printf("Auto backup task %d failed: %v\n", key, err)
+				}
+			},
+			OnInvalid: func(key int, _ backupScheduleData, err error) {
+				fmt.Printf("Auto backup task %d has invalid schedule: %v\n", key, err)
+			},
+		},
+		scheduler.WithWheel(time.Minute, 24*60),
+		scheduler.WithReschedulePolicy(scheduler.RescheduleAfterFinish),
+	)
+	if err != nil {
+		fmt.Printf("Failed to create auto backup scheduler: %v\n", err)
+		return nil
+	}
 
-		config, err := h.client.BackupConfig.Query().First(ctx)
-		if err != nil || !config.AutoBackupEnabled {
-			return
-		}
+	tasks, err := h.client.BackupTask.Query().All(ctx)
+	if err != nil {
+		fmt.Printf("Failed to load auto backup tasks: %v\n", err)
+		return nil
+	}
+	items := make([]scheduler.Item[int, backupScheduleData], 0, len(tasks))
+	for _, task := range tasks {
+		items = append(items, scheduler.Item[int, backupScheduleData]{
+			Key:  task.ID,
+			Data: backupScheduleDataFromTask(task),
+		})
+	}
+	if err := s.ReplaceAll(items); err != nil {
+		fmt.Printf("Failed to register auto backup tasks: %v\n", err)
+		return nil
+	}
+	if err := s.Start(ctx); err != nil {
+		fmt.Printf("Failed to start auto backup scheduler: %v\n", err)
+		return nil
+	}
+	h.backupScheduler = s
 
-		now := time.Now()
-
-		// Determine if backup is needed based on schedule
-		shouldBackup := false
-
-		switch config.BackupSchedule {
-		case "daily":
-			// Always backup on daily schedule
-			shouldBackup = true
-
-		case "weekly":
-			// Backup only on Sunday
-			if now.Weekday() == time.Sunday {
-				shouldBackup = true
-			}
-
-		case "manual":
-			// Manual mode - skip auto backup
-			shouldBackup = false
-		}
-
-		if shouldBackup {
-			h.performAutoBackup()
-		}
-	})
-
-	c.Start()
 	fmt.Println("Auto backup scheduler started")
-	return c
+	return s
+}
+
+func (h *Handler) runScheduledBackupTask(ctx context.Context, taskID int, _ backupScheduleData) error {
+	task, err := h.client.BackupTask.Query().
+		Where(backuptask.ID(taskID), backuptask.Enabled(true)).
+		WithTargets().
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if task.Schedule == "manual" {
+		return nil
+	}
+	_, err = h.runBackupTask(ctx, task, true)
+	return err
+}
+
+func nextBackupRun(now time.Time, _ int, data backupScheduleData) (time.Time, bool, error) {
+	if !data.Enabled || data.Schedule == "manual" {
+		return time.Time{}, false, nil
+	}
+	if !validBackupSchedule(data.Schedule) {
+		return time.Time{}, false, fmt.Errorf("unknown backup schedule %q", data.Schedule)
+	}
+	return nextBackupScheduleTime(data.Schedule, now), true, nil
+}
+
+func nextBackupScheduleTime(schedule string, now time.Time) time.Time {
+	switch schedule {
+	case "weekly":
+		return nextWeeklyBackupTime(now)
+	case "monthly":
+		return nextMonthlyBackupTime(now)
+	default:
+		return nextDailyBackupTime(now)
+	}
+}
+
+func nextDailyBackupTime(now time.Time) time.Time {
+	next := scheduledBackupTime(now)
+	if !next.After(now) {
+		next = next.AddDate(0, 0, 1)
+	}
+	return next
+}
+
+func nextWeeklyBackupTime(now time.Time) time.Time {
+	daysUntilSunday := (int(time.Sunday) - int(now.Weekday()) + 7) % 7
+	next := scheduledBackupTime(now.AddDate(0, 0, daysUntilSunday))
+	if !next.After(now) {
+		next = next.AddDate(0, 0, 7)
+	}
+	return next
+}
+
+func nextMonthlyBackupTime(now time.Time) time.Time {
+	next := time.Date(now.Year(), now.Month(), 1, 2, 0, 0, 0, now.Location())
+	if !next.After(now) {
+		next = next.AddDate(0, 1, 0)
+	}
+	return next
+}
+
+func scheduledBackupTime(day time.Time) time.Time {
+	return time.Date(day.Year(), day.Month(), day.Day(), 2, 0, 0, 0, day.Location())
+}
+
+func backupScheduleDataFromTask(task *ent.BackupTask) backupScheduleData {
+	return backupScheduleData{
+		TaskID:   task.ID,
+		Enabled:  task.Enabled,
+		Schedule: task.Schedule,
+	}
+}
+
+func (h *Handler) upsertBackupTaskSchedule(task *ent.BackupTask) error {
+	if h.backupScheduler == nil {
+		if task.Enabled && task.Schedule != "manual" {
+			return errBackupSchedulerUnavailable
+		}
+		return nil
+	}
+	return h.backupScheduler.Upsert(scheduler.Item[int, backupScheduleData]{
+		Key:  task.ID,
+		Data: backupScheduleDataFromTask(task),
+	})
+}
+
+func (h *Handler) removeBackupTaskSchedule(taskID int) error {
+	if h.backupScheduler == nil {
+		return nil
+	}
+	return h.backupScheduler.Remove(taskID)
+}
+
+func (h *Handler) backupTaskNextRunAt(task *ent.BackupTask) *time.Time {
+	if h.backupScheduler == nil {
+		return nil
+	}
+	if runtime, ok := h.backupScheduler.Snapshot()[task.ID]; ok && runtime.NextRunAt != nil {
+		return runtime.NextRunAt
+	}
+	return nil
 }
 
 // BackupFileInfo represents information about a backup file
@@ -996,6 +1145,10 @@ func (h *Handler) verifyBackupData(data []byte) BackupVerificationResult {
 			return result
 		}
 
+		if err := validateBackupArchiveName(header.Name); err != nil {
+			result.Error = err.Error()
+			return result
+		}
 		target, err := safeArchiveTarget("/", header.Name)
 		if err != nil {
 			result.Error = err.Error()

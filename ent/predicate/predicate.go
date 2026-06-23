@@ -12,6 +12,12 @@ type Attachment func(*sql.Selector)
 // BackupConfig is the predicate function for backupconfig builders.
 type BackupConfig func(*sql.Selector)
 
+// BackupTarget is the predicate function for backuptarget builders.
+type BackupTarget func(*sql.Selector)
+
+// BackupTask is the predicate function for backuptask builders.
+type BackupTask func(*sql.Selector)
+
 // ExcalidrawLibrary is the predicate function for excalidrawlibrary builders.
 type ExcalidrawLibrary func(*sql.Selector)
 
@@ -35,6 +41,15 @@ type MCPToken func(*sql.Selector)
 
 // Note is the predicate function for note builders.
 type Note func(*sql.Selector)
+
+// NoteConnectionAccount is the predicate function for noteconnectionaccount builders.
+type NoteConnectionAccount func(*sql.Selector)
+
+// NoteConnectionItemMap is the predicate function for noteconnectionitemmap builders.
+type NoteConnectionItemMap func(*sql.Selector)
+
+// NoteConnectionJob is the predicate function for noteconnectionjob builders.
+type NoteConnectionJob func(*sql.Selector)
 
 // NoteLink is the predicate function for notelink builders.
 type NoteLink func(*sql.Selector)

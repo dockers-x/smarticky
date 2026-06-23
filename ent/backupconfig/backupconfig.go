@@ -39,6 +39,8 @@ const (
 	FieldBackupMaxCount = "backup_max_count"
 	// FieldFolderMaxDepth holds the string denoting the folder_max_depth field in the database.
 	FieldFolderMaxDepth = "folder_max_depth"
+	// FieldBackupTargetsMigrated holds the string denoting the backup_targets_migrated field in the database.
+	FieldBackupTargetsMigrated = "backup_targets_migrated"
 	// FieldLastBackupAt holds the string denoting the last_backup_at field in the database.
 	FieldLastBackupAt = "last_backup_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -65,6 +67,7 @@ var Columns = []string{
 	FieldBackupRetentionDays,
 	FieldBackupMaxCount,
 	FieldFolderMaxDepth,
+	FieldBackupTargetsMigrated,
 	FieldLastBackupAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -91,6 +94,8 @@ var (
 	DefaultBackupMaxCount int
 	// DefaultFolderMaxDepth holds the default value on creation for the "folder_max_depth" field.
 	DefaultFolderMaxDepth int
+	// DefaultBackupTargetsMigrated holds the default value on creation for the "backup_targets_migrated" field.
+	DefaultBackupTargetsMigrated bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -170,6 +175,11 @@ func ByBackupMaxCount(opts ...sql.OrderTermOption) OrderOption {
 // ByFolderMaxDepth orders the results by the folder_max_depth field.
 func ByFolderMaxDepth(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFolderMaxDepth, opts...).ToFunc()
+}
+
+// ByBackupTargetsMigrated orders the results by the backup_targets_migrated field.
+func ByBackupTargetsMigrated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBackupTargetsMigrated, opts...).ToFunc()
 }
 
 // ByLastBackupAt orders the results by the last_backup_at field.

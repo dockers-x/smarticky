@@ -279,6 +279,20 @@ func (_u *BackupConfigUpdate) AddFolderMaxDepth(v int) *BackupConfigUpdate {
 	return _u
 }
 
+// SetBackupTargetsMigrated sets the "backup_targets_migrated" field.
+func (_u *BackupConfigUpdate) SetBackupTargetsMigrated(v bool) *BackupConfigUpdate {
+	_u.mutation.SetBackupTargetsMigrated(v)
+	return _u
+}
+
+// SetNillableBackupTargetsMigrated sets the "backup_targets_migrated" field if the given value is not nil.
+func (_u *BackupConfigUpdate) SetNillableBackupTargetsMigrated(v *bool) *BackupConfigUpdate {
+	if v != nil {
+		_u.SetBackupTargetsMigrated(*v)
+	}
+	return _u
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_u *BackupConfigUpdate) SetLastBackupAt(v time.Time) *BackupConfigUpdate {
 	_u.mutation.SetLastBackupAt(v)
@@ -440,6 +454,9 @@ func (_u *BackupConfigUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.AddedFolderMaxDepth(); ok {
 		_spec.AddField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.BackupTargetsMigrated(); ok {
+		_spec.SetField(backupconfig.FieldBackupTargetsMigrated, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)
@@ -724,6 +741,20 @@ func (_u *BackupConfigUpdateOne) AddFolderMaxDepth(v int) *BackupConfigUpdateOne
 	return _u
 }
 
+// SetBackupTargetsMigrated sets the "backup_targets_migrated" field.
+func (_u *BackupConfigUpdateOne) SetBackupTargetsMigrated(v bool) *BackupConfigUpdateOne {
+	_u.mutation.SetBackupTargetsMigrated(v)
+	return _u
+}
+
+// SetNillableBackupTargetsMigrated sets the "backup_targets_migrated" field if the given value is not nil.
+func (_u *BackupConfigUpdateOne) SetNillableBackupTargetsMigrated(v *bool) *BackupConfigUpdateOne {
+	if v != nil {
+		_u.SetBackupTargetsMigrated(*v)
+	}
+	return _u
+}
+
 // SetLastBackupAt sets the "last_backup_at" field.
 func (_u *BackupConfigUpdateOne) SetLastBackupAt(v time.Time) *BackupConfigUpdateOne {
 	_u.mutation.SetLastBackupAt(v)
@@ -915,6 +946,9 @@ func (_u *BackupConfigUpdateOne) sqlSave(ctx context.Context) (_node *BackupConf
 	}
 	if value, ok := _u.mutation.AddedFolderMaxDepth(); ok {
 		_spec.AddField(backupconfig.FieldFolderMaxDepth, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.BackupTargetsMigrated(); ok {
+		_spec.SetField(backupconfig.FieldBackupTargetsMigrated, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.LastBackupAt(); ok {
 		_spec.SetField(backupconfig.FieldLastBackupAt, field.TypeTime, value)

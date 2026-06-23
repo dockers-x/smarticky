@@ -1044,6 +1044,52 @@ func HasBacklinksWith(preds ...predicate.NoteLink) predicate.Note {
 	})
 }
 
+// HasConnectionMaps applies the HasEdge predicate on the "connection_maps" edge.
+func HasConnectionMaps() predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ConnectionMapsTable, ConnectionMapsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasConnectionMapsWith applies the HasEdge predicate on the "connection_maps" edge with a given conditions (other predicates).
+func HasConnectionMapsWith(preds ...predicate.NoteConnectionItemMap) predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := newConnectionMapsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasConnectionJobs applies the HasEdge predicate on the "connection_jobs" edge.
+func HasConnectionJobs() predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ConnectionJobsTable, ConnectionJobsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasConnectionJobsWith applies the HasEdge predicate on the "connection_jobs" edge with a given conditions (other predicates).
+func HasConnectionJobsWith(preds ...predicate.NoteConnectionJob) predicate.Note {
+	return predicate.Note(func(s *sql.Selector) {
+		step := newConnectionJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTags applies the HasEdge predicate on the "tags" edge.
 func HasTags() predicate.Note {
 	return predicate.Note(func(s *sql.Selector) {

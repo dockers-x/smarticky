@@ -9,6 +9,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -369,6 +371,36 @@ func (_u *NoteUpdate) AddBacklinks(v ...*NoteLink) *NoteUpdate {
 	return _u.AddBacklinkIDs(ids...)
 }
 
+// AddConnectionMapIDs adds the "connection_maps" edge to the NoteConnectionItemMap entity by IDs.
+func (_u *NoteUpdate) AddConnectionMapIDs(ids ...int) *NoteUpdate {
+	_u.mutation.AddConnectionMapIDs(ids...)
+	return _u
+}
+
+// AddConnectionMaps adds the "connection_maps" edges to the NoteConnectionItemMap entity.
+func (_u *NoteUpdate) AddConnectionMaps(v ...*NoteConnectionItemMap) *NoteUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConnectionMapIDs(ids...)
+}
+
+// AddConnectionJobIDs adds the "connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (_u *NoteUpdate) AddConnectionJobIDs(ids ...int) *NoteUpdate {
+	_u.mutation.AddConnectionJobIDs(ids...)
+	return _u
+}
+
+// AddConnectionJobs adds the "connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *NoteUpdate) AddConnectionJobs(v ...*NoteConnectionJob) *NoteUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConnectionJobIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *NoteUpdate) AddTagIDs(ids ...uuid.UUID) *NoteUpdate {
 	_u.mutation.AddTagIDs(ids...)
@@ -483,6 +515,48 @@ func (_u *NoteUpdate) RemoveBacklinks(v ...*NoteLink) *NoteUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveBacklinkIDs(ids...)
+}
+
+// ClearConnectionMaps clears all "connection_maps" edges to the NoteConnectionItemMap entity.
+func (_u *NoteUpdate) ClearConnectionMaps() *NoteUpdate {
+	_u.mutation.ClearConnectionMaps()
+	return _u
+}
+
+// RemoveConnectionMapIDs removes the "connection_maps" edge to NoteConnectionItemMap entities by IDs.
+func (_u *NoteUpdate) RemoveConnectionMapIDs(ids ...int) *NoteUpdate {
+	_u.mutation.RemoveConnectionMapIDs(ids...)
+	return _u
+}
+
+// RemoveConnectionMaps removes "connection_maps" edges to NoteConnectionItemMap entities.
+func (_u *NoteUpdate) RemoveConnectionMaps(v ...*NoteConnectionItemMap) *NoteUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConnectionMapIDs(ids...)
+}
+
+// ClearConnectionJobs clears all "connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *NoteUpdate) ClearConnectionJobs() *NoteUpdate {
+	_u.mutation.ClearConnectionJobs()
+	return _u
+}
+
+// RemoveConnectionJobIDs removes the "connection_jobs" edge to NoteConnectionJob entities by IDs.
+func (_u *NoteUpdate) RemoveConnectionJobIDs(ids ...int) *NoteUpdate {
+	_u.mutation.RemoveConnectionJobIDs(ids...)
+	return _u
+}
+
+// RemoveConnectionJobs removes "connection_jobs" edges to NoteConnectionJob entities.
+func (_u *NoteUpdate) RemoveConnectionJobs(v ...*NoteConnectionJob) *NoteUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConnectionJobIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -861,6 +935,96 @@ func (_u *NoteUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConnectionMapsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionMapsTable,
+			Columns: []string{note.ConnectionMapsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionitemmap.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConnectionMapsIDs(); len(nodes) > 0 && !_u.mutation.ConnectionMapsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionMapsTable,
+			Columns: []string{note.ConnectionMapsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionitemmap.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConnectionMapsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionMapsTable,
+			Columns: []string{note.ConnectionMapsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionitemmap.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionJobsTable,
+			Columns: []string{note.ConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConnectionJobsIDs(); len(nodes) > 0 && !_u.mutation.ConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionJobsTable,
+			Columns: []string{note.ConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConnectionJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionJobsTable,
+			Columns: []string{note.ConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1267,6 +1431,36 @@ func (_u *NoteUpdateOne) AddBacklinks(v ...*NoteLink) *NoteUpdateOne {
 	return _u.AddBacklinkIDs(ids...)
 }
 
+// AddConnectionMapIDs adds the "connection_maps" edge to the NoteConnectionItemMap entity by IDs.
+func (_u *NoteUpdateOne) AddConnectionMapIDs(ids ...int) *NoteUpdateOne {
+	_u.mutation.AddConnectionMapIDs(ids...)
+	return _u
+}
+
+// AddConnectionMaps adds the "connection_maps" edges to the NoteConnectionItemMap entity.
+func (_u *NoteUpdateOne) AddConnectionMaps(v ...*NoteConnectionItemMap) *NoteUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConnectionMapIDs(ids...)
+}
+
+// AddConnectionJobIDs adds the "connection_jobs" edge to the NoteConnectionJob entity by IDs.
+func (_u *NoteUpdateOne) AddConnectionJobIDs(ids ...int) *NoteUpdateOne {
+	_u.mutation.AddConnectionJobIDs(ids...)
+	return _u
+}
+
+// AddConnectionJobs adds the "connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *NoteUpdateOne) AddConnectionJobs(v ...*NoteConnectionJob) *NoteUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConnectionJobIDs(ids...)
+}
+
 // AddTagIDs adds the "tags" edge to the Tag entity by IDs.
 func (_u *NoteUpdateOne) AddTagIDs(ids ...uuid.UUID) *NoteUpdateOne {
 	_u.mutation.AddTagIDs(ids...)
@@ -1381,6 +1575,48 @@ func (_u *NoteUpdateOne) RemoveBacklinks(v ...*NoteLink) *NoteUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveBacklinkIDs(ids...)
+}
+
+// ClearConnectionMaps clears all "connection_maps" edges to the NoteConnectionItemMap entity.
+func (_u *NoteUpdateOne) ClearConnectionMaps() *NoteUpdateOne {
+	_u.mutation.ClearConnectionMaps()
+	return _u
+}
+
+// RemoveConnectionMapIDs removes the "connection_maps" edge to NoteConnectionItemMap entities by IDs.
+func (_u *NoteUpdateOne) RemoveConnectionMapIDs(ids ...int) *NoteUpdateOne {
+	_u.mutation.RemoveConnectionMapIDs(ids...)
+	return _u
+}
+
+// RemoveConnectionMaps removes "connection_maps" edges to NoteConnectionItemMap entities.
+func (_u *NoteUpdateOne) RemoveConnectionMaps(v ...*NoteConnectionItemMap) *NoteUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConnectionMapIDs(ids...)
+}
+
+// ClearConnectionJobs clears all "connection_jobs" edges to the NoteConnectionJob entity.
+func (_u *NoteUpdateOne) ClearConnectionJobs() *NoteUpdateOne {
+	_u.mutation.ClearConnectionJobs()
+	return _u
+}
+
+// RemoveConnectionJobIDs removes the "connection_jobs" edge to NoteConnectionJob entities by IDs.
+func (_u *NoteUpdateOne) RemoveConnectionJobIDs(ids ...int) *NoteUpdateOne {
+	_u.mutation.RemoveConnectionJobIDs(ids...)
+	return _u
+}
+
+// RemoveConnectionJobs removes "connection_jobs" edges to NoteConnectionJob entities.
+func (_u *NoteUpdateOne) RemoveConnectionJobs(v ...*NoteConnectionJob) *NoteUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConnectionJobIDs(ids...)
 }
 
 // ClearTags clears all "tags" edges to the Tag entity.
@@ -1789,6 +2025,96 @@ func (_u *NoteUpdateOne) sqlSave(ctx context.Context) (_node *Note, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(notelink.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConnectionMapsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionMapsTable,
+			Columns: []string{note.ConnectionMapsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionitemmap.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConnectionMapsIDs(); len(nodes) > 0 && !_u.mutation.ConnectionMapsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionMapsTable,
+			Columns: []string{note.ConnectionMapsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionitemmap.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConnectionMapsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionMapsTable,
+			Columns: []string{note.ConnectionMapsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionitemmap.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionJobsTable,
+			Columns: []string{note.ConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConnectionJobsIDs(); len(nodes) > 0 && !_u.mutation.ConnectionJobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionJobsTable,
+			Columns: []string{note.ConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConnectionJobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   note.ConnectionJobsTable,
+			Columns: []string{note.ConnectionJobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noteconnectionjob.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

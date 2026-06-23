@@ -68,11 +68,15 @@ type UserEdges struct {
 	McpTokens []*MCPToken `json:"mcp_tokens,omitempty"`
 	// McpImages holds the value of the mcp_images edge.
 	McpImages []*MCPImage `json:"mcp_images,omitempty"`
+	// NoteConnectionAccounts holds the value of the note_connection_accounts edge.
+	NoteConnectionAccounts []*NoteConnectionAccount `json:"note_connection_accounts,omitempty"`
+	// NoteConnectionJobs holds the value of the note_connection_jobs edge.
+	NoteConnectionJobs []*NoteConnectionJob `json:"note_connection_jobs,omitempty"`
 	// NoteLinks holds the value of the note_links edge.
 	NoteLinks []*NoteLink `json:"note_links,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [11]bool
+	loadedTypes [13]bool
 }
 
 // NotesOrErr returns the Notes value or an error if the edge
@@ -167,10 +171,28 @@ func (e UserEdges) McpImagesOrErr() ([]*MCPImage, error) {
 	return nil, &NotLoadedError{edge: "mcp_images"}
 }
 
+// NoteConnectionAccountsOrErr returns the NoteConnectionAccounts value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) NoteConnectionAccountsOrErr() ([]*NoteConnectionAccount, error) {
+	if e.loadedTypes[10] {
+		return e.NoteConnectionAccounts, nil
+	}
+	return nil, &NotLoadedError{edge: "note_connection_accounts"}
+}
+
+// NoteConnectionJobsOrErr returns the NoteConnectionJobs value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) NoteConnectionJobsOrErr() ([]*NoteConnectionJob, error) {
+	if e.loadedTypes[11] {
+		return e.NoteConnectionJobs, nil
+	}
+	return nil, &NotLoadedError{edge: "note_connection_jobs"}
+}
+
 // NoteLinksOrErr returns the NoteLinks value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) NoteLinksOrErr() ([]*NoteLink, error) {
-	if e.loadedTypes[10] {
+	if e.loadedTypes[12] {
 		return e.NoteLinks, nil
 	}
 	return nil, &NotLoadedError{edge: "note_links"}
@@ -336,6 +358,16 @@ func (_m *User) QueryMcpTokens() *MCPTokenQuery {
 // QueryMcpImages queries the "mcp_images" edge of the User entity.
 func (_m *User) QueryMcpImages() *MCPImageQuery {
 	return NewUserClient(_m.config).QueryMcpImages(_m)
+}
+
+// QueryNoteConnectionAccounts queries the "note_connection_accounts" edge of the User entity.
+func (_m *User) QueryNoteConnectionAccounts() *NoteConnectionAccountQuery {
+	return NewUserClient(_m.config).QueryNoteConnectionAccounts(_m)
+}
+
+// QueryNoteConnectionJobs queries the "note_connection_jobs" edge of the User entity.
+func (_m *User) QueryNoteConnectionJobs() *NoteConnectionJobQuery {
+	return NewUserClient(_m.config).QueryNoteConnectionJobs(_m)
 }
 
 // QueryNoteLinks queries the "note_links" edge of the User entity.

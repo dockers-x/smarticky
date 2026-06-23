@@ -5,6 +5,8 @@ package ent
 import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/backuptarget"
+	"smarticky/ent/backuptask"
 	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/folder"
 	"smarticky/ent/font"
@@ -13,6 +15,9 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/schema"
 	"smarticky/ent/tag"
@@ -67,16 +72,88 @@ func init() {
 	backupconfigDescFolderMaxDepth := backupconfigFields[12].Descriptor()
 	// backupconfig.DefaultFolderMaxDepth holds the default value on creation for the folder_max_depth field.
 	backupconfig.DefaultFolderMaxDepth = backupconfigDescFolderMaxDepth.Default.(int)
+	// backupconfigDescBackupTargetsMigrated is the schema descriptor for backup_targets_migrated field.
+	backupconfigDescBackupTargetsMigrated := backupconfigFields[13].Descriptor()
+	// backupconfig.DefaultBackupTargetsMigrated holds the default value on creation for the backup_targets_migrated field.
+	backupconfig.DefaultBackupTargetsMigrated = backupconfigDescBackupTargetsMigrated.Default.(bool)
 	// backupconfigDescCreatedAt is the schema descriptor for created_at field.
-	backupconfigDescCreatedAt := backupconfigFields[14].Descriptor()
+	backupconfigDescCreatedAt := backupconfigFields[15].Descriptor()
 	// backupconfig.DefaultCreatedAt holds the default value on creation for the created_at field.
 	backupconfig.DefaultCreatedAt = backupconfigDescCreatedAt.Default.(func() time.Time)
 	// backupconfigDescUpdatedAt is the schema descriptor for updated_at field.
-	backupconfigDescUpdatedAt := backupconfigFields[15].Descriptor()
+	backupconfigDescUpdatedAt := backupconfigFields[16].Descriptor()
 	// backupconfig.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	backupconfig.DefaultUpdatedAt = backupconfigDescUpdatedAt.Default.(func() time.Time)
 	// backupconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	backupconfig.UpdateDefaultUpdatedAt = backupconfigDescUpdatedAt.UpdateDefault.(func() time.Time)
+	backuptargetFields := schema.BackupTarget{}.Fields()
+	_ = backuptargetFields
+	// backuptargetDescName is the schema descriptor for name field.
+	backuptargetDescName := backuptargetFields[0].Descriptor()
+	// backuptarget.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	backuptarget.NameValidator = backuptargetDescName.Validators[0].(func(string) error)
+	// backuptargetDescType is the schema descriptor for type field.
+	backuptargetDescType := backuptargetFields[1].Descriptor()
+	// backuptarget.TypeValidator is a validator for the "type" field. It is called by the builders before save.
+	backuptarget.TypeValidator = backuptargetDescType.Validators[0].(func(string) error)
+	// backuptargetDescEnabled is the schema descriptor for enabled field.
+	backuptargetDescEnabled := backuptargetFields[2].Descriptor()
+	// backuptarget.DefaultEnabled holds the default value on creation for the enabled field.
+	backuptarget.DefaultEnabled = backuptargetDescEnabled.Default.(bool)
+	// backuptargetDescLastBackupStatus is the schema descriptor for last_backup_status field.
+	backuptargetDescLastBackupStatus := backuptargetFields[3].Descriptor()
+	// backuptarget.DefaultLastBackupStatus holds the default value on creation for the last_backup_status field.
+	backuptarget.DefaultLastBackupStatus = backuptargetDescLastBackupStatus.Default.(string)
+	// backuptargetDescLastTestStatus is the schema descriptor for last_test_status field.
+	backuptargetDescLastTestStatus := backuptargetFields[6].Descriptor()
+	// backuptarget.DefaultLastTestStatus holds the default value on creation for the last_test_status field.
+	backuptarget.DefaultLastTestStatus = backuptargetDescLastTestStatus.Default.(string)
+	// backuptargetDescCreatedAt is the schema descriptor for created_at field.
+	backuptargetDescCreatedAt := backuptargetFields[17].Descriptor()
+	// backuptarget.DefaultCreatedAt holds the default value on creation for the created_at field.
+	backuptarget.DefaultCreatedAt = backuptargetDescCreatedAt.Default.(func() time.Time)
+	// backuptargetDescUpdatedAt is the schema descriptor for updated_at field.
+	backuptargetDescUpdatedAt := backuptargetFields[18].Descriptor()
+	// backuptarget.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	backuptarget.DefaultUpdatedAt = backuptargetDescUpdatedAt.Default.(func() time.Time)
+	// backuptarget.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	backuptarget.UpdateDefaultUpdatedAt = backuptargetDescUpdatedAt.UpdateDefault.(func() time.Time)
+	backuptaskFields := schema.BackupTask{}.Fields()
+	_ = backuptaskFields
+	// backuptaskDescName is the schema descriptor for name field.
+	backuptaskDescName := backuptaskFields[0].Descriptor()
+	// backuptask.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	backuptask.NameValidator = backuptaskDescName.Validators[0].(func(string) error)
+	// backuptaskDescEnabled is the schema descriptor for enabled field.
+	backuptaskDescEnabled := backuptaskFields[1].Descriptor()
+	// backuptask.DefaultEnabled holds the default value on creation for the enabled field.
+	backuptask.DefaultEnabled = backuptaskDescEnabled.Default.(bool)
+	// backuptaskDescSchedule is the schema descriptor for schedule field.
+	backuptaskDescSchedule := backuptaskFields[2].Descriptor()
+	// backuptask.DefaultSchedule holds the default value on creation for the schedule field.
+	backuptask.DefaultSchedule = backuptaskDescSchedule.Default.(string)
+	// backuptaskDescRetentionDays is the schema descriptor for retention_days field.
+	backuptaskDescRetentionDays := backuptaskFields[3].Descriptor()
+	// backuptask.DefaultRetentionDays holds the default value on creation for the retention_days field.
+	backuptask.DefaultRetentionDays = backuptaskDescRetentionDays.Default.(int)
+	// backuptaskDescMaxCount is the schema descriptor for max_count field.
+	backuptaskDescMaxCount := backuptaskFields[4].Descriptor()
+	// backuptask.DefaultMaxCount holds the default value on creation for the max_count field.
+	backuptask.DefaultMaxCount = backuptaskDescMaxCount.Default.(int)
+	// backuptaskDescLastBackupStatus is the schema descriptor for last_backup_status field.
+	backuptaskDescLastBackupStatus := backuptaskFields[5].Descriptor()
+	// backuptask.DefaultLastBackupStatus holds the default value on creation for the last_backup_status field.
+	backuptask.DefaultLastBackupStatus = backuptaskDescLastBackupStatus.Default.(string)
+	// backuptaskDescCreatedAt is the schema descriptor for created_at field.
+	backuptaskDescCreatedAt := backuptaskFields[8].Descriptor()
+	// backuptask.DefaultCreatedAt holds the default value on creation for the created_at field.
+	backuptask.DefaultCreatedAt = backuptaskDescCreatedAt.Default.(func() time.Time)
+	// backuptaskDescUpdatedAt is the schema descriptor for updated_at field.
+	backuptaskDescUpdatedAt := backuptaskFields[9].Descriptor()
+	// backuptask.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	backuptask.DefaultUpdatedAt = backuptaskDescUpdatedAt.Default.(func() time.Time)
+	// backuptask.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	backuptask.UpdateDefaultUpdatedAt = backuptaskDescUpdatedAt.UpdateDefault.(func() time.Time)
 	excalidrawlibraryFields := schema.ExcalidrawLibrary{}.Fields()
 	_ = excalidrawlibraryFields
 	// excalidrawlibraryDescLibraryJSON is the schema descriptor for library_json field.
@@ -287,6 +364,102 @@ func init() {
 	noteDescID := noteFields[0].Descriptor()
 	// note.DefaultID holds the default value on creation for the id field.
 	note.DefaultID = noteDescID.Default.(func() uuid.UUID)
+	noteconnectionaccountFields := schema.NoteConnectionAccount{}.Fields()
+	_ = noteconnectionaccountFields
+	// noteconnectionaccountDescName is the schema descriptor for name field.
+	noteconnectionaccountDescName := noteconnectionaccountFields[0].Descriptor()
+	// noteconnectionaccount.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	noteconnectionaccount.NameValidator = noteconnectionaccountDescName.Validators[0].(func(string) error)
+	// noteconnectionaccountDescProvider is the schema descriptor for provider field.
+	noteconnectionaccountDescProvider := noteconnectionaccountFields[1].Descriptor()
+	// noteconnectionaccount.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
+	noteconnectionaccount.ProviderValidator = noteconnectionaccountDescProvider.Validators[0].(func(string) error)
+	// noteconnectionaccountDescEnabled is the schema descriptor for enabled field.
+	noteconnectionaccountDescEnabled := noteconnectionaccountFields[4].Descriptor()
+	// noteconnectionaccount.DefaultEnabled holds the default value on creation for the enabled field.
+	noteconnectionaccount.DefaultEnabled = noteconnectionaccountDescEnabled.Default.(bool)
+	// noteconnectionaccountDescAuthType is the schema descriptor for auth_type field.
+	noteconnectionaccountDescAuthType := noteconnectionaccountFields[5].Descriptor()
+	// noteconnectionaccount.DefaultAuthType holds the default value on creation for the auth_type field.
+	noteconnectionaccount.DefaultAuthType = noteconnectionaccountDescAuthType.Default.(string)
+	// noteconnectionaccountDescLastTestStatus is the schema descriptor for last_test_status field.
+	noteconnectionaccountDescLastTestStatus := noteconnectionaccountFields[11].Descriptor()
+	// noteconnectionaccount.DefaultLastTestStatus holds the default value on creation for the last_test_status field.
+	noteconnectionaccount.DefaultLastTestStatus = noteconnectionaccountDescLastTestStatus.Default.(string)
+	// noteconnectionaccountDescCreatedAt is the schema descriptor for created_at field.
+	noteconnectionaccountDescCreatedAt := noteconnectionaccountFields[14].Descriptor()
+	// noteconnectionaccount.DefaultCreatedAt holds the default value on creation for the created_at field.
+	noteconnectionaccount.DefaultCreatedAt = noteconnectionaccountDescCreatedAt.Default.(func() time.Time)
+	// noteconnectionaccountDescUpdatedAt is the schema descriptor for updated_at field.
+	noteconnectionaccountDescUpdatedAt := noteconnectionaccountFields[15].Descriptor()
+	// noteconnectionaccount.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	noteconnectionaccount.DefaultUpdatedAt = noteconnectionaccountDescUpdatedAt.Default.(func() time.Time)
+	// noteconnectionaccount.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	noteconnectionaccount.UpdateDefaultUpdatedAt = noteconnectionaccountDescUpdatedAt.UpdateDefault.(func() time.Time)
+	noteconnectionitemmapFields := schema.NoteConnectionItemMap{}.Fields()
+	_ = noteconnectionitemmapFields
+	// noteconnectionitemmapDescProvider is the schema descriptor for provider field.
+	noteconnectionitemmapDescProvider := noteconnectionitemmapFields[0].Descriptor()
+	// noteconnectionitemmap.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
+	noteconnectionitemmap.ProviderValidator = noteconnectionitemmapDescProvider.Validators[0].(func(string) error)
+	// noteconnectionitemmapDescExternalID is the schema descriptor for external_id field.
+	noteconnectionitemmapDescExternalID := noteconnectionitemmapFields[1].Descriptor()
+	// noteconnectionitemmap.ExternalIDValidator is a validator for the "external_id" field. It is called by the builders before save.
+	noteconnectionitemmap.ExternalIDValidator = noteconnectionitemmapDescExternalID.Validators[0].(func(string) error)
+	// noteconnectionitemmapDescCreatedAt is the schema descriptor for created_at field.
+	noteconnectionitemmapDescCreatedAt := noteconnectionitemmapFields[11].Descriptor()
+	// noteconnectionitemmap.DefaultCreatedAt holds the default value on creation for the created_at field.
+	noteconnectionitemmap.DefaultCreatedAt = noteconnectionitemmapDescCreatedAt.Default.(func() time.Time)
+	// noteconnectionitemmapDescUpdatedAt is the schema descriptor for updated_at field.
+	noteconnectionitemmapDescUpdatedAt := noteconnectionitemmapFields[12].Descriptor()
+	// noteconnectionitemmap.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	noteconnectionitemmap.DefaultUpdatedAt = noteconnectionitemmapDescUpdatedAt.Default.(func() time.Time)
+	// noteconnectionitemmap.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	noteconnectionitemmap.UpdateDefaultUpdatedAt = noteconnectionitemmapDescUpdatedAt.UpdateDefault.(func() time.Time)
+	noteconnectionjobFields := schema.NoteConnectionJob{}.Fields()
+	_ = noteconnectionjobFields
+	// noteconnectionjobDescProvider is the schema descriptor for provider field.
+	noteconnectionjobDescProvider := noteconnectionjobFields[0].Descriptor()
+	// noteconnectionjob.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
+	noteconnectionjob.ProviderValidator = noteconnectionjobDescProvider.Validators[0].(func(string) error)
+	// noteconnectionjobDescOperation is the schema descriptor for operation field.
+	noteconnectionjobDescOperation := noteconnectionjobFields[1].Descriptor()
+	// noteconnectionjob.OperationValidator is a validator for the "operation" field. It is called by the builders before save.
+	noteconnectionjob.OperationValidator = noteconnectionjobDescOperation.Validators[0].(func(string) error)
+	// noteconnectionjobDescStatus is the schema descriptor for status field.
+	noteconnectionjobDescStatus := noteconnectionjobFields[5].Descriptor()
+	// noteconnectionjob.DefaultStatus holds the default value on creation for the status field.
+	noteconnectionjob.DefaultStatus = noteconnectionjobDescStatus.Default.(string)
+	// noteconnectionjobDescTotalCount is the schema descriptor for total_count field.
+	noteconnectionjobDescTotalCount := noteconnectionjobFields[6].Descriptor()
+	// noteconnectionjob.DefaultTotalCount holds the default value on creation for the total_count field.
+	noteconnectionjob.DefaultTotalCount = noteconnectionjobDescTotalCount.Default.(int)
+	// noteconnectionjobDescImportedCount is the schema descriptor for imported_count field.
+	noteconnectionjobDescImportedCount := noteconnectionjobFields[7].Descriptor()
+	// noteconnectionjob.DefaultImportedCount holds the default value on creation for the imported_count field.
+	noteconnectionjob.DefaultImportedCount = noteconnectionjobDescImportedCount.Default.(int)
+	// noteconnectionjobDescPushedCount is the schema descriptor for pushed_count field.
+	noteconnectionjobDescPushedCount := noteconnectionjobFields[8].Descriptor()
+	// noteconnectionjob.DefaultPushedCount holds the default value on creation for the pushed_count field.
+	noteconnectionjob.DefaultPushedCount = noteconnectionjobDescPushedCount.Default.(int)
+	// noteconnectionjobDescSkippedCount is the schema descriptor for skipped_count field.
+	noteconnectionjobDescSkippedCount := noteconnectionjobFields[9].Descriptor()
+	// noteconnectionjob.DefaultSkippedCount holds the default value on creation for the skipped_count field.
+	noteconnectionjob.DefaultSkippedCount = noteconnectionjobDescSkippedCount.Default.(int)
+	// noteconnectionjobDescFailedCount is the schema descriptor for failed_count field.
+	noteconnectionjobDescFailedCount := noteconnectionjobFields[10].Descriptor()
+	// noteconnectionjob.DefaultFailedCount holds the default value on creation for the failed_count field.
+	noteconnectionjob.DefaultFailedCount = noteconnectionjobDescFailedCount.Default.(int)
+	// noteconnectionjobDescCreatedAt is the schema descriptor for created_at field.
+	noteconnectionjobDescCreatedAt := noteconnectionjobFields[15].Descriptor()
+	// noteconnectionjob.DefaultCreatedAt holds the default value on creation for the created_at field.
+	noteconnectionjob.DefaultCreatedAt = noteconnectionjobDescCreatedAt.Default.(func() time.Time)
+	// noteconnectionjobDescUpdatedAt is the schema descriptor for updated_at field.
+	noteconnectionjobDescUpdatedAt := noteconnectionjobFields[16].Descriptor()
+	// noteconnectionjob.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	noteconnectionjob.DefaultUpdatedAt = noteconnectionjobDescUpdatedAt.Default.(func() time.Time)
+	// noteconnectionjob.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	noteconnectionjob.UpdateDefaultUpdatedAt = noteconnectionjobDescUpdatedAt.UpdateDefault.(func() time.Time)
 	notelinkFields := schema.NoteLink{}.Fields()
 	_ = notelinkFields
 	// notelinkDescOccurrenceCount is the schema descriptor for occurrence_count field.

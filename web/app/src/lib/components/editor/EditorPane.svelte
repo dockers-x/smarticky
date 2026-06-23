@@ -2,6 +2,7 @@
   import {
     ChevronLeft,
     ChevronRight,
+    CloudUpload,
     CodeXml,
     FileCode,
     Image as ImageIcon,
@@ -47,6 +48,7 @@
   import { tagsStore } from "../../stores/tags";
   import { whiteboardStore } from "../../stores/whiteboard";
   import EditorInspector from "./EditorInspector.svelte";
+  import NoteConnectionPushDialog from "./NoteConnectionPushDialog.svelte";
   import NoteProtectionDialog from "./NoteProtectionDialog.svelte";
   import PasswordField from "../common/PasswordField.svelte";
   import ShareImageDialog from "./ShareImageDialog.svelte";
@@ -77,6 +79,7 @@
   let focusMode = false;
   let detailsOpen = false;
   let shareOpen = false;
+  let connectionPushOpen = false;
   let protectionOpen = false;
   let protectionBusy = false;
   let protectionError = "";
@@ -190,6 +193,7 @@
     sourceMode = false;
     detailsOpen = false;
     shareOpen = false;
+    connectionPushOpen = false;
     actionMenuOpen = false;
     diagramMenuOpen = false;
     diagramMenuView = "root";
@@ -1063,6 +1067,18 @@
               <button
                 class="editor-action-button"
                 type="button"
+                disabled={contentLocked}
+                on:click={() =>
+                  void runMenuAction(() => {
+                    connectionPushOpen = true;
+                  })}
+              >
+                <CloudUpload aria-hidden="true" size={15} strokeWidth={2} />
+                {t("noteConnectionPush", $preferencesStore.language)}
+              </button>
+              <button
+                class="editor-action-button"
+                type="button"
                 on:click={() =>
                   void runMenuAction(() => {
                     protectionError = "";
@@ -1337,6 +1353,12 @@
         content={draftContent}
         defaultSignature={$authStore.user?.share_signature ?? "Smarticky"}
         onClose={() => (shareOpen = false)}
+      />
+    {/if}
+    {#if connectionPushOpen}
+      <NoteConnectionPushDialog
+        {note}
+        onClose={() => (connectionPushOpen = false)}
       />
     {/if}
     {#if protectionOpen}

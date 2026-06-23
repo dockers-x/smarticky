@@ -199,6 +199,18 @@ func main() {
 	protected.GET("/import/jobs", h.ListImportJobs)
 	protected.GET("/import/jobs/:id", h.GetImportJob)
 
+	// Note connection accounts API
+	protected.GET("/note-connections/accounts", h.ListNoteConnectionAccounts)
+	protected.POST("/note-connections/accounts", h.CreateNoteConnectionAccount)
+	protected.POST("/note-connections/accounts/test", h.TestUnsavedNoteConnectionAccount)
+	protected.PUT("/note-connections/accounts/:id", h.UpdateNoteConnectionAccount)
+	protected.DELETE("/note-connections/accounts/:id", h.DeleteNoteConnectionAccount)
+	protected.POST("/note-connections/accounts/:id/test", h.TestNoteConnectionAccount)
+	protected.GET("/note-connections/accounts/:id/targets", h.ListNoteConnectionTargets)
+	protected.POST("/note-connections/accounts/:id/import", h.ImportNoteConnection)
+	protected.POST("/note-connections/accounts/:id/push", h.PushNoteConnection)
+	protected.GET("/note-connections/jobs", h.ListNoteConnectionJobs)
+
 	// Fonts API
 	protected.POST("/fonts", h.UploadFont)
 	protected.GET("/fonts", h.GetFonts)
@@ -217,23 +229,23 @@ func main() {
 	protected.PUT("/users/:id/password", h.UpdatePassword)
 	protected.POST("/users/:id/avatar", h.UploadAvatar)
 
-	// Backup Config API
-	protected.GET("/backup/config", h.GetBackupConfig)
-	protected.PUT("/backup/config", h.UpdateBackupConfig)
+	// Backup targets, tasks, and restore API
+	protected.GET("/backup/targets", h.ListBackupTargets)
+	protected.POST("/backup/targets", h.CreateBackupTarget)
+	protected.POST("/backup/targets/test", h.TestUnsavedBackupTarget)
+	protected.PUT("/backup/targets/:id", h.UpdateBackupTarget)
+	protected.DELETE("/backup/targets/:id", h.DeleteBackupTarget)
+	protected.POST("/backup/targets/:id/test", h.TestBackupTarget)
+	protected.POST("/backup/targets/:id/run", h.RunBackupTarget)
+	protected.GET("/backup/targets/:id/files", h.ListBackupTargetFiles)
+	protected.POST("/backup/targets/:id/verify", h.VerifyBackupTargetFile)
+	protected.POST("/backup/targets/:id/restore", h.RestoreBackupTargetFile)
 
-	// Backup & Restore API
-	protected.POST("/backup/webdav", h.BackupWebDAV)
-	protected.POST("/backup/s3", h.BackupS3)
-	protected.POST("/restore/webdav", h.RestoreWebDAV)
-	protected.POST("/restore/s3", h.RestoreS3)
-
-	// Backup List API
-	protected.GET("/backup/list/webdav", h.ListWebDAVBackups)
-	protected.GET("/backup/list/s3", h.ListS3Backups)
-
-	// Backup Verify API
-	protected.POST("/backup/verify/webdav", h.VerifyWebDAVBackup)
-	protected.POST("/backup/verify/s3", h.VerifyS3Backup)
+	protected.GET("/backup/tasks", h.ListBackupTasks)
+	protected.POST("/backup/tasks", h.CreateBackupTask)
+	protected.PUT("/backup/tasks/:id", h.UpdateBackupTask)
+	protected.DELETE("/backup/tasks/:id", h.DeleteBackupTask)
+	protected.POST("/backup/tasks/:id/run", h.RunBackupTask)
 
 	// Serve uploaded files from data directory
 	uploadsDir := filepath.Join(getDataDir(), "uploads")

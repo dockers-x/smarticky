@@ -10,6 +10,8 @@ import (
 	"smarticky/ent/attachment"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
@@ -26,18 +28,20 @@ import (
 // NoteQuery is the builder for querying Note entities.
 type NoteQuery struct {
 	config
-	ctx               *QueryContext
-	order             []note.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.Note
-	withUser          *UserQuery
-	withFolder        *FolderQuery
-	withAttachments   *AttachmentQuery
-	withWhiteboards   *WhiteboardQuery
-	withOutgoingLinks *NoteLinkQuery
-	withBacklinks     *NoteLinkQuery
-	withTags          *TagQuery
-	withFKs           bool
+	ctx                *QueryContext
+	order              []note.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.Note
+	withUser           *UserQuery
+	withFolder         *FolderQuery
+	withAttachments    *AttachmentQuery
+	withWhiteboards    *WhiteboardQuery
+	withOutgoingLinks  *NoteLinkQuery
+	withBacklinks      *NoteLinkQuery
+	withConnectionMaps *NoteConnectionItemMapQuery
+	withConnectionJobs *NoteConnectionJobQuery
+	withTags           *TagQuery
+	withFKs            bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -199,6 +203,50 @@ func (_q *NoteQuery) QueryBacklinks() *NoteLinkQuery {
 			sqlgraph.From(note.Table, note.FieldID, selector),
 			sqlgraph.To(notelink.Table, notelink.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, note.BacklinksTable, note.BacklinksColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryConnectionMaps chains the current query on the "connection_maps" edge.
+func (_q *NoteQuery) QueryConnectionMaps() *NoteConnectionItemMapQuery {
+	query := (&NoteConnectionItemMapClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, selector),
+			sqlgraph.To(noteconnectionitemmap.Table, noteconnectionitemmap.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.ConnectionMapsTable, note.ConnectionMapsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryConnectionJobs chains the current query on the "connection_jobs" edge.
+func (_q *NoteQuery) QueryConnectionJobs() *NoteConnectionJobQuery {
+	query := (&NoteConnectionJobClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, selector),
+			sqlgraph.To(noteconnectionjob.Table, noteconnectionjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.ConnectionJobsTable, note.ConnectionJobsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -415,18 +463,20 @@ func (_q *NoteQuery) Clone() *NoteQuery {
 		return nil
 	}
 	return &NoteQuery{
-		config:            _q.config,
-		ctx:               _q.ctx.Clone(),
-		order:             append([]note.OrderOption{}, _q.order...),
-		inters:            append([]Interceptor{}, _q.inters...),
-		predicates:        append([]predicate.Note{}, _q.predicates...),
-		withUser:          _q.withUser.Clone(),
-		withFolder:        _q.withFolder.Clone(),
-		withAttachments:   _q.withAttachments.Clone(),
-		withWhiteboards:   _q.withWhiteboards.Clone(),
-		withOutgoingLinks: _q.withOutgoingLinks.Clone(),
-		withBacklinks:     _q.withBacklinks.Clone(),
-		withTags:          _q.withTags.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]note.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.Note{}, _q.predicates...),
+		withUser:           _q.withUser.Clone(),
+		withFolder:         _q.withFolder.Clone(),
+		withAttachments:    _q.withAttachments.Clone(),
+		withWhiteboards:    _q.withWhiteboards.Clone(),
+		withOutgoingLinks:  _q.withOutgoingLinks.Clone(),
+		withBacklinks:      _q.withBacklinks.Clone(),
+		withConnectionMaps: _q.withConnectionMaps.Clone(),
+		withConnectionJobs: _q.withConnectionJobs.Clone(),
+		withTags:           _q.withTags.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -496,6 +546,28 @@ func (_q *NoteQuery) WithBacklinks(opts ...func(*NoteLinkQuery)) *NoteQuery {
 		opt(query)
 	}
 	_q.withBacklinks = query
+	return _q
+}
+
+// WithConnectionMaps tells the query-builder to eager-load the nodes that are connected to
+// the "connection_maps" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NoteQuery) WithConnectionMaps(opts ...func(*NoteConnectionItemMapQuery)) *NoteQuery {
+	query := (&NoteConnectionItemMapClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withConnectionMaps = query
+	return _q
+}
+
+// WithConnectionJobs tells the query-builder to eager-load the nodes that are connected to
+// the "connection_jobs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NoteQuery) WithConnectionJobs(opts ...func(*NoteConnectionJobQuery)) *NoteQuery {
+	query := (&NoteConnectionJobClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withConnectionJobs = query
 	return _q
 }
 
@@ -589,13 +661,15 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		nodes       = []*Note{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [9]bool{
 			_q.withUser != nil,
 			_q.withFolder != nil,
 			_q.withAttachments != nil,
 			_q.withWhiteboards != nil,
 			_q.withOutgoingLinks != nil,
 			_q.withBacklinks != nil,
+			_q.withConnectionMaps != nil,
+			_q.withConnectionJobs != nil,
 			_q.withTags != nil,
 		}
 	)
@@ -660,6 +734,20 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 		if err := _q.loadBacklinks(ctx, query, nodes,
 			func(n *Note) { n.Edges.Backlinks = []*NoteLink{} },
 			func(n *Note, e *NoteLink) { n.Edges.Backlinks = append(n.Edges.Backlinks, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withConnectionMaps; query != nil {
+		if err := _q.loadConnectionMaps(ctx, query, nodes,
+			func(n *Note) { n.Edges.ConnectionMaps = []*NoteConnectionItemMap{} },
+			func(n *Note, e *NoteConnectionItemMap) { n.Edges.ConnectionMaps = append(n.Edges.ConnectionMaps, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withConnectionJobs; query != nil {
+		if err := _q.loadConnectionJobs(ctx, query, nodes,
+			func(n *Note) { n.Edges.ConnectionJobs = []*NoteConnectionJob{} },
+			func(n *Note, e *NoteConnectionJob) { n.Edges.ConnectionJobs = append(n.Edges.ConnectionJobs, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -857,6 +945,69 @@ func (_q *NoteQuery) loadBacklinks(ctx context.Context, query *NoteLinkQuery, no
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "target_note_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *NoteQuery) loadConnectionMaps(ctx context.Context, query *NoteConnectionItemMapQuery, nodes []*Note, init func(*Note), assign func(*Note, *NoteConnectionItemMap)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Note)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(noteconnectionitemmap.FieldNoteID)
+	}
+	query.Where(predicate.NoteConnectionItemMap(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(note.ConnectionMapsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.NoteID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "note_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *NoteQuery) loadConnectionJobs(ctx context.Context, query *NoteConnectionJobQuery, nodes []*Note, init func(*Note), assign func(*Note, *NoteConnectionJob)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Note)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(noteconnectionjob.FieldNoteID)
+	}
+	query.Where(predicate.NoteConnectionJob(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(note.ConnectionJobsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.NoteID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "note_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "note_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

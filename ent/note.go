@@ -70,11 +70,15 @@ type NoteEdges struct {
 	OutgoingLinks []*NoteLink `json:"outgoing_links,omitempty"`
 	// Backlinks holds the value of the backlinks edge.
 	Backlinks []*NoteLink `json:"backlinks,omitempty"`
+	// ConnectionMaps holds the value of the connection_maps edge.
+	ConnectionMaps []*NoteConnectionItemMap `json:"connection_maps,omitempty"`
+	// ConnectionJobs holds the value of the connection_jobs edge.
+	ConnectionJobs []*NoteConnectionJob `json:"connection_jobs,omitempty"`
 	// Tags holds the value of the tags edge.
 	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [9]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -135,10 +139,28 @@ func (e NoteEdges) BacklinksOrErr() ([]*NoteLink, error) {
 	return nil, &NotLoadedError{edge: "backlinks"}
 }
 
+// ConnectionMapsOrErr returns the ConnectionMaps value or an error if the edge
+// was not loaded in eager-loading.
+func (e NoteEdges) ConnectionMapsOrErr() ([]*NoteConnectionItemMap, error) {
+	if e.loadedTypes[6] {
+		return e.ConnectionMaps, nil
+	}
+	return nil, &NotLoadedError{edge: "connection_maps"}
+}
+
+// ConnectionJobsOrErr returns the ConnectionJobs value or an error if the edge
+// was not loaded in eager-loading.
+func (e NoteEdges) ConnectionJobsOrErr() ([]*NoteConnectionJob, error) {
+	if e.loadedTypes[7] {
+		return e.ConnectionJobs, nil
+	}
+	return nil, &NotLoadedError{edge: "connection_jobs"}
+}
+
 // TagsOrErr returns the Tags value or an error if the edge
 // was not loaded in eager-loading.
 func (e NoteEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[8] {
 		return e.Tags, nil
 	}
 	return nil, &NotLoadedError{edge: "tags"}
@@ -321,6 +343,16 @@ func (_m *Note) QueryOutgoingLinks() *NoteLinkQuery {
 // QueryBacklinks queries the "backlinks" edge of the Note entity.
 func (_m *Note) QueryBacklinks() *NoteLinkQuery {
 	return NewNoteClient(_m.config).QueryBacklinks(_m)
+}
+
+// QueryConnectionMaps queries the "connection_maps" edge of the Note entity.
+func (_m *Note) QueryConnectionMaps() *NoteConnectionItemMapQuery {
+	return NewNoteClient(_m.config).QueryConnectionMaps(_m)
+}
+
+// QueryConnectionJobs queries the "connection_jobs" edge of the Note entity.
+func (_m *Note) QueryConnectionJobs() *NoteConnectionJobQuery {
+	return NewNoteClient(_m.config).QueryConnectionJobs(_m)
 }
 
 // QueryTags queries the "tags" edge of the Note entity.

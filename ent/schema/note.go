@@ -71,6 +71,8 @@ func (Note) Edges() []ent.Edge {
 			Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("backlinks", NoteLink.Type).
 			Annotations(entsql.OnDelete(entsql.SetNull)),
+		edge.To("connection_maps", NoteConnectionItemMap.Type),
+		edge.To("connection_jobs", NoteConnectionJob.Type),
 		edge.To("tags", Tag.Type), // Many-to-many relationship with tags
 	}
 }

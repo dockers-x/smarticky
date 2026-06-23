@@ -119,6 +119,11 @@ func FolderMaxDepth(v int) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldEQ(FieldFolderMaxDepth, v))
 }
 
+// BackupTargetsMigrated applies equality check predicate on the "backup_targets_migrated" field. It's identical to BackupTargetsMigratedEQ.
+func BackupTargetsMigrated(v bool) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldBackupTargetsMigrated, v))
+}
+
 // LastBackupAt applies equality check predicate on the "last_backup_at" field. It's identical to LastBackupAtEQ.
 func LastBackupAt(v time.Time) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldEQ(FieldLastBackupAt, v))
@@ -927,6 +932,16 @@ func FolderMaxDepthLT(v int) predicate.BackupConfig {
 // FolderMaxDepthLTE applies the LTE predicate on the "folder_max_depth" field.
 func FolderMaxDepthLTE(v int) predicate.BackupConfig {
 	return predicate.BackupConfig(sql.FieldLTE(FieldFolderMaxDepth, v))
+}
+
+// BackupTargetsMigratedEQ applies the EQ predicate on the "backup_targets_migrated" field.
+func BackupTargetsMigratedEQ(v bool) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldEQ(FieldBackupTargetsMigrated, v))
+}
+
+// BackupTargetsMigratedNEQ applies the NEQ predicate on the "backup_targets_migrated" field.
+func BackupTargetsMigratedNEQ(v bool) predicate.BackupConfig {
+	return predicate.BackupConfig(sql.FieldNEQ(FieldBackupTargetsMigrated, v))
 }
 
 // LastBackupAtEQ applies the EQ predicate on the "last_backup_at" field.

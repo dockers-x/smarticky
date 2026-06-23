@@ -55,6 +55,7 @@ var (
 		{Name: "backup_retention_days", Type: field.TypeInt, Default: 30},
 		{Name: "backup_max_count", Type: field.TypeInt, Default: 10},
 		{Name: "folder_max_depth", Type: field.TypeInt, Default: 3},
+		{Name: "backup_targets_migrated", Type: field.TypeBool, Default: false},
 		{Name: "last_backup_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -64,6 +65,55 @@ var (
 		Name:       "backup_configs",
 		Columns:    BackupConfigsColumns,
 		PrimaryKey: []*schema.Column{BackupConfigsColumns[0]},
+	}
+	// BackupTargetsColumns holds the columns for the "backup_targets" table.
+	BackupTargetsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "type", Type: field.TypeString},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "last_backup_status", Type: field.TypeString, Default: "never"},
+		{Name: "last_backup_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "last_backup_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_test_status", Type: field.TypeString, Default: "never"},
+		{Name: "last_test_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "last_test_at", Type: field.TypeTime, Nullable: true},
+		{Name: "webdav_url", Type: field.TypeString, Nullable: true},
+		{Name: "webdav_user", Type: field.TypeString, Nullable: true},
+		{Name: "webdav_password", Type: field.TypeString, Nullable: true},
+		{Name: "s3_endpoint", Type: field.TypeString, Nullable: true},
+		{Name: "s3_region", Type: field.TypeString, Nullable: true},
+		{Name: "s3_bucket", Type: field.TypeString, Nullable: true},
+		{Name: "s3_access_key", Type: field.TypeString, Nullable: true},
+		{Name: "s3_secret_key", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// BackupTargetsTable holds the schema information for the "backup_targets" table.
+	BackupTargetsTable = &schema.Table{
+		Name:       "backup_targets",
+		Columns:    BackupTargetsColumns,
+		PrimaryKey: []*schema.Column{BackupTargetsColumns[0]},
+	}
+	// BackupTasksColumns holds the columns for the "backup_tasks" table.
+	BackupTasksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "schedule", Type: field.TypeString, Default: "manual"},
+		{Name: "retention_days", Type: field.TypeInt, Default: 30},
+		{Name: "max_count", Type: field.TypeInt, Default: 10},
+		{Name: "last_backup_status", Type: field.TypeString, Default: "never"},
+		{Name: "last_backup_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "last_backup_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// BackupTasksTable holds the schema information for the "backup_tasks" table.
+	BackupTasksTable = &schema.Table{
+		Name:       "backup_tasks",
+		Columns:    BackupTasksColumns,
+		PrimaryKey: []*schema.Column{BackupTasksColumns[0]},
 	}
 	// ExcalidrawLibrariesColumns holds the columns for the "excalidraw_libraries" table.
 	ExcalidrawLibrariesColumns = []*schema.Column{
@@ -287,6 +337,143 @@ var (
 			},
 		},
 	}
+	// NoteConnectionAccountsColumns holds the columns for the "note_connection_accounts" table.
+	NoteConnectionAccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "endpoint", Type: field.TypeString, Nullable: true},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "auth_type", Type: field.TypeString, Default: "token"},
+		{Name: "encrypted_credentials", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "credential_alg", Type: field.TypeString, Nullable: true},
+		{Name: "default_target_id", Type: field.TypeString, Nullable: true},
+		{Name: "default_target_name", Type: field.TypeString, Nullable: true},
+		{Name: "metadata_json", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "last_test_status", Type: field.TypeString, Default: "never"},
+		{Name: "last_test_error", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "last_test_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// NoteConnectionAccountsTable holds the schema information for the "note_connection_accounts" table.
+	NoteConnectionAccountsTable = &schema.Table{
+		Name:       "note_connection_accounts",
+		Columns:    NoteConnectionAccountsColumns,
+		PrimaryKey: []*schema.Column{NoteConnectionAccountsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_connection_accounts_users_note_connection_accounts",
+				Columns:    []*schema.Column{NoteConnectionAccountsColumns[16]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "noteconnectionaccount_user_id_provider_name",
+				Unique:  true,
+				Columns: []*schema.Column{NoteConnectionAccountsColumns[16], NoteConnectionAccountsColumns[2], NoteConnectionAccountsColumns[1]},
+			},
+		},
+	}
+	// NoteConnectionItemMapsColumns holds the columns for the "note_connection_item_maps" table.
+	NoteConnectionItemMapsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "external_id", Type: field.TypeString},
+		{Name: "external_target_id", Type: field.TypeString, Nullable: true},
+		{Name: "external_path", Type: field.TypeString, Nullable: true},
+		{Name: "external_url", Type: field.TypeString, Nullable: true},
+		{Name: "last_sync_direction", Type: field.TypeString, Nullable: true},
+		{Name: "last_imported_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_pushed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "metadata_json", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "note_id", Type: field.TypeUUID},
+		{Name: "account_id", Type: field.TypeInt},
+	}
+	// NoteConnectionItemMapsTable holds the schema information for the "note_connection_item_maps" table.
+	NoteConnectionItemMapsTable = &schema.Table{
+		Name:       "note_connection_item_maps",
+		Columns:    NoteConnectionItemMapsColumns,
+		PrimaryKey: []*schema.Column{NoteConnectionItemMapsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_connection_item_maps_notes_connection_maps",
+				Columns:    []*schema.Column{NoteConnectionItemMapsColumns[12]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "note_connection_item_maps_note_connection_accounts_item_maps",
+				Columns:    []*schema.Column{NoteConnectionItemMapsColumns[13]},
+				RefColumns: []*schema.Column{NoteConnectionAccountsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "noteconnectionitemmap_account_id_external_id",
+				Unique:  true,
+				Columns: []*schema.Column{NoteConnectionItemMapsColumns[13], NoteConnectionItemMapsColumns[2]},
+			},
+			{
+				Name:    "noteconnectionitemmap_note_id_account_id",
+				Unique:  true,
+				Columns: []*schema.Column{NoteConnectionItemMapsColumns[12], NoteConnectionItemMapsColumns[13]},
+			},
+		},
+	}
+	// NoteConnectionJobsColumns holds the columns for the "note_connection_jobs" table.
+	NoteConnectionJobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "operation", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "total_count", Type: field.TypeInt, Default: 0},
+		{Name: "imported_count", Type: field.TypeInt, Default: 0},
+		{Name: "pushed_count", Type: field.TypeInt, Default: 0},
+		{Name: "skipped_count", Type: field.TypeInt, Default: 0},
+		{Name: "failed_count", Type: field.TypeInt, Default: 0},
+		{Name: "message", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "options_json", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "note_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "account_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// NoteConnectionJobsTable holds the schema information for the "note_connection_jobs" table.
+	NoteConnectionJobsTable = &schema.Table{
+		Name:       "note_connection_jobs",
+		Columns:    NoteConnectionJobsColumns,
+		PrimaryKey: []*schema.Column{NoteConnectionJobsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_connection_jobs_notes_connection_jobs",
+				Columns:    []*schema.Column{NoteConnectionJobsColumns[15]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "note_connection_jobs_note_connection_accounts_jobs",
+				Columns:    []*schema.Column{NoteConnectionJobsColumns[16]},
+				RefColumns: []*schema.Column{NoteConnectionAccountsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "note_connection_jobs_users_note_connection_jobs",
+				Columns:    []*schema.Column{NoteConnectionJobsColumns[17]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// NoteLinksColumns holds the columns for the "note_links" table.
 	NoteLinksColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -425,6 +612,31 @@ var (
 			},
 		},
 	}
+	// BackupTaskTargetsColumns holds the columns for the "backup_task_targets" table.
+	BackupTaskTargetsColumns = []*schema.Column{
+		{Name: "backup_task_id", Type: field.TypeInt},
+		{Name: "backup_target_id", Type: field.TypeInt},
+	}
+	// BackupTaskTargetsTable holds the schema information for the "backup_task_targets" table.
+	BackupTaskTargetsTable = &schema.Table{
+		Name:       "backup_task_targets",
+		Columns:    BackupTaskTargetsColumns,
+		PrimaryKey: []*schema.Column{BackupTaskTargetsColumns[0], BackupTaskTargetsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "backup_task_targets_backup_task_id",
+				Columns:    []*schema.Column{BackupTaskTargetsColumns[0]},
+				RefColumns: []*schema.Column{BackupTasksColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "backup_task_targets_backup_target_id",
+				Columns:    []*schema.Column{BackupTaskTargetsColumns[1]},
+				RefColumns: []*schema.Column{BackupTargetsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// NoteTagsColumns holds the columns for the "note_tags" table.
 	NoteTagsColumns = []*schema.Column{
 		{Name: "note_id", Type: field.TypeUUID},
@@ -454,6 +666,8 @@ var (
 	Tables = []*schema.Table{
 		AttachmentsTable,
 		BackupConfigsTable,
+		BackupTargetsTable,
+		BackupTasksTable,
 		ExcalidrawLibrariesTable,
 		FoldersTable,
 		FontsTable,
@@ -462,10 +676,14 @@ var (
 		McpImagesTable,
 		McpTokensTable,
 		NotesTable,
+		NoteConnectionAccountsTable,
+		NoteConnectionItemMapsTable,
+		NoteConnectionJobsTable,
 		NoteLinksTable,
 		TagsTable,
 		UsersTable,
 		WhiteboardsTable,
+		BackupTaskTargetsTable,
 		NoteTagsTable,
 	}
 )
@@ -483,12 +701,20 @@ func init() {
 	McpTokensTable.ForeignKeys[0].RefTable = UsersTable
 	NotesTable.ForeignKeys[0].RefTable = FoldersTable
 	NotesTable.ForeignKeys[1].RefTable = UsersTable
+	NoteConnectionAccountsTable.ForeignKeys[0].RefTable = UsersTable
+	NoteConnectionItemMapsTable.ForeignKeys[0].RefTable = NotesTable
+	NoteConnectionItemMapsTable.ForeignKeys[1].RefTable = NoteConnectionAccountsTable
+	NoteConnectionJobsTable.ForeignKeys[0].RefTable = NotesTable
+	NoteConnectionJobsTable.ForeignKeys[1].RefTable = NoteConnectionAccountsTable
+	NoteConnectionJobsTable.ForeignKeys[2].RefTable = UsersTable
 	NoteLinksTable.ForeignKeys[0].RefTable = NotesTable
 	NoteLinksTable.ForeignKeys[1].RefTable = NotesTable
 	NoteLinksTable.ForeignKeys[2].RefTable = UsersTable
 	TagsTable.ForeignKeys[0].RefTable = UsersTable
 	WhiteboardsTable.ForeignKeys[0].RefTable = NotesTable
 	WhiteboardsTable.ForeignKeys[1].RefTable = UsersTable
+	BackupTaskTargetsTable.ForeignKeys[0].RefTable = BackupTasksTable
+	BackupTaskTargetsTable.ForeignKeys[1].RefTable = BackupTargetsTable
 	NoteTagsTable.ForeignKeys[0].RefTable = NotesTable
 	NoteTagsTable.ForeignKeys[1].RefTable = TagsTable
 }

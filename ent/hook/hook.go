@@ -32,6 +32,30 @@ func (f BackupConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BackupConfigMutation", m)
 }
 
+// The BackupTargetFunc type is an adapter to allow the use of ordinary
+// function as BackupTarget mutator.
+type BackupTargetFunc func(context.Context, *ent.BackupTargetMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f BackupTargetFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.BackupTargetMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BackupTargetMutation", m)
+}
+
+// The BackupTaskFunc type is an adapter to allow the use of ordinary
+// function as BackupTask mutator.
+type BackupTaskFunc func(context.Context, *ent.BackupTaskMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f BackupTaskFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.BackupTaskMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BackupTaskMutation", m)
+}
+
 // The ExcalidrawLibraryFunc type is an adapter to allow the use of ordinary
 // function as ExcalidrawLibrary mutator.
 type ExcalidrawLibraryFunc func(context.Context, *ent.ExcalidrawLibraryMutation) (ent.Value, error)
@@ -126,6 +150,42 @@ func (f NoteFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteMutation", m)
+}
+
+// The NoteConnectionAccountFunc type is an adapter to allow the use of ordinary
+// function as NoteConnectionAccount mutator.
+type NoteConnectionAccountFunc func(context.Context, *ent.NoteConnectionAccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteConnectionAccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteConnectionAccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteConnectionAccountMutation", m)
+}
+
+// The NoteConnectionItemMapFunc type is an adapter to allow the use of ordinary
+// function as NoteConnectionItemMap mutator.
+type NoteConnectionItemMapFunc func(context.Context, *ent.NoteConnectionItemMapMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteConnectionItemMapFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteConnectionItemMapMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteConnectionItemMapMutation", m)
+}
+
+// The NoteConnectionJobFunc type is an adapter to allow the use of ordinary
+// function as NoteConnectionJob mutator.
+type NoteConnectionJobFunc func(context.Context, *ent.NoteConnectionJobMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteConnectionJobFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteConnectionJobMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteConnectionJobMutation", m)
 }
 
 // The NoteLinkFunc type is an adapter to allow the use of ordinary

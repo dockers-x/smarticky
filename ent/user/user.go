@@ -57,6 +57,10 @@ const (
 	EdgeMcpTokens = "mcp_tokens"
 	// EdgeMcpImages holds the string denoting the mcp_images edge name in mutations.
 	EdgeMcpImages = "mcp_images"
+	// EdgeNoteConnectionAccounts holds the string denoting the note_connection_accounts edge name in mutations.
+	EdgeNoteConnectionAccounts = "note_connection_accounts"
+	// EdgeNoteConnectionJobs holds the string denoting the note_connection_jobs edge name in mutations.
+	EdgeNoteConnectionJobs = "note_connection_jobs"
 	// EdgeNoteLinks holds the string denoting the note_links edge name in mutations.
 	EdgeNoteLinks = "note_links"
 	// Table holds the table name of the user in the database.
@@ -131,6 +135,20 @@ const (
 	McpImagesInverseTable = "mcp_images"
 	// McpImagesColumn is the table column denoting the mcp_images relation/edge.
 	McpImagesColumn = "user_mcp_images"
+	// NoteConnectionAccountsTable is the table that holds the note_connection_accounts relation/edge.
+	NoteConnectionAccountsTable = "note_connection_accounts"
+	// NoteConnectionAccountsInverseTable is the table name for the NoteConnectionAccount entity.
+	// It exists in this package in order to avoid circular dependency with the "noteconnectionaccount" package.
+	NoteConnectionAccountsInverseTable = "note_connection_accounts"
+	// NoteConnectionAccountsColumn is the table column denoting the note_connection_accounts relation/edge.
+	NoteConnectionAccountsColumn = "user_id"
+	// NoteConnectionJobsTable is the table that holds the note_connection_jobs relation/edge.
+	NoteConnectionJobsTable = "note_connection_jobs"
+	// NoteConnectionJobsInverseTable is the table name for the NoteConnectionJob entity.
+	// It exists in this package in order to avoid circular dependency with the "noteconnectionjob" package.
+	NoteConnectionJobsInverseTable = "note_connection_jobs"
+	// NoteConnectionJobsColumn is the table column denoting the note_connection_jobs relation/edge.
+	NoteConnectionJobsColumn = "user_id"
 	// NoteLinksTable is the table that holds the note_links relation/edge.
 	NoteLinksTable = "note_links"
 	// NoteLinksInverseTable is the table name for the NoteLink entity.
@@ -409,6 +427,34 @@ func ByMcpImages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByNoteConnectionAccountsCount orders the results by note_connection_accounts count.
+func ByNoteConnectionAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNoteConnectionAccountsStep(), opts...)
+	}
+}
+
+// ByNoteConnectionAccounts orders the results by note_connection_accounts terms.
+func ByNoteConnectionAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNoteConnectionAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByNoteConnectionJobsCount orders the results by note_connection_jobs count.
+func ByNoteConnectionJobsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNoteConnectionJobsStep(), opts...)
+	}
+}
+
+// ByNoteConnectionJobs orders the results by note_connection_jobs terms.
+func ByNoteConnectionJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNoteConnectionJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByNoteLinksCount orders the results by note_links count.
 func ByNoteLinksCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -490,6 +536,20 @@ func newMcpImagesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(McpImagesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, McpImagesTable, McpImagesColumn),
+	)
+}
+func newNoteConnectionAccountsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NoteConnectionAccountsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NoteConnectionAccountsTable, NoteConnectionAccountsColumn),
+	)
+}
+func newNoteConnectionJobsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NoteConnectionJobsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NoteConnectionJobsTable, NoteConnectionJobsColumn),
 	)
 }
 func newNoteLinksStep() *sqlgraph.Step {

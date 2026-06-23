@@ -13,6 +13,8 @@ import (
 
 	"smarticky/ent/attachment"
 	"smarticky/ent/backupconfig"
+	"smarticky/ent/backuptarget"
+	"smarticky/ent/backuptask"
 	"smarticky/ent/excalidrawlibrary"
 	"smarticky/ent/folder"
 	"smarticky/ent/font"
@@ -21,6 +23,9 @@ import (
 	"smarticky/ent/mcpimage"
 	"smarticky/ent/mcptoken"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionaccount"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/notelink"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
@@ -42,6 +47,10 @@ type Client struct {
 	Attachment *AttachmentClient
 	// BackupConfig is the client for interacting with the BackupConfig builders.
 	BackupConfig *BackupConfigClient
+	// BackupTarget is the client for interacting with the BackupTarget builders.
+	BackupTarget *BackupTargetClient
+	// BackupTask is the client for interacting with the BackupTask builders.
+	BackupTask *BackupTaskClient
 	// ExcalidrawLibrary is the client for interacting with the ExcalidrawLibrary builders.
 	ExcalidrawLibrary *ExcalidrawLibraryClient
 	// Folder is the client for interacting with the Folder builders.
@@ -58,6 +67,12 @@ type Client struct {
 	MCPToken *MCPTokenClient
 	// Note is the client for interacting with the Note builders.
 	Note *NoteClient
+	// NoteConnectionAccount is the client for interacting with the NoteConnectionAccount builders.
+	NoteConnectionAccount *NoteConnectionAccountClient
+	// NoteConnectionItemMap is the client for interacting with the NoteConnectionItemMap builders.
+	NoteConnectionItemMap *NoteConnectionItemMapClient
+	// NoteConnectionJob is the client for interacting with the NoteConnectionJob builders.
+	NoteConnectionJob *NoteConnectionJobClient
 	// NoteLink is the client for interacting with the NoteLink builders.
 	NoteLink *NoteLinkClient
 	// Tag is the client for interacting with the Tag builders.
@@ -79,6 +94,8 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Attachment = NewAttachmentClient(c.config)
 	c.BackupConfig = NewBackupConfigClient(c.config)
+	c.BackupTarget = NewBackupTargetClient(c.config)
+	c.BackupTask = NewBackupTaskClient(c.config)
 	c.ExcalidrawLibrary = NewExcalidrawLibraryClient(c.config)
 	c.Folder = NewFolderClient(c.config)
 	c.Font = NewFontClient(c.config)
@@ -87,6 +104,9 @@ func (c *Client) init() {
 	c.MCPImage = NewMCPImageClient(c.config)
 	c.MCPToken = NewMCPTokenClient(c.config)
 	c.Note = NewNoteClient(c.config)
+	c.NoteConnectionAccount = NewNoteConnectionAccountClient(c.config)
+	c.NoteConnectionItemMap = NewNoteConnectionItemMapClient(c.config)
+	c.NoteConnectionJob = NewNoteConnectionJobClient(c.config)
 	c.NoteLink = NewNoteLinkClient(c.config)
 	c.Tag = NewTagClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -181,22 +201,27 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:               ctx,
-		config:            cfg,
-		Attachment:        NewAttachmentClient(cfg),
-		BackupConfig:      NewBackupConfigClient(cfg),
-		ExcalidrawLibrary: NewExcalidrawLibraryClient(cfg),
-		Folder:            NewFolderClient(cfg),
-		Font:              NewFontClient(cfg),
-		ImportItem:        NewImportItemClient(cfg),
-		ImportJob:         NewImportJobClient(cfg),
-		MCPImage:          NewMCPImageClient(cfg),
-		MCPToken:          NewMCPTokenClient(cfg),
-		Note:              NewNoteClient(cfg),
-		NoteLink:          NewNoteLinkClient(cfg),
-		Tag:               NewTagClient(cfg),
-		User:              NewUserClient(cfg),
-		Whiteboard:        NewWhiteboardClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Attachment:            NewAttachmentClient(cfg),
+		BackupConfig:          NewBackupConfigClient(cfg),
+		BackupTarget:          NewBackupTargetClient(cfg),
+		BackupTask:            NewBackupTaskClient(cfg),
+		ExcalidrawLibrary:     NewExcalidrawLibraryClient(cfg),
+		Folder:                NewFolderClient(cfg),
+		Font:                  NewFontClient(cfg),
+		ImportItem:            NewImportItemClient(cfg),
+		ImportJob:             NewImportJobClient(cfg),
+		MCPImage:              NewMCPImageClient(cfg),
+		MCPToken:              NewMCPTokenClient(cfg),
+		Note:                  NewNoteClient(cfg),
+		NoteConnectionAccount: NewNoteConnectionAccountClient(cfg),
+		NoteConnectionItemMap: NewNoteConnectionItemMapClient(cfg),
+		NoteConnectionJob:     NewNoteConnectionJobClient(cfg),
+		NoteLink:              NewNoteLinkClient(cfg),
+		Tag:                   NewTagClient(cfg),
+		User:                  NewUserClient(cfg),
+		Whiteboard:            NewWhiteboardClient(cfg),
 	}, nil
 }
 
@@ -214,22 +239,27 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:               ctx,
-		config:            cfg,
-		Attachment:        NewAttachmentClient(cfg),
-		BackupConfig:      NewBackupConfigClient(cfg),
-		ExcalidrawLibrary: NewExcalidrawLibraryClient(cfg),
-		Folder:            NewFolderClient(cfg),
-		Font:              NewFontClient(cfg),
-		ImportItem:        NewImportItemClient(cfg),
-		ImportJob:         NewImportJobClient(cfg),
-		MCPImage:          NewMCPImageClient(cfg),
-		MCPToken:          NewMCPTokenClient(cfg),
-		Note:              NewNoteClient(cfg),
-		NoteLink:          NewNoteLinkClient(cfg),
-		Tag:               NewTagClient(cfg),
-		User:              NewUserClient(cfg),
-		Whiteboard:        NewWhiteboardClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Attachment:            NewAttachmentClient(cfg),
+		BackupConfig:          NewBackupConfigClient(cfg),
+		BackupTarget:          NewBackupTargetClient(cfg),
+		BackupTask:            NewBackupTaskClient(cfg),
+		ExcalidrawLibrary:     NewExcalidrawLibraryClient(cfg),
+		Folder:                NewFolderClient(cfg),
+		Font:                  NewFontClient(cfg),
+		ImportItem:            NewImportItemClient(cfg),
+		ImportJob:             NewImportJobClient(cfg),
+		MCPImage:              NewMCPImageClient(cfg),
+		MCPToken:              NewMCPTokenClient(cfg),
+		Note:                  NewNoteClient(cfg),
+		NoteConnectionAccount: NewNoteConnectionAccountClient(cfg),
+		NoteConnectionItemMap: NewNoteConnectionItemMapClient(cfg),
+		NoteConnectionJob:     NewNoteConnectionJobClient(cfg),
+		NoteLink:              NewNoteLinkClient(cfg),
+		Tag:                   NewTagClient(cfg),
+		User:                  NewUserClient(cfg),
+		Whiteboard:            NewWhiteboardClient(cfg),
 	}, nil
 }
 
@@ -259,9 +289,10 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Folder, c.Font,
-		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.NoteLink, c.Tag,
-		c.User, c.Whiteboard,
+		c.Attachment, c.BackupConfig, c.BackupTarget, c.BackupTask, c.ExcalidrawLibrary,
+		c.Folder, c.Font, c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note,
+		c.NoteConnectionAccount, c.NoteConnectionItemMap, c.NoteConnectionJob,
+		c.NoteLink, c.Tag, c.User, c.Whiteboard,
 	} {
 		n.Use(hooks...)
 	}
@@ -271,9 +302,10 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Attachment, c.BackupConfig, c.ExcalidrawLibrary, c.Folder, c.Font,
-		c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note, c.NoteLink, c.Tag,
-		c.User, c.Whiteboard,
+		c.Attachment, c.BackupConfig, c.BackupTarget, c.BackupTask, c.ExcalidrawLibrary,
+		c.Folder, c.Font, c.ImportItem, c.ImportJob, c.MCPImage, c.MCPToken, c.Note,
+		c.NoteConnectionAccount, c.NoteConnectionItemMap, c.NoteConnectionJob,
+		c.NoteLink, c.Tag, c.User, c.Whiteboard,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -286,6 +318,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Attachment.mutate(ctx, m)
 	case *BackupConfigMutation:
 		return c.BackupConfig.mutate(ctx, m)
+	case *BackupTargetMutation:
+		return c.BackupTarget.mutate(ctx, m)
+	case *BackupTaskMutation:
+		return c.BackupTask.mutate(ctx, m)
 	case *ExcalidrawLibraryMutation:
 		return c.ExcalidrawLibrary.mutate(ctx, m)
 	case *FolderMutation:
@@ -302,6 +338,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.MCPToken.mutate(ctx, m)
 	case *NoteMutation:
 		return c.Note.mutate(ctx, m)
+	case *NoteConnectionAccountMutation:
+		return c.NoteConnectionAccount.mutate(ctx, m)
+	case *NoteConnectionItemMapMutation:
+		return c.NoteConnectionItemMap.mutate(ctx, m)
+	case *NoteConnectionJobMutation:
+		return c.NoteConnectionJob.mutate(ctx, m)
 	case *NoteLinkMutation:
 		return c.NoteLink.mutate(ctx, m)
 	case *TagMutation:
@@ -610,6 +652,304 @@ func (c *BackupConfigClient) mutate(ctx context.Context, m *BackupConfigMutation
 		return (&BackupConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown BackupConfig mutation op: %q", m.Op())
+	}
+}
+
+// BackupTargetClient is a client for the BackupTarget schema.
+type BackupTargetClient struct {
+	config
+}
+
+// NewBackupTargetClient returns a client for the BackupTarget from the given config.
+func NewBackupTargetClient(c config) *BackupTargetClient {
+	return &BackupTargetClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `backuptarget.Hooks(f(g(h())))`.
+func (c *BackupTargetClient) Use(hooks ...Hook) {
+	c.hooks.BackupTarget = append(c.hooks.BackupTarget, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `backuptarget.Intercept(f(g(h())))`.
+func (c *BackupTargetClient) Intercept(interceptors ...Interceptor) {
+	c.inters.BackupTarget = append(c.inters.BackupTarget, interceptors...)
+}
+
+// Create returns a builder for creating a BackupTarget entity.
+func (c *BackupTargetClient) Create() *BackupTargetCreate {
+	mutation := newBackupTargetMutation(c.config, OpCreate)
+	return &BackupTargetCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of BackupTarget entities.
+func (c *BackupTargetClient) CreateBulk(builders ...*BackupTargetCreate) *BackupTargetCreateBulk {
+	return &BackupTargetCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BackupTargetClient) MapCreateBulk(slice any, setFunc func(*BackupTargetCreate, int)) *BackupTargetCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BackupTargetCreateBulk{err: fmt.Errorf("calling to BackupTargetClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BackupTargetCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &BackupTargetCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for BackupTarget.
+func (c *BackupTargetClient) Update() *BackupTargetUpdate {
+	mutation := newBackupTargetMutation(c.config, OpUpdate)
+	return &BackupTargetUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BackupTargetClient) UpdateOne(_m *BackupTarget) *BackupTargetUpdateOne {
+	mutation := newBackupTargetMutation(c.config, OpUpdateOne, withBackupTarget(_m))
+	return &BackupTargetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BackupTargetClient) UpdateOneID(id int) *BackupTargetUpdateOne {
+	mutation := newBackupTargetMutation(c.config, OpUpdateOne, withBackupTargetID(id))
+	return &BackupTargetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for BackupTarget.
+func (c *BackupTargetClient) Delete() *BackupTargetDelete {
+	mutation := newBackupTargetMutation(c.config, OpDelete)
+	return &BackupTargetDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *BackupTargetClient) DeleteOne(_m *BackupTarget) *BackupTargetDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *BackupTargetClient) DeleteOneID(id int) *BackupTargetDeleteOne {
+	builder := c.Delete().Where(backuptarget.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BackupTargetDeleteOne{builder}
+}
+
+// Query returns a query builder for BackupTarget.
+func (c *BackupTargetClient) Query() *BackupTargetQuery {
+	return &BackupTargetQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeBackupTarget},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a BackupTarget entity by its id.
+func (c *BackupTargetClient) Get(ctx context.Context, id int) (*BackupTarget, error) {
+	return c.Query().Where(backuptarget.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BackupTargetClient) GetX(ctx context.Context, id int) *BackupTarget {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTasks queries the tasks edge of a BackupTarget.
+func (c *BackupTargetClient) QueryTasks(_m *BackupTarget) *BackupTaskQuery {
+	query := (&BackupTaskClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(backuptarget.Table, backuptarget.FieldID, id),
+			sqlgraph.To(backuptask.Table, backuptask.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, backuptarget.TasksTable, backuptarget.TasksPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *BackupTargetClient) Hooks() []Hook {
+	return c.hooks.BackupTarget
+}
+
+// Interceptors returns the client interceptors.
+func (c *BackupTargetClient) Interceptors() []Interceptor {
+	return c.inters.BackupTarget
+}
+
+func (c *BackupTargetClient) mutate(ctx context.Context, m *BackupTargetMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BackupTargetCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BackupTargetUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BackupTargetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BackupTargetDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown BackupTarget mutation op: %q", m.Op())
+	}
+}
+
+// BackupTaskClient is a client for the BackupTask schema.
+type BackupTaskClient struct {
+	config
+}
+
+// NewBackupTaskClient returns a client for the BackupTask from the given config.
+func NewBackupTaskClient(c config) *BackupTaskClient {
+	return &BackupTaskClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `backuptask.Hooks(f(g(h())))`.
+func (c *BackupTaskClient) Use(hooks ...Hook) {
+	c.hooks.BackupTask = append(c.hooks.BackupTask, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `backuptask.Intercept(f(g(h())))`.
+func (c *BackupTaskClient) Intercept(interceptors ...Interceptor) {
+	c.inters.BackupTask = append(c.inters.BackupTask, interceptors...)
+}
+
+// Create returns a builder for creating a BackupTask entity.
+func (c *BackupTaskClient) Create() *BackupTaskCreate {
+	mutation := newBackupTaskMutation(c.config, OpCreate)
+	return &BackupTaskCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of BackupTask entities.
+func (c *BackupTaskClient) CreateBulk(builders ...*BackupTaskCreate) *BackupTaskCreateBulk {
+	return &BackupTaskCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BackupTaskClient) MapCreateBulk(slice any, setFunc func(*BackupTaskCreate, int)) *BackupTaskCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BackupTaskCreateBulk{err: fmt.Errorf("calling to BackupTaskClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BackupTaskCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &BackupTaskCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for BackupTask.
+func (c *BackupTaskClient) Update() *BackupTaskUpdate {
+	mutation := newBackupTaskMutation(c.config, OpUpdate)
+	return &BackupTaskUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BackupTaskClient) UpdateOne(_m *BackupTask) *BackupTaskUpdateOne {
+	mutation := newBackupTaskMutation(c.config, OpUpdateOne, withBackupTask(_m))
+	return &BackupTaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BackupTaskClient) UpdateOneID(id int) *BackupTaskUpdateOne {
+	mutation := newBackupTaskMutation(c.config, OpUpdateOne, withBackupTaskID(id))
+	return &BackupTaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for BackupTask.
+func (c *BackupTaskClient) Delete() *BackupTaskDelete {
+	mutation := newBackupTaskMutation(c.config, OpDelete)
+	return &BackupTaskDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *BackupTaskClient) DeleteOne(_m *BackupTask) *BackupTaskDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *BackupTaskClient) DeleteOneID(id int) *BackupTaskDeleteOne {
+	builder := c.Delete().Where(backuptask.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BackupTaskDeleteOne{builder}
+}
+
+// Query returns a query builder for BackupTask.
+func (c *BackupTaskClient) Query() *BackupTaskQuery {
+	return &BackupTaskQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeBackupTask},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a BackupTask entity by its id.
+func (c *BackupTaskClient) Get(ctx context.Context, id int) (*BackupTask, error) {
+	return c.Query().Where(backuptask.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BackupTaskClient) GetX(ctx context.Context, id int) *BackupTask {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTargets queries the targets edge of a BackupTask.
+func (c *BackupTaskClient) QueryTargets(_m *BackupTask) *BackupTargetQuery {
+	query := (&BackupTargetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(backuptask.Table, backuptask.FieldID, id),
+			sqlgraph.To(backuptarget.Table, backuptarget.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, backuptask.TargetsTable, backuptask.TargetsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *BackupTaskClient) Hooks() []Hook {
+	return c.hooks.BackupTask
+}
+
+// Interceptors returns the client interceptors.
+func (c *BackupTaskClient) Interceptors() []Interceptor {
+	return c.inters.BackupTask
+}
+
+func (c *BackupTaskClient) mutate(ctx context.Context, m *BackupTaskMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BackupTaskCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BackupTaskUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BackupTaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BackupTaskDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown BackupTask mutation op: %q", m.Op())
 	}
 }
 
@@ -1924,6 +2264,38 @@ func (c *NoteClient) QueryBacklinks(_m *Note) *NoteLinkQuery {
 	return query
 }
 
+// QueryConnectionMaps queries the connection_maps edge of a Note.
+func (c *NoteClient) QueryConnectionMaps(_m *Note) *NoteConnectionItemMapQuery {
+	query := (&NoteConnectionItemMapClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(noteconnectionitemmap.Table, noteconnectionitemmap.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.ConnectionMapsTable, note.ConnectionMapsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryConnectionJobs queries the connection_jobs edge of a Note.
+func (c *NoteClient) QueryConnectionJobs(_m *Note) *NoteConnectionJobQuery {
+	query := (&NoteConnectionJobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(noteconnectionjob.Table, noteconnectionjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.ConnectionJobsTable, note.ConnectionJobsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryTags queries the tags edge of a Note.
 func (c *NoteClient) QueryTags(_m *Note) *TagQuery {
 	query := (&TagClient{config: c.config}).Query()
@@ -1962,6 +2334,533 @@ func (c *NoteClient) mutate(ctx context.Context, m *NoteMutation) (Value, error)
 		return (&NoteDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Note mutation op: %q", m.Op())
+	}
+}
+
+// NoteConnectionAccountClient is a client for the NoteConnectionAccount schema.
+type NoteConnectionAccountClient struct {
+	config
+}
+
+// NewNoteConnectionAccountClient returns a client for the NoteConnectionAccount from the given config.
+func NewNoteConnectionAccountClient(c config) *NoteConnectionAccountClient {
+	return &NoteConnectionAccountClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `noteconnectionaccount.Hooks(f(g(h())))`.
+func (c *NoteConnectionAccountClient) Use(hooks ...Hook) {
+	c.hooks.NoteConnectionAccount = append(c.hooks.NoteConnectionAccount, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `noteconnectionaccount.Intercept(f(g(h())))`.
+func (c *NoteConnectionAccountClient) Intercept(interceptors ...Interceptor) {
+	c.inters.NoteConnectionAccount = append(c.inters.NoteConnectionAccount, interceptors...)
+}
+
+// Create returns a builder for creating a NoteConnectionAccount entity.
+func (c *NoteConnectionAccountClient) Create() *NoteConnectionAccountCreate {
+	mutation := newNoteConnectionAccountMutation(c.config, OpCreate)
+	return &NoteConnectionAccountCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of NoteConnectionAccount entities.
+func (c *NoteConnectionAccountClient) CreateBulk(builders ...*NoteConnectionAccountCreate) *NoteConnectionAccountCreateBulk {
+	return &NoteConnectionAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteConnectionAccountClient) MapCreateBulk(slice any, setFunc func(*NoteConnectionAccountCreate, int)) *NoteConnectionAccountCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteConnectionAccountCreateBulk{err: fmt.Errorf("calling to NoteConnectionAccountClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteConnectionAccountCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteConnectionAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for NoteConnectionAccount.
+func (c *NoteConnectionAccountClient) Update() *NoteConnectionAccountUpdate {
+	mutation := newNoteConnectionAccountMutation(c.config, OpUpdate)
+	return &NoteConnectionAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteConnectionAccountClient) UpdateOne(_m *NoteConnectionAccount) *NoteConnectionAccountUpdateOne {
+	mutation := newNoteConnectionAccountMutation(c.config, OpUpdateOne, withNoteConnectionAccount(_m))
+	return &NoteConnectionAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteConnectionAccountClient) UpdateOneID(id int) *NoteConnectionAccountUpdateOne {
+	mutation := newNoteConnectionAccountMutation(c.config, OpUpdateOne, withNoteConnectionAccountID(id))
+	return &NoteConnectionAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for NoteConnectionAccount.
+func (c *NoteConnectionAccountClient) Delete() *NoteConnectionAccountDelete {
+	mutation := newNoteConnectionAccountMutation(c.config, OpDelete)
+	return &NoteConnectionAccountDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteConnectionAccountClient) DeleteOne(_m *NoteConnectionAccount) *NoteConnectionAccountDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteConnectionAccountClient) DeleteOneID(id int) *NoteConnectionAccountDeleteOne {
+	builder := c.Delete().Where(noteconnectionaccount.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteConnectionAccountDeleteOne{builder}
+}
+
+// Query returns a query builder for NoteConnectionAccount.
+func (c *NoteConnectionAccountClient) Query() *NoteConnectionAccountQuery {
+	return &NoteConnectionAccountQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNoteConnectionAccount},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a NoteConnectionAccount entity by its id.
+func (c *NoteConnectionAccountClient) Get(ctx context.Context, id int) (*NoteConnectionAccount, error) {
+	return c.Query().Where(noteconnectionaccount.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteConnectionAccountClient) GetX(ctx context.Context, id int) *NoteConnectionAccount {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a NoteConnectionAccount.
+func (c *NoteConnectionAccountClient) QueryUser(_m *NoteConnectionAccount) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionaccount.Table, noteconnectionaccount.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noteconnectionaccount.UserTable, noteconnectionaccount.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryItemMaps queries the item_maps edge of a NoteConnectionAccount.
+func (c *NoteConnectionAccountClient) QueryItemMaps(_m *NoteConnectionAccount) *NoteConnectionItemMapQuery {
+	query := (&NoteConnectionItemMapClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionaccount.Table, noteconnectionaccount.FieldID, id),
+			sqlgraph.To(noteconnectionitemmap.Table, noteconnectionitemmap.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, noteconnectionaccount.ItemMapsTable, noteconnectionaccount.ItemMapsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryJobs queries the jobs edge of a NoteConnectionAccount.
+func (c *NoteConnectionAccountClient) QueryJobs(_m *NoteConnectionAccount) *NoteConnectionJobQuery {
+	query := (&NoteConnectionJobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionaccount.Table, noteconnectionaccount.FieldID, id),
+			sqlgraph.To(noteconnectionjob.Table, noteconnectionjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, noteconnectionaccount.JobsTable, noteconnectionaccount.JobsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteConnectionAccountClient) Hooks() []Hook {
+	return c.hooks.NoteConnectionAccount
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteConnectionAccountClient) Interceptors() []Interceptor {
+	return c.inters.NoteConnectionAccount
+}
+
+func (c *NoteConnectionAccountClient) mutate(ctx context.Context, m *NoteConnectionAccountMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteConnectionAccountCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteConnectionAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteConnectionAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteConnectionAccountDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown NoteConnectionAccount mutation op: %q", m.Op())
+	}
+}
+
+// NoteConnectionItemMapClient is a client for the NoteConnectionItemMap schema.
+type NoteConnectionItemMapClient struct {
+	config
+}
+
+// NewNoteConnectionItemMapClient returns a client for the NoteConnectionItemMap from the given config.
+func NewNoteConnectionItemMapClient(c config) *NoteConnectionItemMapClient {
+	return &NoteConnectionItemMapClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `noteconnectionitemmap.Hooks(f(g(h())))`.
+func (c *NoteConnectionItemMapClient) Use(hooks ...Hook) {
+	c.hooks.NoteConnectionItemMap = append(c.hooks.NoteConnectionItemMap, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `noteconnectionitemmap.Intercept(f(g(h())))`.
+func (c *NoteConnectionItemMapClient) Intercept(interceptors ...Interceptor) {
+	c.inters.NoteConnectionItemMap = append(c.inters.NoteConnectionItemMap, interceptors...)
+}
+
+// Create returns a builder for creating a NoteConnectionItemMap entity.
+func (c *NoteConnectionItemMapClient) Create() *NoteConnectionItemMapCreate {
+	mutation := newNoteConnectionItemMapMutation(c.config, OpCreate)
+	return &NoteConnectionItemMapCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of NoteConnectionItemMap entities.
+func (c *NoteConnectionItemMapClient) CreateBulk(builders ...*NoteConnectionItemMapCreate) *NoteConnectionItemMapCreateBulk {
+	return &NoteConnectionItemMapCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteConnectionItemMapClient) MapCreateBulk(slice any, setFunc func(*NoteConnectionItemMapCreate, int)) *NoteConnectionItemMapCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteConnectionItemMapCreateBulk{err: fmt.Errorf("calling to NoteConnectionItemMapClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteConnectionItemMapCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteConnectionItemMapCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for NoteConnectionItemMap.
+func (c *NoteConnectionItemMapClient) Update() *NoteConnectionItemMapUpdate {
+	mutation := newNoteConnectionItemMapMutation(c.config, OpUpdate)
+	return &NoteConnectionItemMapUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteConnectionItemMapClient) UpdateOne(_m *NoteConnectionItemMap) *NoteConnectionItemMapUpdateOne {
+	mutation := newNoteConnectionItemMapMutation(c.config, OpUpdateOne, withNoteConnectionItemMap(_m))
+	return &NoteConnectionItemMapUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteConnectionItemMapClient) UpdateOneID(id int) *NoteConnectionItemMapUpdateOne {
+	mutation := newNoteConnectionItemMapMutation(c.config, OpUpdateOne, withNoteConnectionItemMapID(id))
+	return &NoteConnectionItemMapUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for NoteConnectionItemMap.
+func (c *NoteConnectionItemMapClient) Delete() *NoteConnectionItemMapDelete {
+	mutation := newNoteConnectionItemMapMutation(c.config, OpDelete)
+	return &NoteConnectionItemMapDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteConnectionItemMapClient) DeleteOne(_m *NoteConnectionItemMap) *NoteConnectionItemMapDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteConnectionItemMapClient) DeleteOneID(id int) *NoteConnectionItemMapDeleteOne {
+	builder := c.Delete().Where(noteconnectionitemmap.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteConnectionItemMapDeleteOne{builder}
+}
+
+// Query returns a query builder for NoteConnectionItemMap.
+func (c *NoteConnectionItemMapClient) Query() *NoteConnectionItemMapQuery {
+	return &NoteConnectionItemMapQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNoteConnectionItemMap},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a NoteConnectionItemMap entity by its id.
+func (c *NoteConnectionItemMapClient) Get(ctx context.Context, id int) (*NoteConnectionItemMap, error) {
+	return c.Query().Where(noteconnectionitemmap.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteConnectionItemMapClient) GetX(ctx context.Context, id int) *NoteConnectionItemMap {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryAccount queries the account edge of a NoteConnectionItemMap.
+func (c *NoteConnectionItemMapClient) QueryAccount(_m *NoteConnectionItemMap) *NoteConnectionAccountQuery {
+	query := (&NoteConnectionAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionitemmap.Table, noteconnectionitemmap.FieldID, id),
+			sqlgraph.To(noteconnectionaccount.Table, noteconnectionaccount.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noteconnectionitemmap.AccountTable, noteconnectionitemmap.AccountColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNote queries the note edge of a NoteConnectionItemMap.
+func (c *NoteConnectionItemMapClient) QueryNote(_m *NoteConnectionItemMap) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionitemmap.Table, noteconnectionitemmap.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noteconnectionitemmap.NoteTable, noteconnectionitemmap.NoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteConnectionItemMapClient) Hooks() []Hook {
+	return c.hooks.NoteConnectionItemMap
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteConnectionItemMapClient) Interceptors() []Interceptor {
+	return c.inters.NoteConnectionItemMap
+}
+
+func (c *NoteConnectionItemMapClient) mutate(ctx context.Context, m *NoteConnectionItemMapMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteConnectionItemMapCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteConnectionItemMapUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteConnectionItemMapUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteConnectionItemMapDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown NoteConnectionItemMap mutation op: %q", m.Op())
+	}
+}
+
+// NoteConnectionJobClient is a client for the NoteConnectionJob schema.
+type NoteConnectionJobClient struct {
+	config
+}
+
+// NewNoteConnectionJobClient returns a client for the NoteConnectionJob from the given config.
+func NewNoteConnectionJobClient(c config) *NoteConnectionJobClient {
+	return &NoteConnectionJobClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `noteconnectionjob.Hooks(f(g(h())))`.
+func (c *NoteConnectionJobClient) Use(hooks ...Hook) {
+	c.hooks.NoteConnectionJob = append(c.hooks.NoteConnectionJob, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `noteconnectionjob.Intercept(f(g(h())))`.
+func (c *NoteConnectionJobClient) Intercept(interceptors ...Interceptor) {
+	c.inters.NoteConnectionJob = append(c.inters.NoteConnectionJob, interceptors...)
+}
+
+// Create returns a builder for creating a NoteConnectionJob entity.
+func (c *NoteConnectionJobClient) Create() *NoteConnectionJobCreate {
+	mutation := newNoteConnectionJobMutation(c.config, OpCreate)
+	return &NoteConnectionJobCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of NoteConnectionJob entities.
+func (c *NoteConnectionJobClient) CreateBulk(builders ...*NoteConnectionJobCreate) *NoteConnectionJobCreateBulk {
+	return &NoteConnectionJobCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteConnectionJobClient) MapCreateBulk(slice any, setFunc func(*NoteConnectionJobCreate, int)) *NoteConnectionJobCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteConnectionJobCreateBulk{err: fmt.Errorf("calling to NoteConnectionJobClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteConnectionJobCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteConnectionJobCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for NoteConnectionJob.
+func (c *NoteConnectionJobClient) Update() *NoteConnectionJobUpdate {
+	mutation := newNoteConnectionJobMutation(c.config, OpUpdate)
+	return &NoteConnectionJobUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteConnectionJobClient) UpdateOne(_m *NoteConnectionJob) *NoteConnectionJobUpdateOne {
+	mutation := newNoteConnectionJobMutation(c.config, OpUpdateOne, withNoteConnectionJob(_m))
+	return &NoteConnectionJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteConnectionJobClient) UpdateOneID(id int) *NoteConnectionJobUpdateOne {
+	mutation := newNoteConnectionJobMutation(c.config, OpUpdateOne, withNoteConnectionJobID(id))
+	return &NoteConnectionJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for NoteConnectionJob.
+func (c *NoteConnectionJobClient) Delete() *NoteConnectionJobDelete {
+	mutation := newNoteConnectionJobMutation(c.config, OpDelete)
+	return &NoteConnectionJobDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteConnectionJobClient) DeleteOne(_m *NoteConnectionJob) *NoteConnectionJobDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteConnectionJobClient) DeleteOneID(id int) *NoteConnectionJobDeleteOne {
+	builder := c.Delete().Where(noteconnectionjob.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteConnectionJobDeleteOne{builder}
+}
+
+// Query returns a query builder for NoteConnectionJob.
+func (c *NoteConnectionJobClient) Query() *NoteConnectionJobQuery {
+	return &NoteConnectionJobQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNoteConnectionJob},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a NoteConnectionJob entity by its id.
+func (c *NoteConnectionJobClient) Get(ctx context.Context, id int) (*NoteConnectionJob, error) {
+	return c.Query().Where(noteconnectionjob.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteConnectionJobClient) GetX(ctx context.Context, id int) *NoteConnectionJob {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a NoteConnectionJob.
+func (c *NoteConnectionJobClient) QueryUser(_m *NoteConnectionJob) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionjob.Table, noteconnectionjob.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noteconnectionjob.UserTable, noteconnectionjob.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAccount queries the account edge of a NoteConnectionJob.
+func (c *NoteConnectionJobClient) QueryAccount(_m *NoteConnectionJob) *NoteConnectionAccountQuery {
+	query := (&NoteConnectionAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionjob.Table, noteconnectionjob.FieldID, id),
+			sqlgraph.To(noteconnectionaccount.Table, noteconnectionaccount.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noteconnectionjob.AccountTable, noteconnectionjob.AccountColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNote queries the note edge of a NoteConnectionJob.
+func (c *NoteConnectionJobClient) QueryNote(_m *NoteConnectionJob) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noteconnectionjob.Table, noteconnectionjob.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noteconnectionjob.NoteTable, noteconnectionjob.NoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteConnectionJobClient) Hooks() []Hook {
+	return c.hooks.NoteConnectionJob
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteConnectionJobClient) Interceptors() []Interceptor {
+	return c.inters.NoteConnectionJob
+}
+
+func (c *NoteConnectionJobClient) mutate(ctx context.Context, m *NoteConnectionJobMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteConnectionJobCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteConnectionJobUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteConnectionJobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteConnectionJobDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown NoteConnectionJob mutation op: %q", m.Op())
 	}
 }
 
@@ -2579,6 +3478,38 @@ func (c *UserClient) QueryMcpImages(_m *User) *MCPImageQuery {
 	return query
 }
 
+// QueryNoteConnectionAccounts queries the note_connection_accounts edge of a User.
+func (c *UserClient) QueryNoteConnectionAccounts(_m *User) *NoteConnectionAccountQuery {
+	query := (&NoteConnectionAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(noteconnectionaccount.Table, noteconnectionaccount.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteConnectionAccountsTable, user.NoteConnectionAccountsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNoteConnectionJobs queries the note_connection_jobs edge of a User.
+func (c *UserClient) QueryNoteConnectionJobs(_m *User) *NoteConnectionJobQuery {
+	query := (&NoteConnectionJobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(noteconnectionjob.Table, noteconnectionjob.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteConnectionJobsTable, user.NoteConnectionJobsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryNoteLinks queries the note_links edge of a User.
 func (c *UserClient) QueryNoteLinks(_m *User) *NoteLinkQuery {
 	query := (&NoteLinkClient{config: c.config}).Query()
@@ -2788,12 +3719,15 @@ func (c *WhiteboardClient) mutate(ctx context.Context, m *WhiteboardMutation) (V
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Attachment, BackupConfig, ExcalidrawLibrary, Folder, Font, ImportItem,
-		ImportJob, MCPImage, MCPToken, Note, NoteLink, Tag, User, Whiteboard []ent.Hook
+		Attachment, BackupConfig, BackupTarget, BackupTask, ExcalidrawLibrary, Folder,
+		Font, ImportItem, ImportJob, MCPImage, MCPToken, Note, NoteConnectionAccount,
+		NoteConnectionItemMap, NoteConnectionJob, NoteLink, Tag, User,
+		Whiteboard []ent.Hook
 	}
 	inters struct {
-		Attachment, BackupConfig, ExcalidrawLibrary, Folder, Font, ImportItem,
-		ImportJob, MCPImage, MCPToken, Note, NoteLink, Tag, User,
+		Attachment, BackupConfig, BackupTarget, BackupTask, ExcalidrawLibrary, Folder,
+		Font, ImportItem, ImportJob, MCPImage, MCPToken, Note, NoteConnectionAccount,
+		NoteConnectionItemMap, NoteConnectionJob, NoteLink, Tag, User,
 		Whiteboard []ent.Interceptor
 	}
 )

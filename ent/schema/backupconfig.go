@@ -46,6 +46,9 @@ func (BackupConfig) Fields() []ent.Field {
 		field.Int("folder_max_depth").
 			Default(3).
 			Comment("Maximum notebook group nesting depth"),
+		field.Bool("backup_targets_migrated").
+			Default(false).
+			Comment("Whether legacy backup config has been migrated to targets/tasks"),
 		field.Time("last_backup_at").
 			Optional(),
 		field.Time("created_at").

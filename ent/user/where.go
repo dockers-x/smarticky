@@ -995,6 +995,52 @@ func HasMcpImagesWith(preds ...predicate.MCPImage) predicate.User {
 	})
 }
 
+// HasNoteConnectionAccounts applies the HasEdge predicate on the "note_connection_accounts" edge.
+func HasNoteConnectionAccounts() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NoteConnectionAccountsTable, NoteConnectionAccountsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNoteConnectionAccountsWith applies the HasEdge predicate on the "note_connection_accounts" edge with a given conditions (other predicates).
+func HasNoteConnectionAccountsWith(preds ...predicate.NoteConnectionAccount) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newNoteConnectionAccountsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasNoteConnectionJobs applies the HasEdge predicate on the "note_connection_jobs" edge.
+func HasNoteConnectionJobs() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NoteConnectionJobsTable, NoteConnectionJobsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNoteConnectionJobsWith applies the HasEdge predicate on the "note_connection_jobs" edge with a given conditions (other predicates).
+func HasNoteConnectionJobsWith(preds ...predicate.NoteConnectionJob) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newNoteConnectionJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasNoteLinks applies the HasEdge predicate on the "note_links" edge.
 func HasNoteLinks() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

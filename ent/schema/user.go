@@ -64,6 +64,8 @@ func (User) Edges() []ent.Edge {
 		edge.To("import_jobs", ImportJob.Type),
 		edge.To("mcp_tokens", MCPToken.Type),
 		edge.To("mcp_images", MCPImage.Type),
+		edge.To("note_connection_accounts", NoteConnectionAccount.Type),
+		edge.To("note_connection_jobs", NoteConnectionJob.Type),
 		edge.To("note_links", NoteLink.Type).
 			Annotations(entsql.OnDelete(entsql.Cascade)),
 	}

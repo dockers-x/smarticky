@@ -43,6 +43,8 @@ type BackupConfig struct {
 	BackupMaxCount int `json:"backup_max_count,omitempty"`
 	// Maximum notebook group nesting depth
 	FolderMaxDepth int `json:"folder_max_depth,omitempty"`
+	// Whether legacy backup config has been migrated to targets/tasks
+	BackupTargetsMigrated bool `json:"backup_targets_migrated,omitempty"`
 	// LastBackupAt holds the value of the "last_backup_at" field.
 	LastBackupAt time.Time `json:"last_backup_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -57,7 +59,7 @@ func (*BackupConfig) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case backupconfig.FieldAutoBackupEnabled:
+		case backupconfig.FieldAutoBackupEnabled, backupconfig.FieldBackupTargetsMigrated:
 			values[i] = new(sql.NullBool)
 		case backupconfig.FieldID, backupconfig.FieldBackupRetentionDays, backupconfig.FieldBackupMaxCount, backupconfig.FieldFolderMaxDepth:
 			values[i] = new(sql.NullInt64)
@@ -164,6 +166,12 @@ func (_m *BackupConfig) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.FolderMaxDepth = int(value.Int64)
 			}
+		case backupconfig.FieldBackupTargetsMigrated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field backup_targets_migrated", values[i])
+			} else if value.Valid {
+				_m.BackupTargetsMigrated = value.Bool
+			}
 		case backupconfig.FieldLastBackupAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_backup_at", values[i])
@@ -254,6 +262,9 @@ func (_m *BackupConfig) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("folder_max_depth=")
 	builder.WriteString(fmt.Sprintf("%v", _m.FolderMaxDepth))
+	builder.WriteString(", ")
+	builder.WriteString("backup_targets_migrated=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BackupTargetsMigrated))
 	builder.WriteString(", ")
 	builder.WriteString("last_backup_at=")
 	builder.WriteString(_m.LastBackupAt.Format(time.ANSIC))

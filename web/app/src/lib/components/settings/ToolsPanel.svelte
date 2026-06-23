@@ -3,6 +3,7 @@
     DatabaseBackup,
     FolderTree,
     FileUp,
+    Link,
     LogOut,
     Type,
     User as UserIcon,
@@ -15,6 +16,7 @@
   import { getVersionInfo, type VersionInfo } from "../../api/version";
   import ImportCenter from "../import/ImportCenter.svelte";
   import BackupPanel from "./BackupPanel.svelte";
+  import ConnectedAccountsPanel from "./ConnectedAccountsPanel.svelte";
   import FontPanel from "./FontPanel.svelte";
   import FolderSettingsPanel from "./FolderSettingsPanel.svelte";
   import ProfilePanel from "./ProfilePanel.svelte";
@@ -28,7 +30,14 @@
   export let user: User | null = null;
   export let onClose: () => void = () => {};
 
-  type ToolsView = "import" | "backup" | "folders" | "fonts" | "profile" | "users";
+  type ToolsView =
+    | "import"
+    | "backup"
+    | "connections"
+    | "folders"
+    | "fonts"
+    | "profile"
+    | "users";
 
   interface ToolNavItem {
     labelKey: MessageKey;
@@ -130,6 +139,10 @@
       view: "backup",
     },
     {
+      labelKey: "noteConnections",
+      view: "connections",
+    },
+    {
       labelKey: "folderSettings",
       adminOnly: true,
       view: "folders",
@@ -155,13 +168,15 @@
       ? t("import", $preferencesStore.language)
       : view === "backup"
         ? t("backupTitle", $preferencesStore.language)
-        : view === "folders"
-          ? t("folderSettings", $preferencesStore.language)
-          : view === "fonts"
-            ? t("fontManagement", $preferencesStore.language)
-            : view === "profile"
-              ? t("personalProfile", $preferencesStore.language)
-              : t("userManagement", $preferencesStore.language);
+        : view === "connections"
+          ? t("noteConnections", $preferencesStore.language)
+          : view === "folders"
+            ? t("folderSettings", $preferencesStore.language)
+            : view === "fonts"
+              ? t("fontManagement", $preferencesStore.language)
+              : view === "profile"
+                ? t("personalProfile", $preferencesStore.language)
+                : t("userManagement", $preferencesStore.language);
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -207,6 +222,8 @@
               <FileUp size={17} strokeWidth={1.8} aria-hidden="true" />
             {:else if item.view === "backup"}
               <DatabaseBackup size={17} strokeWidth={1.8} aria-hidden="true" />
+            {:else if item.view === "connections"}
+              <Link size={17} strokeWidth={1.8} aria-hidden="true" />
             {:else if item.view === "folders"}
               <FolderTree size={17} strokeWidth={1.8} aria-hidden="true" />
             {:else if item.view === "fonts"}
@@ -259,6 +276,8 @@
           <ImportCenter showBack={false} onBack={() => selectView("profile")} onImported={handleImported} />
         {:else if view === "backup"}
           <BackupPanel />
+        {:else if view === "connections"}
+          <ConnectedAccountsPanel />
         {:else if view === "folders"}
           <FolderSettingsPanel />
         {:else if view === "fonts"}
