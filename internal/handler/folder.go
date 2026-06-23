@@ -20,7 +20,7 @@ import (
 const (
 	defaultFolderMaxDepth      = 3
 	minConfigurableFolderDepth = 1
-	maxConfigurableFolderDepth = 10
+	maxConfigurableFolderDepth = 50
 	maxBulkMoveNotes           = 200
 )
 

@@ -40,6 +40,7 @@ export interface NoteConnectionTarget {
 
 export interface NoteConnectionJob {
   id: number;
+  account_id: number;
   provider: NoteConnectionProvider;
   operation: "import" | "push";
   status: "pending" | "running" | "completed" | "completed_with_errors" | "failed";
@@ -131,10 +132,15 @@ export async function importFromNoteConnection(
   id: number,
   targetId: string,
   limit: number,
+  preserveRemoteHierarchy = true,
 ): Promise<NoteConnectionImportResult> {
   return apiFetch<NoteConnectionImportResult>(`/note-connections/accounts/${id}/import`, {
     method: "POST",
-    body: JSON.stringify({ target_id: targetId, limit }),
+    body: JSON.stringify({
+      target_id: targetId,
+      limit,
+      preserve_remote_hierarchy: preserveRemoteHierarchy,
+    }),
   });
 }
 

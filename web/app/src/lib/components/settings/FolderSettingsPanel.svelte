@@ -31,7 +31,7 @@
           bind:value={maxDepth}
           type="number"
           min="1"
-          max="10"
+          max="50"
           step="1"
         />
         <small>{t("folderMaxDepthHint", $preferencesStore.language)}</small>

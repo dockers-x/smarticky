@@ -187,6 +187,8 @@ func noteConnectionError(c echo.Context, err error) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Target is required"})
 	case errors.Is(err, connectsvc.ErrAccountDisabled):
 		return c.JSON(http.StatusConflict, map[string]string{"error": "Note connection account is disabled"})
+	case errors.Is(err, connectsvc.ErrJobRunning):
+		return c.JSON(http.StatusConflict, map[string]string{"error": "Note connection import is already running"})
 	default:
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

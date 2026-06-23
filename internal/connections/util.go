@@ -57,3 +57,10 @@ func defaultString(value, fallback string) string {
 	}
 	return value
 }
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

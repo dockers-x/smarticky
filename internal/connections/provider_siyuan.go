@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -14,6 +15,17 @@ import (
 type siYuanProvider struct {
 	client *siyuan.Client
 }
+
+type siYuanFrontMatter struct {
+	Title     string
+	Content   string
+	Tags      []string
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
+}
+
+var siYuanFrontMatterListPattern = regexp.MustCompile(`[\[\],]`)
+var siYuanLooseMetaKeyPattern = regexp.MustCompile(`(?i)(^|\s)(title|date|created|created_at|lastmod|updated|updated_at|tags|tag)\s*:\s*`)
 
 func newSiYuanProvider(endpoint, token string, httpClient *http.Client) (Provider, error) {
 	client, err := siyuan.New(
@@ -83,12 +95,32 @@ func (p *siYuanProvider) ImportNotes(ctx context.Context, targetID string, limit
 		if err == nil && strings.TrimSpace(exported.Content) != "" {
 			content = exported.Content
 		}
+		metadata := parseSiYuanFrontMatter(content)
+		content = metadata.Content
 		hpath := sqlString(row, "hpath")
 		title := sqlString(row, "content")
+		if metadata.Title != "" {
+			title = metadata.Title
+		}
+		box := sqlString(row, "box")
+		createdAt := parseSiYuanTime(sqlString(row, "created"))
+		if metadata.CreatedAt != nil {
+			createdAt = metadata.CreatedAt
+		}
+		updatedAt := parseSiYuanTime(sqlString(row, "updated"))
+		if metadata.UpdatedAt != nil {
+			updatedAt = metadata.UpdatedAt
+		}
+		tags := metadata.Tags
+		if attrs, err := p.client.Attributes.GetBlockAttrs(ctx, siyuan.BlockID(id)); err == nil {
+			if attrTitle := strings.TrimSpace(attrs["title"]); attrTitle != "" && strings.TrimSpace(title) == "" {
+				title = attrTitle
+			}
+			tags = append(tags, siYuanAttrTags(attrs)...)
+		}
 		if strings.TrimSpace(title) == "" {
 			title = path.Base(strings.Trim(hpath, "/"))
 		}
-		box := sqlString(row, "box")
 		notes = append(notes, RemoteNote{
 			ExternalID: id,
 			TargetID:   box,
@@ -96,8 +128,9 @@ func (p *siYuanProvider) ImportNotes(ctx context.Context, targetID string, limit
 			Path:       hpath,
 			Title:      titleOrUntitled(title),
 			Content:    content,
-			CreatedAt:  parseSiYuanTime(sqlString(row, "created")),
-			UpdatedAt:  parseSiYuanTime(sqlString(row, "updated")),
+			Tags:       uniqueStrings(tags),
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
 		})
 	}
 	return notes, nil
@@ -171,4 +204,203 @@ func parseSiYuanTime(value string) *time.Time {
 	}
 	utc := parsed.UTC()
 	return &utc
+}
+
+func parseSiYuanFrontMatter(content string) siYuanFrontMatter {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	trimmed := strings.TrimLeft(normalized, "\ufeff\n\t ")
+	delimiter := ""
+	switch {
+	case strings.HasPrefix(trimmed, "---\n"):
+		delimiter = "---"
+	case strings.HasPrefix(trimmed, "***\n"):
+		delimiter = "***"
+	default:
+		if meta, ok := parseSiYuanLooseFrontMatter(trimmed, content); ok {
+			return meta
+		}
+		return siYuanFrontMatter{Content: content}
+	}
+
+	lines := strings.Split(trimmed, "\n")
+	end := -1
+	for i := 1; i < len(lines) && i < 80; i++ {
+		if isSiYuanFrontMatterDelimiter(strings.TrimSpace(lines[i]), delimiter) {
+			end = i
+			break
+		}
+	}
+	if end == -1 {
+		return siYuanFrontMatter{Content: content}
+	}
+
+	meta := siYuanFrontMatter{Content: strings.TrimLeft(strings.Join(lines[end+1:], "\n"), "\n")}
+	for _, line := range lines[1:end] {
+		key, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		key = strings.ToLower(strings.TrimSpace(key))
+		value = strings.Trim(strings.TrimSpace(value), `"'`)
+		switch key {
+		case "title":
+			meta.Title = value
+		case "date", "created", "created_at":
+			meta.CreatedAt = parseSiYuanMetadataTime(value)
+		case "lastmod", "updated", "updated_at":
+			meta.UpdatedAt = parseSiYuanMetadataTime(value)
+		case "tags", "tag":
+			meta.Tags = append(meta.Tags, parseSiYuanTagList(value)...)
+		}
+	}
+	return meta
+}
+
+func isSiYuanFrontMatterDelimiter(line, opener string) bool {
+	return line == opener || line == "---" || line == "***"
+}
+
+func parseSiYuanLooseFrontMatter(trimmed, original string) (siYuanFrontMatter, bool) {
+	lines := strings.Split(trimmed, "\n")
+	start := -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		return siYuanFrontMatter{Content: original}, false
+	}
+
+	line := strings.TrimSpace(lines[start])
+	line = strings.TrimSpace(strings.TrimLeft(line, "*- "))
+	lower := strings.ToLower(line)
+	if !strings.HasPrefix(lower, "title:") &&
+		!strings.HasPrefix(lower, "date:") &&
+		!strings.HasPrefix(lower, "created:") &&
+		!strings.HasPrefix(lower, "created_at:") &&
+		!strings.HasPrefix(lower, "lastmod:") &&
+		!strings.HasPrefix(lower, "updated:") &&
+		!strings.HasPrefix(lower, "updated_at:") &&
+		!strings.HasPrefix(lower, "tags:") &&
+		!strings.HasPrefix(lower, "tag:") {
+		return siYuanFrontMatter{Content: original}, false
+	}
+
+	meta := siYuanFrontMatter{}
+	applySiYuanMetadataPairs(line, &meta)
+	if meta.Title == "" && meta.CreatedAt == nil && meta.UpdatedAt == nil && len(meta.Tags) == 0 {
+		return siYuanFrontMatter{Content: original}, false
+	}
+
+	next := start + 1
+	for next < len(lines) {
+		value := strings.TrimSpace(lines[next])
+		if value == "---" || value == "***" || value == "" {
+			next++
+			continue
+		}
+		break
+	}
+	meta.Content = strings.TrimLeft(strings.Join(lines[next:], "\n"), "\n")
+	return meta, true
+}
+
+func applySiYuanMetadataPairs(line string, meta *siYuanFrontMatter) {
+	matches := siYuanLooseMetaKeyPattern.FindAllStringSubmatchIndex(line, -1)
+	if len(matches) == 0 {
+		return
+	}
+	for i, match := range matches {
+		key := strings.ToLower(strings.TrimSpace(line[match[4]:match[5]]))
+		valueStart := match[1]
+		valueEnd := len(line)
+		if i+1 < len(matches) {
+			valueEnd = matches[i+1][0]
+		}
+		value := cleanSiYuanMetadataValue(line[valueStart:valueEnd])
+		switch key {
+		case "title":
+			meta.Title = value
+		case "date", "created", "created_at":
+			meta.CreatedAt = parseSiYuanMetadataTime(value)
+		case "lastmod", "updated", "updated_at":
+			meta.UpdatedAt = parseSiYuanMetadataTime(value)
+		case "tags", "tag":
+			meta.Tags = append(meta.Tags, parseSiYuanTagList(value)...)
+		}
+	}
+}
+
+func cleanSiYuanMetadataValue(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.TrimSuffix(value, "---")
+	value = strings.TrimSuffix(value, "***")
+	return strings.Trim(strings.TrimSpace(value), `"'`)
+}
+
+func parseSiYuanMetadataTime(value string) *time.Time {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	layouts := []string{
+		time.RFC3339,
+		"2006-01-02T15:04:05-07:00",
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+		"20060102150405",
+	}
+	for _, layout := range layouts {
+		parsed, err := time.ParseInLocation(layout, value, time.Local)
+		if err == nil {
+			utc := parsed.UTC()
+			return &utc
+		}
+	}
+	return nil
+}
+
+func siYuanAttrTags(attrs map[string]string) []string {
+	var tags []string
+	for _, key := range []string{"tags", "tag", "custom-tags", "custom-tag"} {
+		tags = append(tags, parseSiYuanTagList(attrs[key])...)
+	}
+	return tags
+}
+
+func parseSiYuanTagList(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	value = strings.Trim(value, `"'`)
+	value = siYuanFrontMatterListPattern.ReplaceAllString(value, " ")
+	fields := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ' ' || r == '\t' || r == ';' || r == '，' || r == '、' || r == '#'
+	})
+	tags := make([]string, 0, len(fields))
+	for _, field := range fields {
+		field = strings.Trim(strings.TrimSpace(field), `"'`)
+		if field != "" {
+			tags = append(tags, field)
+		}
+	}
+	return tags
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }

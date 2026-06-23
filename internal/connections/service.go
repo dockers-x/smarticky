@@ -13,11 +13,13 @@ import (
 	"time"
 
 	"smarticky/ent"
+	"smarticky/ent/backupconfig"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
 	"smarticky/ent/noteconnectionaccount"
 	"smarticky/ent/noteconnectionitemmap"
 	"smarticky/ent/noteconnectionjob"
+	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/internal/secrets"
 
@@ -35,6 +37,7 @@ var (
 	ErrMissingCredential   = errors.New("missing provider credential")
 	ErrMissingTarget       = errors.New("missing target")
 	ErrAccountDisabled     = errors.New("note connection account is disabled")
+	ErrJobRunning          = errors.New("note connection import is already running")
 )
 
 var sensitiveQueryValuePattern = regexp.MustCompile(`(?i)([?&](?:token|access_token|api_key|apikey|password|secret)=)([^&\s"']+)`)
@@ -264,12 +267,28 @@ func (s *Service) ImportNotes(ctx context.Context, userID, accountID int, req Im
 	if err := ensureAccountEnabled(row); err != nil {
 		return nil, err
 	}
+	running, err := s.client.NoteConnectionJob.Query().
+		Where(
+			noteconnectionjob.UserIDEQ(userID),
+			noteconnectionjob.AccountIDEQ(accountID),
+			noteconnectionjob.OperationEQ(OperationImport),
+			noteconnectionjob.StatusEQ(JobRunning),
+		).
+		Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if running {
+		return nil, ErrJobRunning
+	}
 	provider, err := s.providerForAccount(ctx, row, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	limit := clampLimit(req.Limit)
+	preserveRemoteHierarchy := importPreserveRemoteHierarchy(req)
+	optionsJSON := importOptionsJSON(req.TargetID, limit, preserveRemoteHierarchy)
 	job, err := s.client.NoteConnectionJob.Create().
 		SetProvider(row.Provider).
 		SetOperation(OperationImport).
@@ -277,6 +296,7 @@ func (s *Service) ImportNotes(ctx context.Context, userID, accountID int, req Im
 		SetUserID(userID).
 		SetAccountID(row.ID).
 		SetTotalCount(0).
+		SetOptionsJSON(optionsJSON).
 		SetStartedAt(time.Now()).
 		Save(ctx)
 	if err != nil {
@@ -296,9 +316,16 @@ func (s *Service) ImportNotes(ctx context.Context, userID, accountID int, req Im
 	}
 
 	result := &ImportResult{JobID: job.ID, TotalCount: len(remoteNotes)}
+	_ = job.Update().
+		SetTotalCount(result.TotalCount).
+		SetImportedCount(0).
+		SetSkippedCount(0).
+		SetFailedCount(0).
+		Exec(ctx)
 	for _, remote := range remoteNotes {
 		if strings.TrimSpace(remote.ExternalID) == "" {
 			result.FailedCount++
+			s.updateImportProgress(ctx, job, result)
 			continue
 		}
 		exists, err := s.client.NoteConnectionItemMap.Query().
@@ -309,22 +336,27 @@ func (s *Service) ImportNotes(ctx context.Context, userID, accountID int, req Im
 			Exist(ctx)
 		if err != nil {
 			result.FailedCount++
+			s.updateImportProgress(ctx, job, result)
 			continue
 		}
 		if exists {
 			result.SkippedCount++
+			s.updateImportProgress(ctx, job, result)
 			continue
 		}
-		created, err := s.createImportedNote(ctx, userID, row, remote)
+		created, err := s.createImportedNote(ctx, userID, row, remote, preserveRemoteHierarchy)
 		if err != nil {
 			result.FailedCount++
+			s.updateImportProgress(ctx, job, result)
 			continue
 		}
 		if err := s.saveItemMap(ctx, row, created.ID, remote.ExternalID, remote.TargetID, remote.Path, remote.URL, OperationImport); err != nil {
 			result.FailedCount++
+			s.updateImportProgress(ctx, job, result)
 			continue
 		}
 		result.ImportedCount++
+		s.updateImportProgress(ctx, job, result)
 	}
 
 	result.Status = jobStatus(result.ImportedCount, result.FailedCount)
@@ -341,6 +373,35 @@ func (s *Service) ImportNotes(ctx context.Context, userID, accountID int, req Im
 	}
 	result.JobID = job.ID
 	return result, nil
+}
+
+func (s *Service) updateImportProgress(ctx context.Context, job *ent.NoteConnectionJob, result *ImportResult) {
+	_ = job.Update().
+		SetTotalCount(result.TotalCount).
+		SetImportedCount(result.ImportedCount).
+		SetSkippedCount(result.SkippedCount).
+		SetFailedCount(result.FailedCount).
+		Exec(ctx)
+}
+
+func importPreserveRemoteHierarchy(req ImportRequest) bool {
+	if req.PreserveRemoteHierarchy == nil {
+		return true
+	}
+	return *req.PreserveRemoteHierarchy
+}
+
+func importOptionsJSON(targetID string, limit int, preserveRemoteHierarchy bool) string {
+	payload := map[string]any{
+		"target_id":                 strings.TrimSpace(targetID),
+		"limit":                     limit,
+		"preserve_remote_hierarchy": preserveRemoteHierarchy,
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
 }
 
 func (s *Service) PushNote(ctx context.Context, userID, accountID int, noteUUID uuid.UUID, targetID string) (*PushResponse, error) {
@@ -511,7 +572,7 @@ func (s *Service) decryptCredentials(row *ent.NoteConnectionAccount) (Credential
 	return credentials, nil
 }
 
-func (s *Service) createImportedNote(ctx context.Context, userID int, account *ent.NoteConnectionAccount, remote RemoteNote) (*ent.Note, error) {
+func (s *Service) createImportedNote(ctx context.Context, userID int, account *ent.NoteConnectionAccount, remote RemoteNote, preserveRemoteHierarchy bool) (*ent.Note, error) {
 	title := titleOrUntitled(remote.Title)
 	create := s.client.Note.Create().
 		SetTitle(title).
@@ -523,14 +584,33 @@ func (s *Service) createImportedNote(ctx context.Context, userID int, account *e
 	if remote.UpdatedAt != nil {
 		create.SetUpdatedAt(*remote.UpdatedAt)
 	}
-	if remote.TargetName != "" {
-		folderRow, err := s.findOrCreateFolder(ctx, userID, remote.TargetName)
+	if segments := importFolderSegments(account, remote, preserveRemoteHierarchy); len(segments) > 0 {
+		folderRow, err := s.findOrCreateFolderPath(ctx, userID, segments)
 		if err != nil {
 			return nil, err
 		}
 		create.SetFolderID(folderRow.ID)
 	}
-	return create.Save(ctx)
+	created, err := create.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, tagName := range uniqueStrings(remote.Tags) {
+		if strings.TrimSpace(tagName) == "" {
+			continue
+		}
+		tagRow, err := s.findOrCreateTag(ctx, userID, tagName)
+		if err != nil {
+			return nil, err
+		}
+		if tagRow == nil {
+			continue
+		}
+		if err := created.Update().AddTags(tagRow).Exec(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return created, nil
 }
 
 func (s *Service) findOrCreateFolder(ctx context.Context, userID int, name string) (*ent.Folder, error) {
@@ -552,6 +632,157 @@ func (s *Service) findOrCreateFolder(ctx context.Context, userID int, name strin
 		SetName(name).
 		SetUserID(userID).
 		Save(ctx)
+}
+
+func (s *Service) findOrCreateFolderPath(ctx context.Context, userID int, segments []string) (*ent.Folder, error) {
+	cleaned := cleanRemoteFolderSegments(segments)
+	if len(cleaned) == 0 {
+		return nil, ErrMissingTarget
+	}
+	if err := s.ensureFolderMaxDepthAtLeast(ctx, len(cleaned)); err != nil {
+		return nil, err
+	}
+	var parent *ent.Folder
+	for _, name := range cleaned {
+		folderRow, err := s.findOrCreateFolderUnder(ctx, userID, parent, name)
+		if err != nil {
+			return nil, err
+		}
+		parent = folderRow
+	}
+	return parent, nil
+}
+
+func (s *Service) findOrCreateFolderUnder(ctx context.Context, userID int, parent *ent.Folder, name string) (*ent.Folder, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, ErrMissingTarget
+	}
+	query := s.client.Folder.Query().
+		Where(folder.NameEQ(name), folder.HasUserWith(user.IDEQ(userID))).
+		Order(ent.Asc(folder.FieldCreatedAt))
+	if parent == nil {
+		query.Where(folder.Not(folder.HasParent()))
+	} else {
+		query.Where(folder.HasParentWith(folder.ID(parent.ID)))
+	}
+	existing, err := query.First(ctx)
+	if err == nil {
+		return existing, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	create := s.client.Folder.Create().
+		SetName(name).
+		SetUserID(userID)
+	if parent != nil {
+		create.SetParent(parent)
+	}
+	return create.Save(ctx)
+}
+
+func (s *Service) ensureFolderMaxDepthAtLeast(ctx context.Context, depth int) error {
+	if depth <= 0 {
+		return nil
+	}
+	config, err := s.client.BackupConfig.Query().First(ctx)
+	if ent.IsNotFound(err) {
+		_, err = s.client.BackupConfig.Create().
+			SetFolderMaxDepth(maxInt(3, depth)).
+			Save(ctx)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if config.FolderMaxDepth >= depth {
+		return nil
+	}
+	return s.client.BackupConfig.Update().
+		Where(backupconfig.ID(config.ID), backupconfig.FolderMaxDepthLT(depth)).
+		SetFolderMaxDepth(depth).
+		Exec(ctx)
+}
+
+func (s *Service) findOrCreateTag(ctx context.Context, userID int, name string) (*ent.Tag, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, nil
+	}
+	existing, err := s.client.Tag.Query().
+		Where(tag.NameEQ(name), tag.HasUserWith(user.IDEQ(userID))).
+		Only(ctx)
+	if err == nil {
+		return existing, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	return s.client.Tag.Create().
+		SetName(name).
+		SetColor("#E8450A").
+		SetUserID(userID).
+		Save(ctx)
+}
+
+func importFolderSegments(account *ent.NoteConnectionAccount, remote RemoteNote, preserveRemoteHierarchy bool) []string {
+	if remote.TargetName == "" && account != nil && remote.TargetID != "" && remote.TargetID == account.DefaultTargetID {
+		remote.TargetName = account.DefaultTargetName
+	}
+	if preserveRemoteHierarchy {
+		return remoteFolderSegments(remote)
+	}
+	return cleanRemoteFolderSegments([]string{remote.TargetName})
+}
+
+func remoteFolderSegments(remote RemoteNote) []string {
+	segments := make([]string, 0, 4)
+	if remote.TargetName != "" {
+		segments = append(segments, remote.TargetName)
+	}
+	pathSegments := splitRemotePath(remote.Path)
+	if len(pathSegments) > 1 {
+		pathSegments = pathSegments[:len(pathSegments)-1]
+	}
+	for _, segment := range pathSegments {
+		if len(segments) > 0 && strings.EqualFold(segments[len(segments)-1], segment) {
+			continue
+		}
+		segments = append(segments, segment)
+	}
+	return cleanRemoteFolderSegments(segments)
+}
+
+func splitRemotePath(value string) []string {
+	value = strings.TrimSpace(strings.ReplaceAll(value, "\\", "/"))
+	if value == "" {
+		return nil
+	}
+	raw := strings.Split(strings.Trim(value, "/"), "/")
+	segments := make([]string, 0, len(raw))
+	for _, segment := range raw {
+		segment = strings.TrimSpace(segment)
+		if segment != "" {
+			segments = append(segments, segment)
+		}
+	}
+	return segments
+}
+
+func cleanRemoteFolderSegments(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || value == "." || value == ".." {
+			continue
+		}
+		if len(out) > 0 && strings.EqualFold(out[len(out)-1], value) {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out
 }
 
 func (s *Service) saveItemMap(ctx context.Context, account *ent.NoteConnectionAccount, noteID uuid.UUID, externalID, targetID, path, externalURL, direction string) error {

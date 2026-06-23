@@ -73,6 +73,7 @@ type RemoteNote struct {
 	URL        string
 	Title      string
 	Content    string
+	Tags       []string
 	CreatedAt  *time.Time
 	UpdatedAt  *time.Time
 }
@@ -93,8 +94,9 @@ type PushResult struct {
 }
 
 type ImportRequest struct {
-	TargetID string `json:"target_id"`
-	Limit    int    `json:"limit"`
+	TargetID                string `json:"target_id"`
+	Limit                   int    `json:"limit"`
+	PreserveRemoteHierarchy *bool  `json:"preserve_remote_hierarchy,omitempty"`
 }
 
 type ImportResult struct {

@@ -194,6 +194,144 @@ func TestDisabledAccountCannotSync(t *testing.T) {
 	}
 }
 
+func TestImportNotesRejectsConcurrentImportJob(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestImportNotesRejectsConcurrentImportJob?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	account := client.NoteConnectionAccount.Create().
+		SetName("SiYuan").
+		SetProvider(ProviderSiYuan).
+		SetEndpoint("http://127.0.0.1:6806").
+		SetEnabled(true).
+		SetAuthType("token").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.NoteConnectionJob.Create().
+		SetProvider(ProviderSiYuan).
+		SetOperation(OperationImport).
+		SetStatus(JobRunning).
+		SetUserID(u.ID).
+		SetAccountID(account.ID).
+		ExecX(ctx)
+	service := NewService(client, testSecretBox(t))
+
+	_, err := service.ImportNotes(ctx, u.ID, account.ID, ImportRequest{})
+	if !errors.Is(err, ErrJobRunning) {
+		t.Fatalf("ImportNotes error = %v, want ErrJobRunning", err)
+	}
+}
+
+func TestCreateImportedNotePreservesRemoteHierarchyAndRaisesFolderDepth(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestCreateImportedNotePreservesRemoteHierarchyAndRaisesFolderDepth?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	account := client.NoteConnectionAccount.Create().
+		SetName("SiYuan").
+		SetProvider(ProviderSiYuan).
+		SetEndpoint("http://127.0.0.1:6806").
+		SetEnabled(true).
+		SetAuthType("token").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.BackupConfig.Create().SetFolderMaxDepth(1).SaveX(ctx)
+	service := NewService(client, testSecretBox(t))
+
+	created, err := service.createImportedNote(ctx, u.ID, account, RemoteNote{
+		ExternalID: "doc-1",
+		TargetID:   "box-1",
+		TargetName: "Notebook",
+		Path:       "/Notebook/Projects/Area/Imported",
+		Title:      "Imported",
+		Content:    "body",
+		Tags:       []string{"idea", "", "idea", "archive"},
+	}, true)
+	if err != nil {
+		t.Fatalf("create imported note: %v", err)
+	}
+
+	leaf := created.QueryFolder().OnlyX(ctx)
+	if leaf.Name != "Area" {
+		t.Fatalf("leaf folder = %q, want Area", leaf.Name)
+	}
+	parent := leaf.QueryParent().OnlyX(ctx)
+	if parent.Name != "Projects" {
+		t.Fatalf("parent folder = %q, want Projects", parent.Name)
+	}
+	root := parent.QueryParent().OnlyX(ctx)
+	if root.Name != "Notebook" {
+		t.Fatalf("root folder = %q, want Notebook", root.Name)
+	}
+	if root.QueryParent().ExistX(ctx) {
+		t.Fatal("root folder should not have parent")
+	}
+	config := client.BackupConfig.Query().OnlyX(ctx)
+	if config.FolderMaxDepth != 3 {
+		t.Fatalf("folder max depth = %d, want 3", config.FolderMaxDepth)
+	}
+	if got := created.QueryTags().CountX(ctx); got != 2 {
+		t.Fatalf("tag count = %d, want 2", got)
+	}
+}
+
+func TestCreateImportedNoteCanIgnoreRemoteHierarchy(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestCreateImportedNoteCanIgnoreRemoteHierarchy?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	account := client.NoteConnectionAccount.Create().
+		SetName("Joplin").
+		SetProvider(ProviderJoplin).
+		SetEndpoint("http://127.0.0.1:41184").
+		SetEnabled(true).
+		SetAuthType("token").
+		SetDefaultTargetID("folder-1").
+		SetDefaultTargetName("Inbox").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.BackupConfig.Create().SetFolderMaxDepth(1).SaveX(ctx)
+	service := NewService(client, testSecretBox(t))
+
+	created, err := service.createImportedNote(ctx, u.ID, account, RemoteNote{
+		ExternalID: "note-1",
+		TargetID:   "folder-1",
+		Path:       "/Parent/Child/Imported",
+		Title:      "Imported",
+		Content:    "body",
+	}, false)
+	if err != nil {
+		t.Fatalf("create imported note: %v", err)
+	}
+
+	leaf := created.QueryFolder().OnlyX(ctx)
+	if leaf.Name != "Inbox" {
+		t.Fatalf("folder = %q, want Inbox", leaf.Name)
+	}
+	if leaf.QueryParent().ExistX(ctx) {
+		t.Fatal("flat import folder should not have parent")
+	}
+	if got := client.Folder.Query().CountX(ctx); got != 1 {
+		t.Fatalf("folder count = %d, want 1", got)
+	}
+	config := client.BackupConfig.Query().OnlyX(ctx)
+	if config.FolderMaxDepth != 1 {
+		t.Fatalf("folder max depth = %d, want 1", config.FolderMaxDepth)
+	}
+}
+
 func TestRedactErrorRemovesTokenQueryValues(t *testing.T) {
 	err := errors.New(`Get "http://127.0.0.1:41184/folders?fields=id&token=joplin-secret-token": dial tcp`)
 

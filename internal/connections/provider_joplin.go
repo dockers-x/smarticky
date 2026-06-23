@@ -104,10 +104,12 @@ func (p *joplinProvider) ListTargets(ctx context.Context) ([]Target, error) {
 func (p *joplinProvider) ImportNotes(ctx context.Context, targetID string, limit int) ([]RemoteNote, error) {
 	limit = clampLimit(limit)
 	foldersByID := map[string]string{}
+	folderPathsByID := map[string]string{}
 	if targets, err := p.ListTargets(ctx); err == nil {
 		for _, target := range targets {
 			foldersByID[target.ID] = target.Name
 		}
+		folderPathsByID = joplinFolderPaths(targets)
 	}
 
 	endpoint := "/notes"
@@ -128,10 +130,13 @@ func (p *joplinProvider) ImportNotes(ctx context.Context, targetID string, limit
 			return nil, err
 		}
 		for _, item := range response.Items {
+			folderPath := folderPathsByID[item.ParentID]
+			remotePath := strings.Trim(strings.Join([]string{folderPath, item.Title}, "/"), "/")
 			notes = append(notes, RemoteNote{
 				ExternalID: item.ID,
 				TargetID:   item.ParentID,
 				TargetName: foldersByID[item.ParentID],
+				Path:       remotePath,
 				Title:      titleOrUntitled(item.Title),
 				Content:    item.Body,
 				CreatedAt:  parseJoplinTime(item.CreatedTime),
@@ -147,6 +152,37 @@ func (p *joplinProvider) ImportNotes(ctx context.Context, targetID string, limit
 		page++
 	}
 	return notes, nil
+}
+
+func joplinFolderPaths(targets []Target) map[string]string {
+	byID := make(map[string]Target, len(targets))
+	for _, target := range targets {
+		byID[target.ID] = target
+	}
+	paths := make(map[string]string, len(targets))
+	var build func(string, map[string]bool) string
+	build = func(id string, visiting map[string]bool) string {
+		if id == "" {
+			return ""
+		}
+		if value, ok := paths[id]; ok {
+			return value
+		}
+		target, ok := byID[id]
+		if !ok || visiting[id] {
+			return ""
+		}
+		visiting[id] = true
+		parent := build(target.ParentID, visiting)
+		delete(visiting, id)
+		value := strings.Trim(strings.Join([]string{parent, target.Name}, "/"), "/")
+		paths[id] = value
+		return value
+	}
+	for _, target := range targets {
+		build(target.ID, map[string]bool{})
+	}
+	return paths
 }
 
 func (p *joplinProvider) PushNote(ctx context.Context, input PushInput) (PushResult, error) {

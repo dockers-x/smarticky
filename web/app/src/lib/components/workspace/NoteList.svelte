@@ -1,13 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { FolderInput, Plus, SlidersHorizontal, X } from "@lucide/svelte";
+  import { CheckSquare, FolderInput, Plus, SlidersHorizontal, Square, Trash2 } from "@lucide/svelte";
   import type { Note } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
-  import {
-    buildFolderTree,
-    flattenFolderTree,
-    foldersStore,
-  } from "../../stores/folders";
+  import { foldersStore } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
@@ -20,7 +16,6 @@
     notes: Note[];
   }
 
-  let moveMenuOpen = false;
   let filterPanelOpen = false;
   let selectedNoteIDs: string[] = [];
 
@@ -33,7 +28,6 @@
     { id: "starred" as const, label: t("starred", $preferencesStore.language) },
     { id: "trash" as const, label: t("trash", $preferencesStore.language) },
   ];
-  $: folderOptions = flattenFolderTree(buildFolderTree($foldersStore.folders));
   $: activeFolder =
     $notesStore.folderID && $notesStore.folderID !== "unfiled"
       ? $foldersStore.folders.find((folder) => folder.id === $notesStore.folderID)
@@ -119,7 +113,10 @@
 
   function clearSelection(): void {
     selectedNoteIDs = [];
-    moveMenuOpen = false;
+  }
+
+  function selectAllVisible(): void {
+    selectedNoteIDs = $notesStore.notes.map((note) => note.id);
   }
 
   async function toggleSearchTag(tagName: string): Promise<void> {
@@ -134,16 +131,47 @@
     await notesStore.setFolder(folderID);
   }
 
-  async function moveSelected(folderID: string | null): Promise<void> {
+  function openMovePane(): void {
+    if (selectedNoteIDs.length === 0) return;
+    notesStore.showFolderBrowser();
+  }
+
+  async function deleteSelected(): Promise<void> {
     if (selectedNoteIDs.length === 0) return;
 
+    const permanent = $notesStore.filter === "trash";
+    const confirmed = await confirmDialog({
+      title: permanent
+        ? t("deleteSelectedNotes", $preferencesStore.language)
+        : t("trashSelectedNotes", $preferencesStore.language),
+      message: permanent
+        ? t("deleteSelectedNotesMessage", $preferencesStore.language)
+        : t("trashSelectedNotesMessage", $preferencesStore.language),
+      confirmLabel: permanent
+        ? t("deleteForever", $preferencesStore.language)
+        : t("trashNote", $preferencesStore.language),
+      cancelLabel: t("cancel", $preferencesStore.language),
+    });
+    if (!confirmed) return;
+
+    const ids = [...selectedNoteIDs];
     try {
-      await notesStore.moveToFolder(selectedNoteIDs, folderID);
+      if (permanent) {
+        await Promise.all(ids.map((id) => notesStore.deletePermanent(id)));
+        notify(t("deletedNotes", $preferencesStore.language), "success");
+      } else {
+        await Promise.all(ids.map((id) => notesStore.updateNote(id, { is_deleted: true })));
+        notify(t("trashedNotes", $preferencesStore.language), "success");
+      }
       clearSelection();
       await Promise.all([notesStore.load(), foldersStore.load()]);
-      notify(t("movedNotes", $preferencesStore.language), "success");
     } catch {
-      notify(t("moveNotesFailed", $preferencesStore.language), "error");
+      notify(
+        permanent
+          ? t("deleteForeverFailed", $preferencesStore.language)
+          : t("trashFailed", $preferencesStore.language),
+        "error",
+      );
     }
   }
 
@@ -354,35 +382,42 @@
     <div class="note-list-selection-bar">
       <span>{selectedCount} {t("selectedNotes", $preferencesStore.language)}</span>
       <div class="note-list-selection-bar__actions">
-        <div class="note-list-move-menu">
-          <button
-            type="button"
-            aria-expanded={moveMenuOpen}
-            on:click={() => (moveMenuOpen = !moveMenuOpen)}
-          >
-            <FolderInput size={15} strokeWidth={2} aria-hidden="true" />
-            {t("moveToNotebookGroup", $preferencesStore.language)}
-          </button>
-          {#if moveMenuOpen}
-            <div class="note-list-move-menu__content">
-              <button type="button" on:click={() => void moveSelected(null)}>
-                {t("unfiledNotes", $preferencesStore.language)}
-              </button>
-              {#each folderOptions as option (option.id)}
-                <button
-                  type="button"
-                  style={`--folder-depth: ${option.depth - 1}`}
-                  on:click={() => void moveSelected(option.id)}
-                >
-                  {option.name}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-        <button type="button" on:click={clearSelection}>
-          <X size={15} strokeWidth={2} aria-hidden="true" />
-          {t("clearSelection", $preferencesStore.language)}
+        <button
+          class="note-list-selection-tool"
+          type="button"
+          disabled={selectedCount === $notesStore.notes.length}
+          aria-label={t("selectAll", $preferencesStore.language)}
+          title={t("selectAll", $preferencesStore.language)}
+          on:click={selectAllVisible}
+        >
+          <CheckSquare size={15} strokeWidth={2} aria-hidden="true" />
+        </button>
+        <button
+          class="note-list-selection-tool"
+          type="button"
+          aria-label={t("clearAllSelection", $preferencesStore.language)}
+          title={t("clearAllSelection", $preferencesStore.language)}
+          on:click={clearSelection}
+        >
+          <Square size={15} strokeWidth={2} aria-hidden="true" />
+        </button>
+        <button
+          class="note-list-selection-tool"
+          type="button"
+          aria-label={t("moveToNotebookGroup", $preferencesStore.language)}
+          title={t("moveToNotebookGroup", $preferencesStore.language)}
+          on:click={openMovePane}
+        >
+          <FolderInput size={15} strokeWidth={2} aria-hidden="true" />
+        </button>
+        <button
+          class="danger note-list-selection-tool"
+          type="button"
+          aria-label={t("deleteSelectedNotes", $preferencesStore.language)}
+          title={t("deleteSelectedNotes", $preferencesStore.language)}
+          on:click={() => void deleteSelected()}
+        >
+          <Trash2 size={15} strokeWidth={2} aria-hidden="true" />
         </button>
       </div>
     </div>

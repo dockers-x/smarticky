@@ -45,7 +45,7 @@
         (account) => account.enabled && account.has_credentials,
       );
       accountID = accounts[0]?.id ?? 0;
-      if (accountID) await loadTargets();
+      if (accounts[0]) await loadTargets(accounts[0]);
     } catch (loadError) {
       error =
         loadError instanceof Error
@@ -56,13 +56,13 @@
     }
   }
 
-  async function loadTargets(): Promise<void> {
+  async function loadTargets(account = selectedAccount): Promise<void> {
     targets = [];
-    targetID = selectedAccount?.default_target_id ?? "";
-    if (!selectedAccount) return;
+    targetID = account?.default_target_id ?? "";
+    if (!account) return;
     targetLoading = true;
     try {
-      targets = await listNoteConnectionTargets(selectedAccount.id);
+      targets = await listNoteConnectionTargets(account.id);
       if (!targetID && targets.length > 0) targetID = targets[0].id;
     } catch (targetError) {
       error =
@@ -76,6 +76,12 @@
 
   function providerLabel(provider: NoteConnectionProvider): string {
     return t(providerLabelKeys[provider], $preferencesStore.language);
+  }
+
+  function selectAccount(event: Event): void {
+    accountID = Number((event.currentTarget as HTMLSelectElement).value);
+    const account = accounts.find((item) => item.id === accountID) ?? null;
+    void loadTargets(account);
   }
 
   async function pushNote(): Promise<void> {
@@ -117,14 +123,14 @@
     </header>
 
     {#if loading}
-      <p class="connection-push-muted">{t("loading", $preferencesStore.language)}</p>
+      <div class="connection-push-state">{t("loading", $preferencesStore.language)}</div>
     {:else if accounts.length === 0}
-      <p class="connection-push-muted">{t("noteConnectionNoAccounts", $preferencesStore.language)}</p>
+      <div class="connection-push-state">{t("noteConnectionNoAccounts", $preferencesStore.language)}</div>
     {:else}
       <div class="connection-push-form">
         <label>
           <span>{t("noteConnectionSelectAccount", $preferencesStore.language)}</span>
-          <select bind:value={accountID} on:change={() => void loadTargets()}>
+          <select value={accountID} on:change={selectAccount}>
             {#each accounts as account (account.id)}
               <option value={account.id}>{account.name} · {providerLabel(account.provider)}</option>
             {/each}
@@ -138,9 +144,12 @@
             {/each}
           </select>
         </label>
+        {#if targetLoading}
+          <div class="connection-push-state compact">{t("loading", $preferencesStore.language)}</div>
+        {/if}
       </div>
       {#if targets.length === 0 && !targetLoading}
-        <p class="connection-push-muted">{t("noteConnectionNoTargets", $preferencesStore.language)}</p>
+        <div class="connection-push-state">{t("noteConnectionNoTargets", $preferencesStore.language)}</div>
       {/if}
     {/if}
 
@@ -153,7 +162,7 @@
       <button
         class="primary"
         type="button"
-        disabled={pushing || loading || !selectedAccount || targets.length === 0}
+        disabled={pushing || loading || targetLoading || !selectedAccount || targets.length === 0}
         on:click={() => void pushNote()}
       >
         <CloudUpload size={16} strokeWidth={2} aria-hidden="true" />
@@ -172,19 +181,21 @@
     place-items: center;
     padding: 18px;
     background: var(--color-backdrop, rgb(26 26 24 / 28%));
+    backdrop-filter: blur(2px);
   }
 
   .connection-push-dialog {
     display: grid;
-    gap: 16px;
+    gap: 14px;
     width: min(520px, 100%);
     max-height: min(680px, calc(100vh - 36px));
     overflow: auto;
     border: 1px solid var(--color-divider, #e2e0d8);
     border-radius: 8px;
-    background: var(--color-card, #fffefa);
+    background: color-mix(in srgb, var(--color-card, #fffefa) 94%, var(--color-surface-secondary, #f4f3ee));
     color: var(--color-text, #1a1a18);
     padding: 18px;
+    box-shadow: 0 18px 48px rgb(var(--color-shadow, 26 26 24) / 18%);
   }
 
   .connection-push-dialog header,
@@ -200,9 +211,34 @@
     margin: 0;
   }
 
-  .connection-push-dialog header p,
-  .connection-push-muted {
+  .connection-push-dialog h3 {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .connection-push-dialog header p {
     color: var(--color-text-muted, #8c8c84);
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .connection-push-dialog header button {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: inline-grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: var(--color-surface-secondary, #f4f3ee);
+    color: var(--color-text-muted, #8c8c84);
+    padding: 0;
+  }
+
+  .connection-push-dialog header button:hover {
+    color: var(--color-brand, #e8531a);
   }
 
   .connection-push-form {
@@ -213,25 +249,86 @@
   .connection-push-form label {
     display: grid;
     gap: 6px;
+    color: var(--color-text-secondary, #3a3a34);
+    font-size: 12px;
   }
 
   .connection-push-form select {
     width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--color-divider, #e2e0d8);
+    border-radius: 8px;
+    background: var(--color-card, #fffefa);
+    color: var(--color-text, #1a1a18);
+    padding: 0 10px;
+  }
+
+  .connection-push-form select:disabled {
+    color: var(--color-text-muted, #8c8c84);
+    opacity: 0.72;
+  }
+
+  .connection-push-state {
+    border: 1px solid var(--color-divider, #e2e0d8);
+    border-radius: 8px;
+    background: var(--color-surface-secondary, #f4f3ee);
+    color: var(--color-text-muted, #8c8c84);
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .connection-push-state.compact {
+    padding: 9px 10px;
   }
 
   .connection-push-error {
+    border: 1px solid color-mix(in srgb, var(--color-danger, #cc3333) 24%, var(--color-divider, #e2e0d8));
+    border-radius: 8px;
+    background: var(--sm-error-bg, #fceaea);
     color: var(--color-danger, #cc3333);
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .connection-push-dialog footer {
     justify-content: flex-end;
   }
 
-  .connection-push-dialog button.primary {
+  .connection-push-dialog footer button {
+    min-height: 38px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--color-divider, #e2e0d8);
+    border-radius: 8px;
+    background: var(--color-card, #fffefa);
+    color: var(--color-text-secondary, #3a3a34);
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .connection-push-dialog footer button:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-brand, #e8531a) 28%, var(--color-divider, #e2e0d8));
+    background: color-mix(in srgb, var(--color-brand, #e8531a) 8%, var(--color-card, #fffefa));
+    color: var(--color-brand, #e8531a);
+  }
+
+  .connection-push-dialog footer button:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .connection-push-dialog button.primary {
+    border-color: var(--color-brand, #e8531a);
     background: var(--color-brand, #e8531a);
+    color: var(--color-on-brand, #fff8f2);
+  }
+
+  .connection-push-dialog button.primary:hover:not(:disabled) {
+    border-color: var(--color-brand-hover, #c03b0d);
+    background: var(--color-brand-hover, #c03b0d);
     color: var(--color-on-brand, #fff8f2);
   }
 
