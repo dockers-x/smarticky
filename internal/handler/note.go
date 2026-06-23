@@ -13,10 +13,14 @@ import (
 	"time"
 
 	"smarticky/ent"
+	"smarticky/ent/attachment"
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
+	"smarticky/ent/noteconnectionitemmap"
+	"smarticky/ent/noteconnectionjob"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
+	"smarticky/ent/whiteboard"
 	searchsvc "smarticky/internal/search"
 
 	"github.com/google/uuid"
@@ -648,7 +652,7 @@ func (h *Handler) DeleteNote(c echo.Context) error {
 	userID := c.Get("user_id").(int)
 
 	ctx := context.Background()
-	if err := h.notes.DeleteLinksForNotes(ctx, userID, id); err != nil {
+	if err := h.deleteNoteDependentsForPermanentDelete(ctx, userID, id); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -684,7 +688,7 @@ func (h *Handler) EmptyTrash(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	if err := h.notes.DeleteLinksForNotes(ctx, userID, ids...); err != nil {
+	if err := h.deleteNoteDependentsForPermanentDelete(ctx, userID, ids...); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -701,6 +705,85 @@ func (h *Handler) EmptyTrash(c echo.Context) error {
 	h.rebuildSearchIndexBestEffort(context.Background())
 
 	return c.JSON(http.StatusOK, map[string]int{"deleted_count": count})
+}
+
+func (h *Handler) deleteNoteDependentsForPermanentDelete(ctx context.Context, userID int, ids ...uuid.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	uniqueIDs := uniqueUUIDs(ids)
+	if err := h.notes.DeleteLinksForNotes(ctx, userID, uniqueIDs...); err != nil {
+		return err
+	}
+	if err := h.deleteNoteAttachments(ctx, userID, uniqueIDs...); err != nil {
+		return err
+	}
+	if _, err := h.client.Whiteboard.Delete().
+		Where(
+			whiteboard.HasNoteWith(
+				note.IDIn(uniqueIDs...),
+				note.HasUserWith(user.IDEQ(userID)),
+			),
+		).
+		Exec(ctx); err != nil {
+		return err
+	}
+	return h.detachNoteConnectionRecords(ctx, userID, uniqueIDs...)
+}
+
+func (h *Handler) deleteNoteAttachments(ctx context.Context, userID int, ids ...uuid.UUID) error {
+	attachments, err := h.client.Attachment.Query().
+		Where(
+			attachment.HasNoteWith(
+				note.IDIn(ids...),
+				note.HasUserWith(user.IDEQ(userID)),
+			),
+		).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(attachments) == 0 {
+		return nil
+	}
+
+	attachmentIDs := make([]int, 0, len(attachments))
+	for _, att := range attachments {
+		attachmentIDs = append(attachmentIDs, att.ID)
+		if err := h.fs.Remove(att.FilePath); err != nil {
+			zap.L().Warn("Failed to delete attachment file while deleting note", zap.String("path", att.FilePath), zap.Error(err))
+		}
+	}
+	_, err = h.client.Attachment.Delete().
+		Where(attachment.IDIn(attachmentIDs...)).
+		Exec(ctx)
+	return err
+}
+
+func (h *Handler) detachNoteConnectionRecords(ctx context.Context, userID int, ids ...uuid.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	uniqueIDs := uniqueUUIDs(ids)
+	if _, err := h.client.NoteConnectionItemMap.Delete().
+		Where(
+			noteconnectionitemmap.HasNoteWith(
+				note.IDIn(uniqueIDs...),
+				note.HasUserWith(user.IDEQ(userID)),
+			),
+		).
+		Exec(ctx); err != nil {
+		return err
+	}
+	return h.client.NoteConnectionJob.Update().
+		Where(
+			noteconnectionjob.HasNoteWith(
+				note.IDIn(uniqueIDs...),
+				note.HasUserWith(user.IDEQ(userID)),
+			),
+		).
+		ClearNoteID().
+		Exec(ctx)
 }
 
 // VerifyNotePassword verifies if the provided password matches the note's password

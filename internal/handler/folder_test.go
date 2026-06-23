@@ -129,6 +129,50 @@ func TestDeleteFolderRejectsNonEmptyFolder(t *testing.T) {
 	}
 }
 
+func TestDeleteFolderClearsDeletedNotesInFolder(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestDeleteFolderClearsDeletedNotesInFolder?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	f := client.Folder.Create().
+		SetName("archive").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	deletedNote := client.Note.Create().
+		SetTitle("deleted").
+		SetIsDeleted(true).
+		SetUserID(u.ID).
+		SetFolder(f).
+		SaveX(ctx)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, "/api/folders/"+f.ID.String(), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.SetParamNames("id")
+	c.SetParamValues(f.ID.String())
+
+	h := NewHandler(client, nil)
+	if err := h.DeleteFolder(c); err != nil {
+		t.Fatalf("DeleteFolder returned error: %v", err)
+	}
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusNoContent, rec.Code, rec.Body.String())
+	}
+	if exists := client.Folder.Query().ExistX(ctx); exists {
+		t.Fatal("expected folder to be deleted")
+	}
+	noteRow := client.Note.GetX(ctx, deletedNote.ID)
+	if noteRow.QueryFolder().ExistX(ctx) {
+		t.Fatal("expected deleted note to be unfiled after folder deletion")
+	}
+}
+
 func TestMoveNotesAssignsFolderAndListFiltersByFolder(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:TestMoveNotesAssignsFolderAndListFiltersByFolder?mode=memory&cache=shared&_pragma=foreign_keys(1)")

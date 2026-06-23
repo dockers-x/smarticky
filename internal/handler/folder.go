@@ -290,12 +290,22 @@ func (h *Handler) DeleteFolder(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	notes, err := f.QueryNotes().Count(ctx)
+	notes, err := f.QueryNotes().Where(note.IsDeleted(false)).Count(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	if children > 0 || notes > 0 {
 		return c.JSON(http.StatusConflict, map[string]string{"error": "folder is not empty"})
+	}
+	if err := h.client.Note.Update().
+		Where(
+			note.IsDeleted(true),
+			note.HasFolderWith(folder.ID(folderID)),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		ClearFolder().
+		Exec(ctx); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	if err := h.client.Folder.DeleteOne(f).Exec(ctx); err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -699,6 +700,90 @@ func TestEmptyTrashDeletesOnlyCurrentUsersDeletedNotes(t *testing.T) {
 	remaining := client.Note.Query().CountX(ctx)
 	if remaining != 2 {
 		t.Fatalf("expected two remaining notes, got %d", remaining)
+	}
+}
+
+func TestEmptyTrashDeletesConnectionMapsAndKeepsConnectionJobHistory(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestEmptyTrashDeletesConnectionMapsAndKeepsConnectionJobHistory?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	owner := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	account := client.NoteConnectionAccount.Create().
+		SetName("SiYuan").
+		SetProvider("siyuan").
+		SetUserID(owner.ID).
+		SaveX(ctx)
+	deleted := client.Note.Create().
+		SetTitle("connected trash").
+		SetIsDeleted(true).
+		SetUserID(owner.ID).
+		SaveX(ctx)
+	h := NewHandler(client, nil)
+	attachmentPath := filepath.Join(h.fs.GetUploadsDir("attachments"), "trash.txt")
+	if err := h.fs.WriteFile(attachmentPath, []byte("trash attachment"), 0644); err != nil {
+		t.Fatalf("write attachment fixture: %v", err)
+	}
+	client.Attachment.Create().
+		SetFilename("trash.txt").
+		SetFilePath(attachmentPath).
+		SetFileSize(16).
+		SetNoteID(deleted.ID).
+		SetUserID(owner.ID).
+		ExecX(ctx)
+	client.Whiteboard.Create().
+		SetTitle("trash board").
+		SetSceneJSON("{}").
+		SetNoteID(deleted.ID).
+		SetUserID(owner.ID).
+		ExecX(ctx)
+	client.NoteConnectionItemMap.Create().
+		SetProvider("siyuan").
+		SetAccountID(account.ID).
+		SetNoteID(deleted.ID).
+		SetExternalID("remote-doc").
+		ExecX(ctx)
+	client.NoteConnectionJob.Create().
+		SetProvider("siyuan").
+		SetOperation("import").
+		SetStatus("completed").
+		SetUserID(owner.ID).
+		SetAccountID(account.ID).
+		SetNoteID(deleted.ID).
+		ExecX(ctx)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, "/api/notes/trash", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", owner.ID)
+
+	if err := h.EmptyTrash(c); err != nil {
+		t.Fatalf("EmptyTrash returned error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if got := client.NoteConnectionItemMap.Query().CountX(ctx); got != 0 {
+		t.Fatalf("expected item maps to be deleted, got %d", got)
+	}
+	if got := client.Attachment.Query().CountX(ctx); got != 0 {
+		t.Fatalf("expected attachments to be deleted, got %d", got)
+	}
+	if got := client.Whiteboard.Query().CountX(ctx); got != 0 {
+		t.Fatalf("expected whiteboards to be deleted, got %d", got)
+	}
+	if exists, err := h.fs.Exists(attachmentPath); err != nil {
+		t.Fatalf("check attachment fixture: %v", err)
+	} else if exists {
+		t.Fatal("expected attachment file to be deleted")
+	}
+	job := client.NoteConnectionJob.Query().OnlyX(ctx)
+	if job.NoteID != nil {
+		t.Fatalf("expected job note_id to be cleared, got %v", job.NoteID)
 	}
 }
 
