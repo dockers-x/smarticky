@@ -44,13 +44,13 @@ export interface NoteConnectionJob {
   provider: NoteConnectionProvider;
   operation: "import" | "push";
   status: "pending" | "running" | "completed" | "completed_with_errors" | "failed";
-  total_count: number;
-  imported_count: number;
-  pushed_count: number;
-  skipped_count: number;
-  failed_count: number;
+  total_count?: number;
+  imported_count?: number;
+  pushed_count?: number;
+  skipped_count?: number;
+  failed_count?: number;
   message?: string;
-  created_at: string;
+  created_at?: string;
   completed_at?: string;
 }
 

@@ -173,6 +173,103 @@ func TestDeleteFolderClearsDeletedNotesInFolder(t *testing.T) {
 	}
 }
 
+func TestDeleteFolderDeletesEmptyDescendantTree(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestDeleteFolderDeletesEmptyDescendantTree?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	root := client.Folder.Create().
+		SetName("root").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	child := client.Folder.Create().
+		SetName("child").
+		SetUserID(u.ID).
+		SetParent(root).
+		SaveX(ctx)
+	client.Folder.Create().
+		SetName("grandchild").
+		SetUserID(u.ID).
+		SetParent(child).
+		SaveX(ctx)
+	deletedNote := client.Note.Create().
+		SetTitle("deleted").
+		SetIsDeleted(true).
+		SetUserID(u.ID).
+		SetFolder(child).
+		SaveX(ctx)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, "/api/folders/"+root.ID.String(), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.SetParamNames("id")
+	c.SetParamValues(root.ID.String())
+
+	h := NewHandler(client, nil)
+	if err := h.DeleteFolder(c); err != nil {
+		t.Fatalf("DeleteFolder returned error: %v", err)
+	}
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusNoContent, rec.Code, rec.Body.String())
+	}
+	if got := client.Folder.Query().CountX(ctx); got != 0 {
+		t.Fatalf("expected folders to be deleted, got %d", got)
+	}
+	if noteRow := client.Note.GetX(ctx, deletedNote.ID); noteRow.QueryFolder().ExistX(ctx) {
+		t.Fatal("expected deleted note to be unfiled after folder tree deletion")
+	}
+}
+
+func TestDeleteFolderRejectsDescendantWithActiveNote(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestDeleteFolderRejectsDescendantWithActiveNote?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	root := client.Folder.Create().
+		SetName("root").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	child := client.Folder.Create().
+		SetName("child").
+		SetUserID(u.ID).
+		SetParent(root).
+		SaveX(ctx)
+	client.Note.Create().
+		SetTitle("active").
+		SetUserID(u.ID).
+		SetFolder(child).
+		SaveX(ctx)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, "/api/folders/"+root.ID.String(), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", u.ID)
+	c.SetParamNames("id")
+	c.SetParamValues(root.ID.String())
+
+	h := NewHandler(client, nil)
+	if err := h.DeleteFolder(c); err != nil {
+		t.Fatalf("DeleteFolder returned error: %v", err)
+	}
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusConflict, rec.Code, rec.Body.String())
+	}
+	if got := client.Folder.Query().CountX(ctx); got != 2 {
+		t.Fatalf("expected folders to remain, got %d", got)
+	}
+}
+
 func TestMoveNotesAssignsFolderAndListFiltersByFolder(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:TestMoveNotesAssignsFolderAndListFiltersByFolder?mode=memory&cache=shared&_pragma=foreign_keys(1)")

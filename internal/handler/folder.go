@@ -286,21 +286,32 @@ func (h *Handler) DeleteFolder(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	children, err := f.QueryChildren().Count(ctx)
+	foldersToDelete, err := h.folderSubtreeForUser(ctx, userID, f)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	notes, err := f.QueryNotes().Where(note.IsDeleted(false)).Count(ctx)
+	folderIDs := make([]uuid.UUID, 0, len(foldersToDelete))
+	for _, row := range foldersToDelete {
+		folderIDs = append(folderIDs, row.ID)
+	}
+
+	notes, err := h.client.Note.Query().
+		Where(
+			note.IsDeleted(false),
+			note.HasFolderWith(folder.IDIn(folderIDs...)),
+			note.HasUserWith(user.IDEQ(userID)),
+		).
+		Count(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	if children > 0 || notes > 0 {
+	if notes > 0 {
 		return c.JSON(http.StatusConflict, map[string]string{"error": "folder is not empty"})
 	}
 	if err := h.client.Note.Update().
 		Where(
 			note.IsDeleted(true),
-			note.HasFolderWith(folder.ID(folderID)),
+			note.HasFolderWith(folder.IDIn(folderIDs...)),
 			note.HasUserWith(user.IDEQ(userID)),
 		).
 		ClearFolder().
@@ -308,10 +319,43 @@ func (h *Handler) DeleteFolder(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	if err := h.client.Folder.DeleteOne(f).Exec(ctx); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	for i := len(foldersToDelete) - 1; i >= 0; i-- {
+		if err := h.client.Folder.DeleteOne(foldersToDelete[i]).Exec(ctx); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handler) folderSubtreeForUser(ctx context.Context, userID int, root *ent.Folder) ([]*ent.Folder, error) {
+	rows, err := h.client.Folder.Query().
+		Where(folder.HasUserWith(user.IDEQ(userID))).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	childrenByParent := make(map[uuid.UUID][]*ent.Folder)
+	for _, row := range rows {
+		parent, err := row.QueryParent().Only(ctx)
+		if ent.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		childrenByParent[parent.ID] = append(childrenByParent[parent.ID], row)
+	}
+
+	out := make([]*ent.Folder, 0, len(rows))
+	var walk func(*ent.Folder)
+	walk = func(row *ent.Folder) {
+		out = append(out, row)
+		for _, child := range childrenByParent[row.ID] {
+			walk(child)
+		}
+	}
+	walk(root)
+	return out, nil
 }
 
 func (h *Handler) GetFolderSettings(c echo.Context) error {

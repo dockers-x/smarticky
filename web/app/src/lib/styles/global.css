@@ -428,7 +428,8 @@ h6 {
 .tools-panel__content {
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--color-card);
 }
 

@@ -6,10 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"smarticky/ent/backupconfig"
 	"smarticky/ent/enttest"
+	"smarticky/ent/folder"
+	"smarticky/ent/note"
 	"smarticky/ent/noteconnectionaccount"
 	"smarticky/ent/noteconnectionitemmap"
 	"smarticky/ent/noteconnectionjob"
+	"smarticky/ent/tag"
 	"smarticky/internal/secrets"
 	"smarticky/internal/storage"
 
@@ -226,6 +230,17 @@ func TestImportNotesRejectsConcurrentImportJob(t *testing.T) {
 	}
 }
 
+func TestTargetKindRankKeepsNotebookBeforeDocument(t *testing.T) {
+	targets := []Target{
+		{ID: "doc-a", Name: "A", Kind: "document"},
+		{ID: "box-1", Name: "Notebook", Kind: "notebook"},
+	}
+
+	if targetKindRank(targets[1].Kind) >= targetKindRank(targets[0].Kind) {
+		t.Fatalf("notebook rank should sort before document: %#v", targets)
+	}
+}
+
 func TestCreateImportedNotePreservesRemoteHierarchyAndRaisesFolderDepth(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:TestCreateImportedNotePreservesRemoteHierarchyAndRaisesFolderDepth?mode=memory&cache=shared&_pragma=foreign_keys(1)")
@@ -329,6 +344,68 @@ func TestCreateImportedNoteCanIgnoreRemoteHierarchy(t *testing.T) {
 	config := client.BackupConfig.Query().OnlyX(ctx)
 	if config.FolderMaxDepth != 1 {
 		t.Fatalf("folder max depth = %d, want 1", config.FolderMaxDepth)
+	}
+}
+
+func TestImportRemoteNoteRollsBackLocalCreatesWhenItemMapFails(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:TestImportRemoteNoteRollsBackLocalCreatesWhenItemMapFails?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+
+	u := client.User.Create().
+		SetUsername("owner").
+		SetPasswordHash("hash").
+		SaveX(ctx)
+	account := client.NoteConnectionAccount.Create().
+		SetName("SiYuan").
+		SetProvider(ProviderSiYuan).
+		SetEndpoint("http://127.0.0.1:6806").
+		SetEnabled(true).
+		SetAuthType("token").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	existingNote := client.Note.Create().
+		SetTitle("Existing").
+		SetContent("body").
+		SetUserID(u.ID).
+		SaveX(ctx)
+	client.NoteConnectionItemMap.Create().
+		SetProvider(ProviderSiYuan).
+		SetAccountID(account.ID).
+		SetNoteID(existingNote.ID).
+		SetExternalID("dup-doc").
+		ExecX(ctx)
+	client.BackupConfig.Create().SetFolderMaxDepth(1).SaveX(ctx)
+	service := NewService(client, testSecretBox(t))
+
+	err := service.importRemoteNote(ctx, u.ID, account, RemoteNote{
+		ExternalID: "dup-doc",
+		TargetID:   "box-1",
+		TargetName: "Notebook",
+		Path:       "/Projects/Area/Imported",
+		Title:      "Imported",
+		Content:    "body",
+		Tags:       []string{"rolled-back-tag"},
+	}, true)
+	if err == nil {
+		t.Fatal("expected duplicate external id to fail item map creation")
+	}
+	if got := client.Note.Query().Where(note.TitleEQ("Imported")).CountX(ctx); got != 0 {
+		t.Fatalf("imported note count after rollback = %d, want 0", got)
+	}
+	if got := client.Folder.Query().Where(folder.NameIn("Notebook", "Projects", "Area")).CountX(ctx); got != 0 {
+		t.Fatalf("folder count after rollback = %d, want 0", got)
+	}
+	if got := client.Tag.Query().Where(tag.NameEQ("rolled-back-tag")).CountX(ctx); got != 0 {
+		t.Fatalf("tag count after rollback = %d, want 0", got)
+	}
+	if got := client.BackupConfig.Query().Where(backupconfig.FolderMaxDepthEQ(1)).CountX(ctx); got != 1 {
+		t.Fatalf("backup config depth was changed despite rollback, matching count = %d", got)
+	}
+	if got := client.NoteConnectionItemMap.Query().
+		Where(noteconnectionitemmap.AccountIDEQ(account.ID)).
+		CountX(ctx); got != 1 {
+		t.Fatalf("item map count after rollback = %d, want existing map only", got)
 	}
 }
 

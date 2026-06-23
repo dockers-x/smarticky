@@ -81,9 +81,11 @@
     ) ??
     null;
   $: importProcessedCount = visibleImportJob
-    ? visibleImportJob.imported_count + visibleImportJob.skipped_count + visibleImportJob.failed_count
+    ? jobCount(visibleImportJob, "imported_count") +
+      jobCount(visibleImportJob, "skipped_count") +
+      jobCount(visibleImportJob, "failed_count")
     : 0;
-  $: importProgressTotal = visibleImportJob?.total_count ?? 0;
+  $: importProgressTotal = visibleImportJob ? jobCount(visibleImportJob, "total_count") : 0;
   $: importProgressPercent =
     importProgressTotal > 0
       ? Math.min(100, Math.round((importProcessedCount / importProgressTotal) * 100))
@@ -155,7 +157,17 @@
   }
 
   function jobProcessedCount(job: NoteConnectionJob): number {
-    return job.imported_count + job.pushed_count + job.skipped_count + job.failed_count;
+    return (
+      jobCount(job, "imported_count") +
+      jobCount(job, "pushed_count") +
+      jobCount(job, "skipped_count") +
+      jobCount(job, "failed_count")
+    );
+  }
+
+  function jobCount(job: NoteConnectionJob, key: keyof Pick<NoteConnectionJob, "total_count" | "imported_count" | "pushed_count" | "skipped_count" | "failed_count">): number {
+    const value = job[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : 0;
   }
 
   function providerFromEvent(event: Event): NoteConnectionProvider {
@@ -384,6 +396,7 @@
     if (!value) return t("backupNever", $preferencesStore.language);
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
+    if (parsed.getUTCFullYear() <= 1) return t("backupNever", $preferencesStore.language);
     return parsed.toLocaleString($preferencesStore.language === "zh" ? "zh-CN" : "en-US", {
       month: "2-digit",
       day: "2-digit",
@@ -627,7 +640,7 @@
               {jobStatusLabel(job.status)}
             </strong>
             <small>
-              {jobProcessedCount(job)}/{job.total_count || jobProcessedCount(job)}
+              {jobProcessedCount(job)}/{jobCount(job, "total_count") || jobProcessedCount(job)}
               · {formatTime(job.completed_at || job.created_at)}
             </small>
           </div>
@@ -639,9 +652,12 @@
 
 <style>
   .connected-panel {
+    min-width: 0;
+    width: 100%;
     display: grid;
     gap: 16px;
     color: var(--color-text, #1a1a18);
+    overflow: hidden;
   }
 
   .connected-panel__header,
@@ -696,6 +712,9 @@
   .connected-import,
   .connected-empty,
   .connected-jobs {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
     border: 1px solid var(--color-divider, #e2e0d8);
     border-radius: 8px;
     background: color-mix(in srgb, var(--color-card, #fffefa) 92%, var(--color-surface-secondary, #f4f3ee));
@@ -853,6 +872,7 @@
 
   .connected-form__grid label,
   .connected-form__grid .wide {
+    min-width: 0;
     display: grid;
     gap: 6px;
     color: var(--color-text-secondary, #3a3a34);
@@ -865,6 +885,8 @@
 
   .connected-form__grid input,
   .connected-form__grid select {
+    box-sizing: border-box;
+    min-width: 0;
     width: 100%;
     padding: 0 10px;
   }
@@ -881,6 +903,7 @@
   }
 
   .connected-import-toggle {
+    min-width: 0;
     display: grid;
     grid-template-columns: 38px minmax(0, 1fr);
     align-items: center;

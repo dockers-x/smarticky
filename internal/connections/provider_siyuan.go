@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strings"
@@ -26,6 +27,13 @@ type siYuanFrontMatter struct {
 
 var siYuanFrontMatterListPattern = regexp.MustCompile(`[\[\],]`)
 var siYuanLooseMetaKeyPattern = regexp.MustCompile(`(?i)(^|\s)(title|date|created|created_at|lastmod|updated|updated_at|tags|tag)\s*:\s*`)
+
+const siYuanDocTargetPrefix = "doc:"
+
+type siYuanImportTarget struct {
+	Box   string
+	HPath string
+}
 
 func newSiYuanProvider(endpoint, token string, httpClient *http.Client) (Provider, error) {
 	client, err := siyuan.New(
@@ -51,11 +59,50 @@ func (p *siYuanProvider) ListTargets(ctx context.Context) ([]Target, error) {
 		return nil, err
 	}
 	targets := make([]Target, 0, len(notebooks))
+	notebookNames := make(map[string]string, len(notebooks))
 	for _, notebook := range notebooks {
+		box := string(notebook.ID)
+		notebookNames[box] = notebook.Name
 		targets = append(targets, Target{
-			ID:   string(notebook.ID),
+			ID:   box,
 			Name: notebook.Name,
 			Kind: "notebook",
+		})
+	}
+	rows, err := p.client.SQL.Query(
+		ctx,
+		"SELECT id, content, hpath, box, path FROM blocks WHERE type = 'd' AND hpath <> '' ORDER BY box, hpath LIMIT 1000",
+	)
+	if err != nil {
+		return targets, nil
+	}
+	seen := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		box := sqlString(row, "box")
+		hpath := normalizeSiYuanHPath(sqlString(row, "hpath"))
+		if box == "" || hpath == "" {
+			continue
+		}
+		id := encodeSiYuanDocTargetID(box, hpath)
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		name := strings.Trim(hpath, "/")
+		if name == "" {
+			name = strings.TrimSpace(sqlString(row, "content"))
+		}
+		if name == "" {
+			name = sqlString(row, "id")
+		}
+		if notebookName := notebookNames[box]; notebookName != "" && name != "" {
+			name = notebookName + " / " + name
+		}
+		targets = append(targets, Target{
+			ID:       id,
+			Name:     name,
+			Kind:     "document",
+			ParentID: box,
 		})
 	}
 	return targets, nil
@@ -63,9 +110,17 @@ func (p *siYuanProvider) ListTargets(ctx context.Context) ([]Target, error) {
 
 func (p *siYuanProvider) ImportNotes(ctx context.Context, targetID string, limit int) ([]RemoteNote, error) {
 	limit = clampLimit(limit)
+	target := decodeSiYuanImportTargetID(targetID)
 	where := "type = 'd'"
-	if strings.TrimSpace(targetID) != "" {
-		where += fmt.Sprintf(" AND box = '%s'", escapeSQLString(targetID))
+	if target.Box != "" {
+		where += fmt.Sprintf(" AND box = '%s'", escapeSQLString(target.Box))
+	}
+	if target.HPath != "" {
+		where += fmt.Sprintf(
+			" AND (hpath = '%s' OR hpath LIKE '%s' ESCAPE '\\')",
+			escapeSQLString(target.HPath),
+			escapeSQLString(escapeSQLLike(target.HPath)+"/%"),
+		)
 	}
 	query := fmt.Sprintf(
 		"SELECT id, content, markdown, hpath, box, path, created, updated FROM blocks WHERE %s ORDER BY updated DESC LIMIT %d",
@@ -172,8 +227,61 @@ func (p *siYuanProvider) PushNote(ctx context.Context, input PushInput) (PushRes
 	}, nil
 }
 
+func encodeSiYuanDocTargetID(box, hpath string) string {
+	box = strings.TrimSpace(box)
+	hpath = normalizeSiYuanHPath(hpath)
+	if box == "" || hpath == "" {
+		return box
+	}
+	return siYuanDocTargetPrefix + box + ":" + url.PathEscape(hpath)
+}
+
+func decodeSiYuanImportTargetID(targetID string) siYuanImportTarget {
+	targetID = strings.TrimSpace(targetID)
+	if targetID == "" {
+		return siYuanImportTarget{}
+	}
+	if !strings.HasPrefix(targetID, siYuanDocTargetPrefix) {
+		return siYuanImportTarget{Box: targetID}
+	}
+	payload := strings.TrimPrefix(targetID, siYuanDocTargetPrefix)
+	box, encodedHPath, ok := strings.Cut(payload, ":")
+	if !ok {
+		return siYuanImportTarget{Box: targetID}
+	}
+	hpath, err := url.PathUnescape(encodedHPath)
+	if err != nil {
+		return siYuanImportTarget{Box: strings.TrimSpace(box)}
+	}
+	return siYuanImportTarget{
+		Box:   strings.TrimSpace(box),
+		HPath: normalizeSiYuanHPath(hpath),
+	}
+}
+
+func normalizeSiYuanHPath(value string) string {
+	value = strings.TrimSpace(strings.ReplaceAll(value, "\\", "/"))
+	if value == "" {
+		return ""
+	}
+	if !strings.HasPrefix(value, "/") {
+		value = "/" + value
+	}
+	if value != "/" {
+		value = strings.TrimRight(value, "/")
+	}
+	return value
+}
+
 func escapeSQLString(value string) string {
 	return strings.ReplaceAll(value, "'", "''")
+}
+
+func escapeSQLLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `%`, `\%`)
+	value = strings.ReplaceAll(value, `_`, `\_`)
+	return value
 }
 
 func sqlString(row siyuan.SQLRow, key string) string {
