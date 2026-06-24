@@ -4,6 +4,7 @@ import {
   StreamLanguage,
   type StringStream,
 } from "@codemirror/language";
+import { languages as defaultCodeLanguages } from "@codemirror/language-data";
 import type { CodeMirrorFeatureConfig } from "@milkdown/crepe/feature/code-mirror";
 import { normalizeDiagramType, prepareDiagramSource } from "./fences";
 import {
@@ -97,7 +98,7 @@ export function createEditorDiagramCodeBlockConfig({
   render = renderDiagram,
 }: EditorDiagramCodeBlockConfigOptions): CodeMirrorFeatureConfig {
   return {
-    languages: diagramCodeLanguages,
+    languages: [...defaultCodeLanguages, ...diagramCodeLanguages],
     noResultText: "No matching language",
     previewLabel: "Diagram preview",
     previewLoading: loadingMarkup(),

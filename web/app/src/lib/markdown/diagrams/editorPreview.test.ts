@@ -30,6 +30,16 @@ describe("editor diagram preview", () => {
     }
   });
 
+  it("keeps default programming language highlighting when adding diagram languages", () => {
+    const config = createEditorDiagramCodeBlockConfig({
+      getTheme: () => "light",
+    });
+
+    expect(config.languages?.map((language) => language.name)).toEqual(
+      expect.arrayContaining(["JavaScript", "Go", "mermaid", "drawio"]),
+    );
+  });
+
   it("does not render unsupported code block languages", () => {
     const render = vi.fn();
     const applyPreview = vi.fn();
