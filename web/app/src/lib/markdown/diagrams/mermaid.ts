@@ -92,23 +92,123 @@ function mermaidThemeVariables(theme: DiagramTheme): Record<string, string> {
 function configureMermaid(mermaid: MermaidAPI, theme: DiagramTheme): void {
   mermaid.initialize({
     startOnLoad: false,
-    securityLevel: "strict",
+    securityLevel: "loose",
     theme: "base",
     themeVariables: mermaidThemeVariables(theme),
     flowchart: {
-      htmlLabels: false,
+      htmlLabels: true,
       curve: "basis",
     },
   });
 }
 
-function sanitizeSvg(svg: string): string {
-  return DOMPurify.sanitize(svg, {
+function sanitizeSvg(svg: string, source: string): string {
+  const normalizedSvg = restoreEmptyFlowchartLabels(
+    normalizeMermaidLabels(svg),
+    source,
+  );
+
+  return DOMPurify.sanitize(normalizedSvg, {
     USE_PROFILES: {
       svg: true,
       svgFilters: true,
     },
   });
+}
+
+function normalizeMermaidLabels(svg: string): string {
+  if (!/<foreignobject/i.test(svg)) return svg;
+
+  const template = globalThis.document?.createElement("template");
+  if (!template) return svg;
+
+  template.innerHTML = svg;
+  const root = template.content.querySelector("svg");
+  if (!root) return svg;
+
+  root.querySelectorAll("foreignObject, foreignobject").forEach((foreignObject) => {
+    foreignObject
+      .querySelectorAll("script, style, iframe, object, embed")
+      .forEach((node) => node.remove());
+
+    const label = foreignObject.textContent?.replace(/\s+/g, " ").trim();
+    if (!label) return;
+
+    const width = Number.parseFloat(foreignObject.getAttribute("width") || "0");
+    const height = Number.parseFloat(foreignObject.getAttribute("height") || "0");
+    const x = Number.parseFloat(foreignObject.getAttribute("x") || "0");
+    const y = Number.parseFloat(foreignObject.getAttribute("y") || "0");
+    const text = globalThis.document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text",
+    );
+
+    text.setAttribute("x", String(x + (Number.isFinite(width) ? width / 2 : 0)));
+    text.setAttribute("y", String(y + (Number.isFinite(height) ? height / 2 : 0)));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.textContent = label;
+    foreignObject.replaceWith(text);
+  });
+
+  return root.outerHTML;
+}
+
+function restoreEmptyFlowchartLabels(svg: string, source: string): string {
+  if (!/^\s*(flowchart|graph)\b/i.test(source)) return svg;
+
+  const template = globalThis.document?.createElement("template");
+  if (!template) return svg;
+
+  template.innerHTML = svg;
+  const root = template.content.querySelector("svg");
+  if (!root) return svg;
+
+  const labels = extractFlowchartLabels(source);
+  let changed = false;
+
+  root.querySelectorAll<SVGGElement>("g.node[id*='-flowchart-']").forEach((node) => {
+    if (node.textContent?.replace(/\s+/g, "")) return;
+
+    const nodeID = parseFlowchartNodeID(node.id);
+    if (!nodeID) return;
+
+    const label = labels.get(nodeID) ?? nodeID;
+    const text = globalThis.document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text",
+    );
+    text.setAttribute("class", "smarticky-mermaid-node-label");
+    text.setAttribute("x", "0");
+    text.setAttribute("y", "0");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.textContent = label;
+    node.append(text);
+    changed = true;
+  });
+
+  return changed ? root.outerHTML : svg;
+}
+
+function parseFlowchartNodeID(value: string): string | null {
+  return value.match(/-flowchart-(.+)-\d+$/)?.[1] ?? null;
+}
+
+function extractFlowchartLabels(source: string): Map<string, string> {
+  const labels = new Map<string, string>();
+  const nodePattern =
+    /\b([A-Za-z][\w-]*)\s*(?:\[\[([^\]\n]+)\]\]|\[([^\]\n]+)\]|\(\(([^)\n]+)\)\)|\(([^)\n]+)\)|\{\{([^}\n]+)\}\}|\{([^}\n]+)\}|>\s*([^\]\n]+)\])/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = nodePattern.exec(source))) {
+    const [, id, ...rawLabels] = match;
+    const label = rawLabels.find((value) => value !== undefined)?.trim();
+    if (!label) continue;
+    labels.set(id, label.replace(/^["']|["']$/g, ""));
+  }
+
+  return labels;
 }
 
 function isMissingDiagramTypeError(error: unknown): boolean {
@@ -142,7 +242,7 @@ export async function renderMermaidDiagram(
   renderSequence += 1;
   const id = `smarticky-mermaid-${Date.now()}-${renderSequence}`;
   const { svg } = await mermaid.render(id, source);
-  const safeSvg = sanitizeSvg(svg);
+  const safeSvg = sanitizeSvg(svg, source);
 
   return {
     html: `<div class="diagram-render diagram-render--mermaid">${safeSvg}</div>`,

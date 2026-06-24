@@ -29,9 +29,12 @@ describe("renderMermaidDiagram", () => {
 
     expect(mermaidMock.initialize).toHaveBeenCalledWith(
       expect.objectContaining({
-        startOnLoad: false,
-        securityLevel: "strict",
-        theme: "base",
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: "base",
+        flowchart: expect.objectContaining({
+          htmlLabels: true,
+        }),
         themeVariables: expect.objectContaining({
           actorTextColor: "#27231f",
           primaryColor: "#fff8f0",
@@ -134,5 +137,54 @@ describe("renderMermaidDiagram", () => {
 
     expect(result.html).not.toContain("<script");
     expect(result.html).toContain("safe");
+  });
+
+  it("keeps Mermaid HTML labels visible after sanitizing SVG output", async () => {
+    mermaidMock.render.mockResolvedValue({
+      svg: [
+        '<svg><g class="node"><g class="label" transform="translate(-16, -12)">',
+        '<foreignobject width="32" height="24">',
+        '<div xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">',
+        "<p>灵感</p><script>alert(1)</script>",
+        "</span></div></foreignobject></g></g></svg>",
+      ].join(""),
+    });
+
+    const result = await renderMermaidDiagram({
+      type: "mermaid",
+      source: "flowchart TD\nA[灵感] --> B",
+      theme: "light",
+    });
+
+    expect(result.html).toContain("灵感");
+    expect(result.html).toContain("text-anchor=\"middle\"");
+    expect(result.html).not.toContain("<foreignObject");
+    expect(result.html).not.toContain("<script");
+    expect(result.html).not.toContain("alert(1)");
+  });
+
+  it("restores empty Mermaid flowchart node labels from source", async () => {
+    mermaidMock.render.mockResolvedValue({
+      svg: [
+        '<svg><g class="nodes">',
+        '<g class="node default" id="smarticky-mermaid-1-flowchart-A-0">',
+        '<rect class="basic label-container"></rect><g class="label"><rect></rect></g>',
+        "</g>",
+        '<g class="node default" id="smarticky-mermaid-1-flowchart-B-1">',
+        '<rect class="basic label-container"></rect><g class="label"><rect></rect></g>',
+        "</g>",
+        "</g></svg>",
+      ].join(""),
+    });
+
+    const result = await renderMermaidDiagram({
+      type: "mermaid",
+      source: "flowchart TD\nA[灵感] --> B[整理]",
+      theme: "light",
+    });
+
+    expect(result.html).toContain("灵感");
+    expect(result.html).toContain("整理");
+    expect(result.html).toContain("smarticky-mermaid-node-label");
   });
 });

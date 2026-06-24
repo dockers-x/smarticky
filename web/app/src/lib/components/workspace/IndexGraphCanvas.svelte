@@ -36,6 +36,7 @@
   let mounted = false;
   let destroyed = false;
   let lastElementSignature = "";
+  let resizeFrame = 0;
 
   function cssVar(name: string, fallback: string): string {
     if (!container) return fallback;
@@ -90,6 +91,9 @@
     const text = cssVar("--color-text", "#20242a");
     const muted = cssVar("--color-text-muted", "#69717d");
     const brand = cssVar("--color-brand", "#2563eb");
+    const ink = cssVar("--color-ink-accent", "#304656");
+    const graphPrimary = cssVar("--color-graph-primary", "#2d776f");
+    const graphSecondary = cssVar("--color-graph-secondary", "#3d6f9f");
     const info = cssVar("--sm-info", "#2563eb");
     const infoBg = cssVar("--sm-info-bg", "#eaf2ff");
     const success = cssVar("--sm-success", "#138a55");
@@ -117,7 +121,7 @@
         style: {
           width: 1.4,
           "line-color": dividerEm,
-          opacity: 0.58,
+          opacity: 0.5,
           "curve-style": "bezier",
           "target-arrow-shape": "none",
           "overlay-opacity": 0,
@@ -127,10 +131,10 @@
         selector: 'edge[kind = "backlink"]',
         style: {
           width: 1.8,
-          "line-color": brand,
-          opacity: 0.44,
+          "line-color": graphSecondary,
+          opacity: 0.5,
           "target-arrow-shape": "triangle",
-          "target-arrow-color": brand,
+          "target-arrow-color": graphSecondary,
           "arrow-scale": 0.82,
           "curve-style": "bezier",
         },
@@ -164,8 +168,8 @@
           width: 48,
           height: 48,
           color: text,
-          "background-color": brand,
-          "border-color": brand,
+          "background-color": ink,
+          "border-color": ink,
           "border-width": 2,
           "font-size": 12,
           "font-weight": 700,
@@ -189,7 +193,7 @@
           width: "mapData(count, 1, 48, 20, 42)",
           height: "mapData(count, 1, 48, 20, 42)",
           "background-color": infoBg,
-          "border-color": info,
+          "border-color": graphSecondary || info,
         },
       },
       {
@@ -198,7 +202,7 @@
           width: "mapData(count, 1, 48, 20, 42)",
           height: "mapData(count, 1, 48, 20, 42)",
           "background-color": successBg,
-          "border-color": success,
+          "border-color": graphPrimary || success,
         },
       },
       {
@@ -216,7 +220,7 @@
           width: "mapData(count, 1, 48, 24, 46)",
           height: "mapData(count, 1, 48, 24, 46)",
           "background-color": warningBg,
-          "border-color": brand,
+          "border-color": graphPrimary,
         },
       },
       {
@@ -235,8 +239,8 @@
         selector: "edge.is-neighbor",
         style: {
           width: 2.2,
-          "line-color": brand,
-          "target-arrow-color": brand,
+          "line-color": graphSecondary,
+          "target-arrow-color": graphSecondary,
           opacity: 0.82,
         },
       },
@@ -257,8 +261,8 @@
         style: {
           width: 24,
           height: 24,
-          "background-color": brand,
-          "border-color": brand,
+          "background-color": graphSecondary,
+          "border-color": graphSecondary,
         },
       },
       {
@@ -321,6 +325,23 @@
     }
   }
 
+  function fitGraphToContainer(): void {
+    if (!cy) return;
+    cy.resize();
+    cy.fit(undefined, 34);
+    applySelection(false);
+  }
+
+  function scheduleGraphFit(): void {
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        fitGraphToContainer();
+      });
+    });
+  }
+
   function updateGraph(): void {
     if (!cy) return;
     const signature = elementSignature();
@@ -361,8 +382,7 @@
       runLayout(true);
       applySelection(false);
       resizeObserver = new ResizeObserver(() => {
-        cy?.resize();
-        cy?.fit(undefined, 34);
+        scheduleGraphFit();
       });
       resizeObserver.observe(container);
       mounted = true;
@@ -372,6 +392,8 @@
 
   onDestroy(() => {
     destroyed = true;
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = 0;
     resizeObserver?.disconnect();
     resizeObserver = null;
     cy?.destroy();

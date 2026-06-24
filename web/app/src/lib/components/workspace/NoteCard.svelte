@@ -12,9 +12,28 @@
   export let onToggleStar: (note: Note) => void | Promise<void> = () => {};
   export let onDelete: (note: Note) => void | Promise<void> = () => {};
 
-  $: preview = note.content
-    ? note.content.replace(/\s+/g, " ").slice(0, 86)
-    : t("contentEmpty", $preferencesStore.language);
+  function plainTextPreview(content: string): string {
+    return content
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\\([[\]])/g, "$1")
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
+      .replace(/\[\[([^\]]+)\]\]/g, "$1")
+      .replace(/^\s*\|?[\s:-]+\|[\s|:-]*$/gm, " ")
+      .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+      .replace(/^\s{0,3}>\s?/gm, "")
+      .replace(/^\s*[-*+]\s+/gm, "")
+      .replace(/^\s*\d+\.\s+/gm, "")
+      .replace(/[*_~>#|]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  $: preview =
+    plainTextPreview(note.content ?? "").slice(0, 96) ||
+    t("contentEmpty", $preferencesStore.language);
   $: noteTitle = note.title || t("untitled", $preferencesStore.language);
   $: visibleTags = note.tags?.slice(0, 3) ?? [];
   $: hiddenTagCount = Math.max((note.tags?.length ?? 0) - visibleTags.length, 0);

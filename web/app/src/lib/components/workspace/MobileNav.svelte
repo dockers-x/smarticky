@@ -86,10 +86,8 @@
       <Folder size={18} strokeWidth={1.8} aria-hidden="true" />
       <span>{t("notebookGroups", $preferencesStore.language)}</span>
     </button>
-  </div>
-
-  <div class="mobile-nav__row mobile-nav__row--utility">
     <button
+      class="mobile-nav__utility"
       type="button"
       aria-label={$preferencesStore.theme === "dark"
         ? t("lightTheme", $preferencesStore.language)
@@ -105,6 +103,7 @@
       {/if}
     </button>
     <button
+      class="mobile-nav__utility"
       type="button"
       aria-label={t("language", $preferencesStore.language)}
       on:click={() => preferencesStore.toggleLanguage()}
@@ -113,6 +112,7 @@
       <span>{$preferencesStore.language === "zh" ? "EN" : "中文"}</span>
     </button>
     <button
+      class="mobile-nav__utility"
       type="button"
       aria-label={t("settings", $preferencesStore.language)}
       aria-expanded={settingsOpen}
