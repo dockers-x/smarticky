@@ -168,7 +168,9 @@ h6 {
   gap: 8px;
 }
 
-.sidebar button {
+.sidebar__nav > button,
+.sidebar__preferences > button,
+.sidebar > .sidebar__tool {
   min-height: 44px;
   min-width: 0;
   display: inline-flex;
@@ -183,11 +185,13 @@ h6 {
   font-weight: 400;
 }
 
-.sidebar button svg {
+.sidebar__nav > button svg,
+.sidebar__preferences > button svg,
+.sidebar > .sidebar__tool svg {
   flex: 0 0 auto;
 }
 
-.sidebar button.active {
+.sidebar__nav > button.active {
   background: var(--color-surface-secondary);
   color: var(--color-brand);
 }
@@ -224,10 +228,18 @@ h6 {
   clip-path: inset(50%);
 }
 
-.sidebar.compact button {
+.sidebar.compact .sidebar__collapse,
+.sidebar.compact .sidebar__nav > button,
+.sidebar.compact .sidebar__preferences > button,
+.sidebar.compact > .sidebar__tool {
   width: 44px;
   justify-content: center;
   padding: 0;
+}
+
+.sidebar.compact .sidebar__collapse {
+  height: 44px;
+  flex-basis: 44px;
 }
 
 .sidebar__tool {
@@ -251,7 +263,7 @@ h6 {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.sidebar__preferences button {
+.sidebar__preferences > button {
   min-width: 0;
   height: 44px;
   display: inline-flex;

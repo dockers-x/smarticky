@@ -12,13 +12,12 @@
     Sun,
     Trash2,
   } from "@lucide/svelte";
-  import ToolsPanel from "../settings/ToolsPanel.svelte";
-  import { authStore } from "../../stores/auth";
   import { foldersStore } from "../../stores/folders";
   import { notesStore, type NoteFilter } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
 
-  let settingsOpen = false;
+  export let settingsOpen = false;
+  export let onOpenSettings: () => void = () => {};
 
   $: filters = [
     { id: "all" as NoteFilter, label: t("allNotes", $preferencesStore.language) },
@@ -172,12 +171,9 @@
     aria-label={t("settings", $preferencesStore.language)}
     aria-expanded={settingsOpen}
     title={$preferencesStore.sidebarCompact ? t("settings", $preferencesStore.language) : undefined}
-    on:click={() => (settingsOpen = !settingsOpen)}
+    on:click={onOpenSettings}
   >
     <Settings size={16} strokeWidth={1.8} aria-hidden="true" />
     <span class="sidebar__label">{t("settings", $preferencesStore.language)}</span>
   </button>
-  {#if settingsOpen}
-    <ToolsPanel user={$authStore.user} onClose={() => (settingsOpen = false)} />
-  {/if}
 </aside>
