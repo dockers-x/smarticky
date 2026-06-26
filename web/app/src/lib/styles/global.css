@@ -537,7 +537,8 @@ h6 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.settings-form label {
+.settings-form label,
+.settings-field {
   min-width: 0;
   display: grid;
   gap: 6px;
@@ -545,11 +546,13 @@ h6 {
   font-size: 13px;
 }
 
-.settings-form label span {
+.settings-form label span,
+.settings-field > span {
   color: var(--color-text-secondary);
 }
 
 .settings-form label small,
+.settings-field small,
 .settings-muted {
   color: var(--color-text-muted);
   font-size: 12px;
@@ -616,6 +619,13 @@ h6 {
   padding: 0 12px;
   font-size: 13px;
   text-decoration: none;
+}
+
+.settings-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .settings-actions button.primary,
@@ -894,14 +904,162 @@ h6 {
   font-size: 13px;
 }
 
-.font-preview {
+.font-upload-control {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.settings-form .font-upload-input {
+  position: absolute;
+  width: 1px;
+  min-width: 1px;
+  height: 1px;
+  min-height: 1px;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  padding: 0;
+  white-space: nowrap;
+}
+
+.font-upload-button {
+  min-height: 44px;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.font-upload-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-brand) 32%, var(--color-divider));
+  color: var(--color-ink-accent);
+}
+
+.font-upload-button:disabled {
+  cursor: default;
+  opacity: 0.56;
+}
+
+.font-upload-meta {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
   border: 1px solid var(--color-divider);
   border-radius: 8px;
   background: var(--color-card);
+  padding: 10px 12px;
+}
+
+.font-upload-meta > svg {
+  color: var(--color-brand);
+}
+
+.font-upload-meta div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.font-upload-meta strong,
+.font-upload-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-upload-meta strong {
   color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.font-upload-meta span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.font-preview-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-card);
   padding: 14px;
+}
+
+.font-preview-card > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.font-preview-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.font-preview {
+  color: var(--color-text);
+  overflow-wrap: anywhere;
   font-size: 18px;
   line-height: 1.8;
+}
+
+.font-upload-progress {
+  display: grid;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 28%, var(--color-divider));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-brand) 6%, var(--color-card));
+  padding: 10px 12px;
+}
+
+.font-upload-progress > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.font-upload-progress strong {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.font-upload-progress__bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-divider) 62%, transparent);
+}
+
+.font-upload-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-brand);
+  transition: width 160ms ease-out;
 }
 
 .font-preview-inline {
@@ -1397,10 +1555,48 @@ h6 {
   margin-bottom: 10px;
 }
 
-.note-list-titlebar > div {
+.note-list-titlebar__heading {
   min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-list-titlebar__copy {
+  min-width: 0;
+  flex: 1 1 auto;
   display: grid;
   gap: 2px;
+}
+
+.note-list-titlebar__back {
+  min-width: 0;
+  min-height: 36px;
+  max-width: 126px;
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.note-list-titlebar__back:hover {
+  background: color-mix(in srgb, var(--color-brand) 9%, var(--color-card));
+  color: var(--color-ink-accent);
+}
+
+.note-list-titlebar__back span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-list-titlebar h1 {
@@ -5018,6 +5214,17 @@ h6 {
   }
 
   .note-list-filter-tool > :not(svg):not(span) {
+    display: none;
+  }
+
+  .note-list-titlebar__back {
+    width: 38px;
+    max-width: 38px;
+    flex-basis: 38px;
+    padding: 0;
+  }
+
+  .note-list-titlebar__back span {
     display: none;
   }
 

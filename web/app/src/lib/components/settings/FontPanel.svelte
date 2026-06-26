@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { FileUp, Type, Upload } from "@lucide/svelte";
   import type { User } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import {
@@ -20,13 +21,17 @@
   let isShared = true;
   let previewFamily = "";
   let uploadBusy = false;
+  let uploadProgress = 0;
   let localPreviewURL = "";
+  let previewError = "";
 
   function resetForm(): void {
     selectedFile = null;
     displayName = "";
     isShared = true;
     previewFamily = "";
+    previewError = "";
+    uploadProgress = 0;
     if (localPreviewURL) {
       URL.revokeObjectURL(localPreviewURL);
       localPreviewURL = "";
@@ -44,17 +49,20 @@
 
     if (file.size > maxFontSize) {
       notify(t("fontFileTooLarge", $preferencesStore.language), "error");
-      input.value = "";
+      resetForm();
       return;
     }
 
     if (!/\.(ttf|otf|woff|woff2)$/i.test(file.name)) {
       notify(t("fontFormatInvalid", $preferencesStore.language), "error");
-      input.value = "";
+      resetForm();
       return;
     }
 
     selectedFile = file;
+    previewFamily = "";
+    previewError = "";
+    uploadProgress = 0;
     if (!displayName) {
       displayName = file.name.replace(/\.(ttf|otf|woff|woff2)$/i, "");
     }
@@ -64,9 +72,17 @@
       localPreviewURL = URL.createObjectURL(file);
       const family = `preview-${Date.now()}`;
       const fontFace = new FontFace(family, `url(${localPreviewURL})`);
-      await fontFace.load();
-      document.fonts.add(fontFace);
-      previewFamily = family;
+      try {
+        await fontFace.load();
+        document.fonts.add(fontFace);
+        previewFamily = family;
+      } catch {
+        previewError = t("fontPreviewUnavailable", $preferencesStore.language);
+        URL.revokeObjectURL(localPreviewURL);
+        localPreviewURL = "";
+      }
+    } else {
+      previewError = t("fontPreviewUnavailable", $preferencesStore.language);
     }
   }
 
@@ -81,16 +97,21 @@
     }
 
     uploadBusy = true;
+    uploadProgress = 0;
     try {
       await fontsStore.upload({
         file: selectedFile,
         displayName: displayName.trim(),
         isShared,
         previewText,
+        onProgress: (progress) => {
+          uploadProgress = progress;
+        },
       });
       notify(t("fontUploadSuccess", $preferencesStore.language), "success");
       resetForm();
     } catch (error) {
+      uploadProgress = 0;
       notify(
         error instanceof Error
           ? error.message
@@ -178,16 +199,41 @@
   <section class="settings-section">
     <h3>{t("uploadFont", $preferencesStore.language)}</h3>
     <div class="settings-form">
-      <label>
+      <div class="settings-field">
         <span>{t("fontFile", $preferencesStore.language)}</span>
-        <input
-          bind:this={fileInput}
-          accept=".ttf,.otf,.woff,.woff2"
-          type="file"
-          on:change={handleFileChange}
-        />
+        <div class="font-upload-control">
+          <input
+            bind:this={fileInput}
+            class="font-upload-input"
+            accept=".ttf,.otf,.woff,.woff2"
+            type="file"
+            disabled={uploadBusy}
+            tabindex="-1"
+            on:change={handleFileChange}
+          />
+          <button
+            class="font-upload-button"
+            type="button"
+            disabled={uploadBusy}
+            on:click={() => fileInput?.click()}
+          >
+            <FileUp size={16} strokeWidth={1.8} aria-hidden="true" />
+            {selectedFile
+              ? t("fontChangeFile", $preferencesStore.language)
+              : t("fontChooseFile", $preferencesStore.language)}
+          </button>
+          {#if selectedFile}
+            <div class="font-upload-meta" aria-live="polite">
+              <FileUp size={16} strokeWidth={1.8} aria-hidden="true" />
+              <div>
+                <strong title={selectedFile.name}>{selectedFile.name}</strong>
+                <span>{t("fontSelectedFile", $preferencesStore.language)} · {formatFileSize(selectedFile.size)}</span>
+              </div>
+            </div>
+          {/if}
+        </div>
         <small>{t("fontFileHint", $preferencesStore.language)}</small>
-      </label>
+      </div>
       <label>
         <span>{t("fontDisplayName", $preferencesStore.language)}</span>
         <input
@@ -203,9 +249,36 @@
         </span>
         <input bind:checked={isShared} type="checkbox" />
       </label>
-      {#if previewFamily}
-        <div class="font-preview" style={`font-family: "${previewFamily}";`}>
-          {previewText}
+      {#if previewFamily || previewError}
+        <div class="font-preview-card">
+          <span>
+            <Type size={15} strokeWidth={1.8} aria-hidden="true" />
+            {t("fontLocalPreview", $preferencesStore.language)}
+          </span>
+          {#if previewFamily}
+            <div class="font-preview" style={`font-family: "${previewFamily}";`}>
+              {previewText}
+            </div>
+          {:else}
+            <p>{previewError}</p>
+          {/if}
+        </div>
+      {/if}
+      {#if uploadBusy}
+        <div
+          class="font-upload-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={uploadProgress}
+        >
+          <div>
+            <span>{t("fontUploadProgress", $preferencesStore.language)}</span>
+            <strong>{uploadProgress}%</strong>
+          </div>
+          <div class="font-upload-progress__bar" aria-hidden="true">
+            <span style={`width: ${uploadProgress}%`}></span>
+          </div>
         </div>
       {/if}
       <div class="settings-actions">
@@ -215,7 +288,10 @@
           disabled={uploadBusy}
           on:click={uploadSelectedFont}
         >
-          {t("uploadFontButton", $preferencesStore.language)}
+          <Upload size={15} strokeWidth={1.8} aria-hidden="true" />
+          {uploadBusy
+            ? t("fontUploading", $preferencesStore.language)
+            : t("uploadFontButton", $preferencesStore.language)}
         </button>
       </div>
     </div>

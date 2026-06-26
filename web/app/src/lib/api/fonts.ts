@@ -1,4 +1,4 @@
-import { apiFetch, getToken } from "./client";
+import { API_BASE, ApiError, apiFetch, getToken } from "./client";
 
 export interface FontRecord {
   id: string;
@@ -19,6 +19,7 @@ export interface UploadFontOptions {
   displayName: string;
   isShared: boolean;
   previewText?: string;
+  onProgress?: (progress: number) => void;
 }
 
 export function listFonts(): Promise<FontRecord[]> {
@@ -34,9 +35,50 @@ export function uploadFont(options: UploadFontOptions): Promise<FontRecord> {
     form.set("preview_text", options.previewText);
   }
 
-  return apiFetch<FontRecord>("/fonts", {
-    method: "POST",
-    body: form,
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", `${API_BASE}/fonts`);
+
+    const token = getToken();
+    if (token) request.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    request.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      options.onProgress?.(
+        Math.min(99, Math.round((event.loaded / event.total) * 100)),
+      );
+    };
+
+    request.onload = () => {
+      let payload: unknown = null;
+      if (request.responseText) {
+        try {
+          payload = JSON.parse(request.responseText);
+        } catch {
+          reject(new Error("Font upload returned an invalid response"));
+          return;
+        }
+      }
+
+      if (request.status < 200 || request.status >= 300) {
+        const message =
+          payload &&
+          typeof payload === "object" &&
+          "error" in payload &&
+          typeof payload.error === "string"
+            ? payload.error
+            : `Request failed: ${request.status}`;
+        reject(new ApiError(message, request.status, payload));
+        return;
+      }
+
+      options.onProgress?.(100);
+      resolve(payload as FontRecord);
+    };
+
+    request.onerror = () => reject(new Error("Font upload failed"));
+    request.onabort = () => reject(new Error("Font upload canceled"));
+    request.send(form);
   });
 }
 

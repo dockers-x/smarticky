@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { CheckSquare, FolderInput, Plus, SlidersHorizontal, Square, Trash2 } from "@lucide/svelte";
+  import {
+    ArrowLeft,
+    CheckSquare,
+    FolderInput,
+    Plus,
+    SlidersHorizontal,
+    Square,
+    Trash2,
+  } from "@lucide/svelte";
   import type { Note } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { foldersStore } from "../../stores/folders";
@@ -40,6 +48,7 @@
         : $notesStore.folderID === "unfiled"
           ? t("unfiledNotes", $preferencesStore.language)
           : activeFolder?.name ?? t("allNotes", $preferencesStore.language);
+  $: folderViewActive = $notesStore.filter === "all" && Boolean($notesStore.folderID);
   $: starredFolders = $foldersStore.folders.filter((folder) => folder.is_starred);
   $: selectedCount = selectedNoteIDs.length;
   $: advancedFilterCount =
@@ -129,6 +138,10 @@
   async function selectFolder(folderID: string): Promise<void> {
     foldersStore.select(folderID);
     await notesStore.setFolder(folderID);
+  }
+
+  function returnToNotebookGroups(): void {
+    notesStore.showFolderBrowser();
   }
 
   function openMovePane(): void {
@@ -254,9 +267,23 @@
     />
   {:else}
   <div class="note-list-titlebar">
-    <div>
-      <h1 title={viewTitle}>{viewTitle}</h1>
-      <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+    <div class="note-list-titlebar__heading">
+      {#if folderViewActive}
+        <button
+          class="note-list-titlebar__back"
+          type="button"
+          aria-label={t("backToNotebookGroups", $preferencesStore.language)}
+          title={t("backToNotebookGroups", $preferencesStore.language)}
+          on:click={returnToNotebookGroups}
+        >
+          <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
+          <span>{t("notebookGroups", $preferencesStore.language)}</span>
+        </button>
+      {/if}
+      <div class="note-list-titlebar__copy">
+        <h1 title={viewTitle}>{viewTitle}</h1>
+        <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+      </div>
     </div>
     {#if $notesStore.filter !== "trash"}
       <button
