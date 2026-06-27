@@ -2,8 +2,10 @@
   import {
     ChevronDown,
     ChevronRight,
+    FileText,
     Folder,
     FolderOpen,
+    Inbox,
     MoreHorizontal,
     Pencil,
     Plus,
@@ -22,6 +24,7 @@
   interface FolderRow {
     folder: FolderType;
     depth: number;
+    childCount: number;
     hasChildren: boolean;
   }
 
@@ -33,6 +36,10 @@
   $: selectedCount = selectedNoteIDs.length;
   $: folderTree = buildFolderTree($foldersStore.folders);
   $: folderRows = visibleFolderRows(folderTree, $foldersStore.expandedFolderIDs);
+  $: totalFolderNoteCount = $foldersStore.folders.reduce(
+    (total, folder) => total + folder.note_count,
+    0,
+  );
 
   function visibleFolderRows(
     items: FolderTreeItem[],
@@ -44,6 +51,7 @@
         rows.push({
           folder: item.folder,
           depth: item.depth,
+          childCount: item.children.length,
           hasChildren: item.children.length > 0,
         });
         if (expandedIDs.includes(item.folder.id)) visit(item.children);
@@ -138,7 +146,11 @@
 
   function scheduleExpandOnDrag(folderID: string): void {
     const folder = $foldersStore.folders.find((item) => item.id === folderID);
-    if (!folder || folder.child_count === 0) return;
+    const childCount =
+      folderRows.find((row) => row.folder.id === folderID)?.childCount ??
+      folder?.child_count ??
+      0;
+    if (!folder || childCount === 0) return;
     if ($foldersStore.expandedFolderIDs.includes(folderID)) return;
 
     clearExpandTimer();
@@ -266,6 +278,12 @@
     await notesStore.setFolder(folderID ?? "unfiled");
   }
 
+  async function activateAllNotes(): Promise<void> {
+    activeFolderMenuID = null;
+    foldersStore.select(null);
+    await notesStore.setFilter("all");
+  }
+
   async function toggleFolderStar(folder: FolderType): Promise<void> {
     try {
       await foldersStore.updateFolder(folder.id, {
@@ -315,7 +333,7 @@
       <span>
         {selectedCount > 0
           ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}`
-          : `${$foldersStore.folders.length} ${t("notebookGroups", $preferencesStore.language)}`}
+          : `${$foldersStore.folders.length} ${t("notebookGroups", $preferencesStore.language)} · ${totalFolderNoteCount} ${t("notes", $preferencesStore.language)}`}
       </span>
     </div>
     <button
@@ -340,6 +358,27 @@
     <div class="folder-browser-message error">{$foldersStore.error}</div>
   {:else}
     <div class="folder-browser-tree" role="list">
+      <button
+        class:active={$notesStore.filter === "all" && !$notesStore.folderID}
+        class="folder-browser-row folder-browser-row--quick"
+        type="button"
+        on:click={() => void activateAllNotes()}
+      >
+        <FileText size={17} strokeWidth={1.8} aria-hidden="true" />
+        <span>{t("allNotes", $preferencesStore.language)}</span>
+      </button>
+
+      {#if folderRows.length === 0}
+        <div class="folder-browser-empty">
+          <p>{t("noNotebookGroupsTitle", $preferencesStore.language)}</p>
+          <span>{t("noNotebookGroupsSubtitle", $preferencesStore.language)}</span>
+          <button type="button" on:click={() => void createNotebookGroup()}>
+            <Plus size={15} strokeWidth={2} aria-hidden="true" />
+            {t("newNotebookGroup", $preferencesStore.language)}
+          </button>
+        </div>
+      {/if}
+
       {#each folderRows as row (row.folder.id)}
         <div
           class:active={$foldersStore.activeFolderID === row.folder.id}
@@ -360,7 +399,11 @@
           <button
             class="folder-browser-row__chevron"
             type="button"
-            aria-label={row.hasChildren ? row.folder.name : undefined}
+            aria-label={row.hasChildren
+              ? `${$foldersStore.expandedFolderIDs.includes(row.folder.id)
+                  ? t("collapseNotebookGroup", $preferencesStore.language)
+                  : t("expandNotebookGroup", $preferencesStore.language)}: ${row.folder.name}`
+              : undefined}
             aria-expanded={row.hasChildren
               ? $foldersStore.expandedFolderIDs.includes(row.folder.id)
               : undefined}
@@ -386,7 +429,12 @@
               <Folder size={17} strokeWidth={1.8} aria-hidden="true" />
             {/if}
             <span class="folder-browser-row__name">{row.folder.name}</span>
-            <span class="folder-browser-row__count">{row.folder.note_count}</span>
+            <span class="folder-browser-row__meta">
+              <span>{row.folder.note_count}</span>
+              {#if row.childCount > 0}
+                <span>· {row.childCount} {t("folderChildGroups", $preferencesStore.language)}</span>
+              {/if}
+            </span>
           </button>
           <div class="folder-browser-row__actions">
             <button
@@ -456,7 +504,7 @@
         on:drop={(event) => void moveDroppedNotes(event, null)}
         on:click={() => void activateFolder(null)}
       >
-        <Folder size={17} strokeWidth={1.8} aria-hidden="true" />
+        <Inbox size={17} strokeWidth={1.8} aria-hidden="true" />
         <span>{t("unfiledNotes", $preferencesStore.language)}</span>
       </button>
     </div>

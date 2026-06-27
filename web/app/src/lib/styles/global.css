@@ -1364,7 +1364,7 @@ h6 {
 
 .folder-browser-row {
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   position: relative;
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 28px;
@@ -1389,6 +1389,17 @@ h6 {
 .folder-browser-row--unfiled.drop-target {
   background: var(--color-surface-secondary);
   color: var(--color-ink-accent);
+}
+
+.folder-browser-row.active::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 4px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-brand);
 }
 
 .folder-browser-row.move-target:hover {
@@ -1422,9 +1433,9 @@ h6 {
 .folder-browser-row__select {
   min-width: 0;
   width: 100%;
-  min-height: 36px;
+  min-height: 40px;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(24px, auto);
   align-items: center;
   gap: 6px;
   border: 0;
@@ -1442,6 +1453,7 @@ h6 {
 }
 
 .folder-browser-row__name,
+.folder-browser-row--quick > span,
 .folder-browser-row--unfiled span {
   min-width: 0;
   overflow: hidden;
@@ -1460,7 +1472,23 @@ h6 {
   text-align: right;
 }
 
+.folder-browser-row__meta {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .folder-browser-row--deep .folder-browser-row__count {
+  display: none;
+}
+
+.folder-browser-row--deep .folder-browser-row__meta span + span {
   display: none;
 }
 
@@ -1525,14 +1553,61 @@ h6 {
   opacity: 0.45;
 }
 
+.folder-browser-row--quick,
 .folder-browser-row--unfiled {
   width: 100%;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   justify-content: stretch;
   border: 0;
   background: transparent;
   padding: 0 10px;
   text-align: left;
+}
+
+.folder-browser-row--quick {
+  margin-bottom: 4px;
+}
+
+.folder-browser-empty {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 8px;
+  border: 1px dashed color-mix(in srgb, var(--color-brand) 24%, var(--color-divider));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-card) 72%, transparent);
+  padding: 12px;
+}
+
+.folder-browser-empty p {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.folder-browser-empty span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.folder-browser-empty button {
+  justify-self: flex-start;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.folder-browser-empty button:hover {
+  color: var(--color-brand);
 }
 
 .folder-browser-message {
@@ -1567,7 +1642,7 @@ h6 {
   min-width: 0;
   flex: 1 1 auto;
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .note-list-titlebar__back {
@@ -1613,6 +1688,47 @@ h6 {
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.note-list-breadcrumb {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  color: var(--color-text-muted);
+  scrollbar-width: none;
+}
+
+.note-list-breadcrumb::-webkit-scrollbar {
+  display: none;
+}
+
+.note-list-breadcrumb button,
+.note-list-breadcrumb span {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  padding: 2px 3px;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-list-breadcrumb button:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-ink-accent);
+}
+
+.note-list-breadcrumb svg {
+  flex: 0 0 auto;
+  opacity: 0.55;
 }
 
 .note-list-titlebar__new {
@@ -1849,6 +1965,7 @@ h6 {
   opacity: 0.45;
 }
 
+.child-folder-strip,
 .starred-folder-strip {
   min-width: 0;
   display: grid;
@@ -1856,6 +1973,7 @@ h6 {
   margin-top: 14px;
 }
 
+.child-folder-strip h2,
 .starred-folder-strip h2 {
   margin: 0;
   color: var(--color-text-muted);
@@ -1864,11 +1982,39 @@ h6 {
   font-weight: 400;
 }
 
+.child-folder-strip > div,
 .starred-folder-strip > div {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
+}
+
+.child-folder-strip button {
+  min-width: 160px;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.child-folder-strip button:hover {
+  border-color: color-mix(in srgb, var(--color-brand) 30%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 7%, var(--color-card));
+  color: var(--color-ink-accent);
+}
+
+.child-folder-strip button svg {
+  grid-row: 1 / 3;
 }
 
 .starred-folder-strip button {
@@ -1886,14 +2032,34 @@ h6 {
   text-align: left;
 }
 
+.child-folder-strip button span {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .starred-folder-strip button span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.child-folder-strip button small,
 .starred-folder-strip button small {
   color: var(--color-text-muted);
+}
+
+.child-folder-strip button small {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-card-list {
@@ -5217,6 +5383,14 @@ h6 {
     display: none;
   }
 
+  .note-list-titlebar {
+    align-items: flex-start;
+  }
+
+  .note-list-titlebar__heading {
+    align-items: flex-start;
+  }
+
   .note-list-titlebar__back {
     width: 38px;
     max-width: 38px;
@@ -5226,6 +5400,14 @@ h6 {
 
   .note-list-titlebar__back span {
     display: none;
+  }
+
+  .note-list-breadcrumb {
+    padding-bottom: 1px;
+  }
+
+  .child-folder-strip button {
+    min-width: 148px;
   }
 
   .notification-stack {

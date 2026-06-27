@@ -3,13 +3,16 @@
   import {
     ArrowLeft,
     CheckSquare,
+    ChevronRight,
+    Folder,
+    FolderOpen,
     FolderInput,
     Plus,
     SlidersHorizontal,
     Square,
     Trash2,
   } from "@lucide/svelte";
-  import type { Note } from "../../api/types";
+  import type { Folder as FolderType, Note } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { foldersStore } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
@@ -40,6 +43,17 @@
     $notesStore.folderID && $notesStore.folderID !== "unfiled"
       ? $foldersStore.folders.find((folder) => folder.id === $notesStore.folderID)
       : null;
+  $: folderByID = new Map($foldersStore.folders.map((folder) => [folder.id, folder]));
+  $: activeFolderPath = activeFolder
+    ? buildFolderPath(activeFolder, folderByID)
+    : [];
+  $: childFolders = activeFolder
+    ? sortFolders(
+        $foldersStore.folders.filter(
+          (folder) => folder.parent_id === activeFolder?.id,
+        ),
+      )
+    : [];
   $: viewTitle =
     $notesStore.filter === "trash"
       ? t("trash", $preferencesStore.language)
@@ -113,6 +127,32 @@
     }
     return groups;
   }, []);
+
+  function sortFolders(folders: FolderType[]): FolderType[] {
+    return [...folders].sort((left, right) => {
+      if (left.sort_order !== right.sort_order) {
+        return left.sort_order - right.sort_order;
+      }
+      return left.name.localeCompare(right.name);
+    });
+  }
+
+  function buildFolderPath(
+    folder: FolderType,
+    foldersByID: Map<string, FolderType>,
+  ): FolderType[] {
+    const path: FolderType[] = [];
+    const visited = new Set<string>();
+    let current: FolderType | undefined = folder;
+
+    while (current && !visited.has(current.id)) {
+      path.unshift(current);
+      visited.add(current.id);
+      current = current.parent_id ? foldersByID.get(current.parent_id) : undefined;
+    }
+
+    return path;
+  }
 
   function toggleSelected(noteID: string): void {
     selectedNoteIDs = selectedNoteIDs.includes(noteID)
@@ -283,6 +323,30 @@
       <div class="note-list-titlebar__copy">
         <h1 title={viewTitle}>{viewTitle}</h1>
         <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+        {#if activeFolderPath.length > 0}
+          <nav
+            class="note-list-breadcrumb"
+            aria-label={t("notebookPath", $preferencesStore.language)}
+          >
+            <button type="button" on:click={returnToNotebookGroups}>
+              {t("notebookGroups", $preferencesStore.language)}
+            </button>
+            {#each activeFolderPath as folder, index (folder.id)}
+              <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />
+              {#if index < activeFolderPath.length - 1}
+                <button
+                  type="button"
+                  title={folder.name}
+                  on:click={() => void selectFolder(folder.id)}
+                >
+                  {folder.name}
+                </button>
+              {:else}
+                <span title={folder.name}>{folder.name}</span>
+              {/if}
+            {/each}
+          </nav>
+        {/if}
       </div>
     </div>
     {#if $notesStore.filter !== "trash"}
@@ -448,6 +512,30 @@
         </button>
       </div>
     </div>
+  {/if}
+
+  {#if folderViewActive && childFolders.length > 0}
+    <section class="child-folder-strip" aria-label={t("childNotebookGroups", $preferencesStore.language)}>
+      <h2>{t("childNotebookGroups", $preferencesStore.language)}</h2>
+      <div>
+        {#each childFolders as folder (folder.id)}
+          <button type="button" title={folder.name} on:click={() => void selectFolder(folder.id)}>
+            {#if folder.child_count > 0}
+              <FolderOpen size={16} strokeWidth={1.8} aria-hidden="true" />
+            {:else}
+              <Folder size={16} strokeWidth={1.8} aria-hidden="true" />
+            {/if}
+            <span>{folder.name}</span>
+            <small>
+              {folder.note_count} {t("notes", $preferencesStore.language)}
+              {#if folder.child_count > 0}
+                · {folder.child_count} {t("folderChildGroups", $preferencesStore.language)}
+              {/if}
+            </small>
+          </button>
+        {/each}
+      </div>
+    </section>
   {/if}
 
   {#if $notesStore.filter === "starred" && starredFolders.length > 0}
