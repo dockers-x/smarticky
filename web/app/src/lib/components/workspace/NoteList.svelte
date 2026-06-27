@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import {
     ArrowLeft,
+    CalendarDays,
     CheckSquare,
     ChevronRight,
     Folder,
@@ -20,6 +21,7 @@
   import { tagsStore } from "../../stores/tags";
   import EmptyState from "./EmptyState.svelte";
   import FolderBrowserPane from "./FolderBrowserPane.svelte";
+  import NoteCalendar from "./NoteCalendar.svelte";
   import NoteCard from "./NoteCard.svelte";
 
   interface NoteGroup {
@@ -28,6 +30,7 @@
   }
 
   let filterPanelOpen = false;
+  let calendarOpen = false;
   let selectedNoteIDs: string[] = [];
 
   onMount(() => {
@@ -72,6 +75,12 @@
     ($notesStore.searchFilters.createdTo ? 1 : 0) +
     ($notesStore.searchFilters.updatedFrom ? 1 : 0) +
     ($notesStore.searchFilters.updatedTo ? 1 : 0);
+  $: calendarFilterActive = Boolean(
+    $notesStore.searchFilters.createdFrom ||
+      $notesStore.searchFilters.createdTo ||
+      $notesStore.searchFilters.updatedFrom ||
+      $notesStore.searchFilters.updatedTo,
+  );
   $: visibleNoteIDs = new Set($notesStore.notes.map((note) => note.id));
   $: {
     const nextSelectedNoteIDs = selectedNoteIDs.filter((id) =>
@@ -217,7 +226,11 @@
         notify(t("trashedNotes", $preferencesStore.language), "success");
       }
       clearSelection();
-      await Promise.all([notesStore.load(), foldersStore.load()]);
+      await Promise.all([
+        notesStore.load(),
+        notesStore.loadCalendarNotes(),
+        foldersStore.load(),
+      ]);
     } catch {
       notify(
         permanent
@@ -231,7 +244,7 @@
   async function toggleNoteStar(note: Note): Promise<void> {
     try {
       await notesStore.updateNote(note.id, { is_starred: !note.is_starred });
-      await notesStore.load();
+      await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
     } catch {
       notify(t("updateStarFailed", $preferencesStore.language), "error");
     }
@@ -268,7 +281,11 @@
     try {
       await notesStore.updateNote(note.id, { is_deleted: true });
       selectedNoteIDs = selectedNoteIDs.filter((id) => id !== note.id);
-      await Promise.all([notesStore.load(), foldersStore.load()]);
+      await Promise.all([
+        notesStore.load(),
+        notesStore.loadCalendarNotes(),
+        foldersStore.load(),
+      ]);
       notify(t("trashedNote", $preferencesStore.language), "success");
     } catch {
       notify(t("trashFailed", $preferencesStore.language), "error");
@@ -287,7 +304,7 @@
     try {
       await notesStore.emptyTrash();
       clearSelection();
-      await foldersStore.load();
+      await Promise.all([notesStore.loadCalendarNotes(), foldersStore.load()]);
       notify(t("emptiedTrash", $preferencesStore.language), "success");
     } catch {
       notify(t("emptyTrashFailed", $preferencesStore.language), "error");
@@ -376,6 +393,19 @@
         </button>
       {/if}
       <button
+        class:active={calendarOpen || calendarFilterActive}
+        class="note-list-filter-tool"
+        type="button"
+        aria-expanded={calendarOpen}
+        on:click={() => (calendarOpen = !calendarOpen)}
+      >
+        <CalendarDays size={16} strokeWidth={1.8} aria-hidden="true" />
+        {t("calendarView", $preferencesStore.language)}
+        {#if calendarFilterActive}
+          <span>1</span>
+        {/if}
+      </button>
+      <button
         class:active={filterPanelOpen || advancedFilterCount > 0}
         class="note-list-filter-tool"
         type="button"
@@ -390,6 +420,10 @@
       </button>
     </div>
   </div>
+
+  {#if calendarOpen}
+    <NoteCalendar />
+  {/if}
 
   {#if filterPanelOpen}
     <div class="note-list-filter-panel">

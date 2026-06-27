@@ -1901,6 +1901,326 @@ h6 {
   opacity: 0.45;
 }
 
+.note-calendar {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  padding: 12px;
+}
+
+.note-calendar__header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.note-calendar__month,
+.note-calendar__nav,
+.note-calendar__basis,
+.note-calendar__clear {
+  display: inline-flex;
+  align-items: center;
+}
+
+.note-calendar__month {
+  min-width: 0;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  padding: 2px 0;
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 650;
+}
+
+.note-calendar__month span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-calendar__month:hover {
+  color: var(--color-brand);
+}
+
+.note-calendar__nav {
+  flex: 0 0 auto;
+  gap: 2px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-secondary);
+  padding: 2px;
+}
+
+.note-calendar__nav button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.note-calendar__nav button:hover {
+  background: var(--color-card);
+  color: var(--color-ink-accent);
+}
+
+.note-calendar__controls {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-calendar__basis {
+  gap: 2px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-secondary);
+  padding: 2px;
+}
+
+.note-calendar__basis button {
+  min-height: 28px;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: 0 9px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.note-calendar__basis button.active {
+  background: var(--color-card);
+  color: var(--color-ink-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand) 18%, transparent);
+}
+
+.note-calendar__clear {
+  min-width: 0;
+  min-height: 30px;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 22%, var(--color-divider));
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--color-brand) 7%, var(--color-card));
+  color: var(--color-ink-accent);
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.note-calendar__clear:hover {
+  border-color: color-mix(in srgb, var(--color-brand) 38%, var(--color-divider));
+}
+
+.note-calendar__message {
+  color: var(--color-danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.note-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  transition: opacity 0.16s ease;
+}
+
+.note-calendar-grid.loading {
+  opacity: 0.55;
+}
+
+.note-calendar-grid__weekday {
+  min-width: 0;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.note-calendar-day {
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 38px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface-secondary) 72%, transparent);
+  color: var(--color-text-secondary);
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.note-calendar-day span,
+.note-calendar-day small {
+  grid-area: 1 / 1;
+}
+
+.note-calendar-day small {
+  align-self: end;
+  justify-self: end;
+  min-width: 13px;
+  height: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-card) 88%, transparent);
+  color: inherit;
+  margin: 3px;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.note-calendar-day[data-level="1"] {
+  border-color: color-mix(in srgb, var(--color-brand) 18%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 12%, var(--color-card));
+}
+
+.note-calendar-day[data-level="2"] {
+  border-color: color-mix(in srgb, var(--color-brand) 28%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 24%, var(--color-card));
+}
+
+.note-calendar-day[data-level="3"] {
+  border-color: color-mix(in srgb, var(--color-brand) 38%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 38%, var(--color-card));
+  color: var(--color-text);
+}
+
+.note-calendar-day[data-level="4"] {
+  border-color: color-mix(in srgb, var(--color-brand) 55%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 58%, var(--color-card));
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.note-calendar-day:hover {
+  border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-divider));
+  color: var(--color-ink-accent);
+}
+
+.note-calendar-day.today::after,
+.note-calendar-day.selected::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  border-radius: 6px;
+}
+
+.note-calendar-day.today::after {
+  border: 1px solid color-mix(in srgb, var(--color-text) 32%, transparent);
+}
+
+.note-calendar-day.selected::after {
+  border: 2px solid var(--color-brand);
+}
+
+.note-calendar-day.outside {
+  border-color: transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text-muted) 42%, transparent);
+}
+
+.note-calendar-year {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.note-calendar-year__month {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 8px;
+  text-align: left;
+}
+
+.note-calendar-year__month:hover,
+.note-calendar-year__month.active {
+  border-color: color-mix(in srgb, var(--color-brand) 35%, var(--color-divider));
+  background: color-mix(in srgb, var(--color-brand) 7%, var(--color-card));
+  color: var(--color-ink-accent);
+}
+
+.note-calendar-year__month > span {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-calendar-year__month > div {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.note-calendar-year__month i {
+  aspect-ratio: 1;
+  min-width: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
+}
+
+.note-calendar-year__month i[data-level="1"] {
+  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-card));
+}
+
+.note-calendar-year__month i[data-level="2"] {
+  background: color-mix(in srgb, var(--color-brand) 32%, var(--color-card));
+}
+
+.note-calendar-year__month i[data-level="3"] {
+  background: color-mix(in srgb, var(--color-brand) 48%, var(--color-card));
+}
+
+.note-calendar-year__month i[data-level="4"] {
+  background: color-mix(in srgb, var(--color-brand) 68%, var(--color-card));
+}
+
+.note-calendar-year__month i.outside {
+  background: transparent;
+}
+
+.note-calendar-year__month i.today {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+
+.note-calendar-year__month i.selected {
+  box-shadow: inset 0 0 0 2px var(--color-brand);
+}
+
 .note-list-selection-bar {
   min-width: 0;
   min-height: 44px;
@@ -5404,6 +5724,28 @@ h6 {
 
   .note-list-breadcrumb {
     padding-bottom: 1px;
+  }
+
+  .note-calendar {
+    padding: 10px;
+  }
+
+  .note-calendar__header,
+  .note-calendar__controls {
+    align-items: flex-start;
+  }
+
+  .note-calendar__controls {
+    flex-direction: column;
+  }
+
+  .note-calendar-day {
+    min-height: 34px;
+    border-radius: 7px;
+  }
+
+  .note-calendar-year {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .child-folder-strip button {

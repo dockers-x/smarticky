@@ -348,7 +348,12 @@
       );
       importMessage = `${t("noteConnectionImportSuccess", $preferencesStore.language)}: ${result.imported_count}/${result.total_count}`;
       notify(t("noteConnectionImportSuccess", $preferencesStore.language), "success");
-      await Promise.all([notesStore.load(), foldersStore.load(), loadState()]);
+      await Promise.all([
+        notesStore.load(),
+        notesStore.loadCalendarNotes(),
+        foldersStore.load(),
+        loadState(),
+      ]);
     } catch (importError) {
       notify(
         importError instanceof Error

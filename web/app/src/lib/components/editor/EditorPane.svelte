@@ -680,7 +680,11 @@
     if (!note) return;
     try {
       await notesStore.moveToFolder([note.id], folderID);
-      await Promise.all([notesStore.load(), foldersStore.load()]);
+      await Promise.all([
+        notesStore.load(),
+        notesStore.loadCalendarNotes(),
+        foldersStore.load(),
+      ]);
       const refreshed = await notesStore.getByID(note.id);
       notesStore.replaceSelected(refreshed);
       folderMenuOpen = false;
@@ -711,7 +715,7 @@
     try {
       await notesStore.updateSelected({ is_deleted: !restoring });
       notesStore.clearSelection();
-      await notesStore.load();
+      await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
       notify(
         restoring
           ? t("restoredNote", $preferencesStore.language)
@@ -770,7 +774,7 @@
 
   async function refreshSelectedNote(): Promise<void> {
     if (!note) return;
-    await notesStore.load();
+    await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
     const refreshed = await notesStore.getByID(note.id);
     notesStore.replaceSelected(refreshed);
   }

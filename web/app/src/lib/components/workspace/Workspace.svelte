@@ -15,8 +15,11 @@
   let settingsOpen = false;
 
   onMount(() => {
-    notesStore.load();
-    foldersStore.load();
+    void Promise.all([
+      notesStore.load(),
+      notesStore.loadCalendarNotes(),
+      foldersStore.load(),
+    ]);
   });
 </script>
 

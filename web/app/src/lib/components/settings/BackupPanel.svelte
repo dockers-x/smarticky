@@ -441,7 +441,7 @@
       restoreInput = "";
       restoreRestartRequired = needsRestart;
       if (!needsRestart) {
-        await notesStore.load();
+        await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
       }
     } catch (restoreError) {
       notify(

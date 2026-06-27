@@ -1,6 +1,7 @@
 import { get, writable } from "svelte/store";
 import { apiFetch } from "../api/client";
 import type { Note, ProtectionMode } from "../api/types";
+import type { CalendarTimeBasis } from "../calendar/noteCalendar";
 import { preferencesStore, t } from "./preferences";
 
 export type NoteFilter = "all" | "starred" | "trash";
@@ -17,6 +18,7 @@ export interface NoteSearchFilters {
 
 interface NotesState {
   notes: Note[];
+  calendarNotes: Note[];
   selected: Note | null;
   workspaceView: WorkspaceView;
   filter: NoteFilter;
@@ -25,7 +27,9 @@ interface NotesState {
   search: string;
   searchFilters: NoteSearchFilters;
   loading: boolean;
+  calendarLoading: boolean;
   error: string;
+  calendarError: string;
 }
 
 type NoteUpdateFields = Partial<
@@ -59,7 +63,11 @@ const emptySearchFilters: NoteSearchFilters = {
   updatedTo: "",
 };
 
-function queryFor(state: NotesState): string {
+function queryFor(
+  state: NotesState,
+  options: { includeDateFilters?: boolean } = {},
+): string {
+  const includeDateFilters = options.includeDateFilters ?? true;
   const params = new URLSearchParams();
   if (state.filter === "starred") params.set("starred", "true");
   if (state.filter === "trash") params.set("trash", "true");
@@ -73,17 +81,19 @@ function queryFor(state: NotesState): string {
   if (state.searchFilters.tags.length) {
     params.set("tags", state.searchFilters.tags.join(","));
   }
-  if (state.searchFilters.createdFrom) {
-    params.set("created_from", state.searchFilters.createdFrom);
-  }
-  if (state.searchFilters.createdTo) {
-    params.set("created_to", state.searchFilters.createdTo);
-  }
-  if (state.searchFilters.updatedFrom) {
-    params.set("updated_from", state.searchFilters.updatedFrom);
-  }
-  if (state.searchFilters.updatedTo) {
-    params.set("updated_to", state.searchFilters.updatedTo);
+  if (includeDateFilters) {
+    if (state.searchFilters.createdFrom) {
+      params.set("created_from", state.searchFilters.createdFrom);
+    }
+    if (state.searchFilters.createdTo) {
+      params.set("created_to", state.searchFilters.createdTo);
+    }
+    if (state.searchFilters.updatedFrom) {
+      params.set("updated_from", state.searchFilters.updatedFrom);
+    }
+    if (state.searchFilters.updatedTo) {
+      params.set("updated_to", state.searchFilters.updatedTo);
+    }
   }
   const timeZone = get(preferencesStore).timeZone;
   if (timeZone) params.set("timezone", timeZone);
@@ -92,8 +102,10 @@ function queryFor(state: NotesState): string {
 
 function createNotesStore() {
   let loadSequence = 0;
+  let calendarLoadSequence = 0;
   const { subscribe, update } = writable<NotesState>({
     notes: [],
+    calendarNotes: [],
     selected: null,
     workspaceView: "notes",
     filter: "all",
@@ -102,7 +114,9 @@ function createNotesStore() {
     search: "",
     searchFilters: { ...emptySearchFilters },
     loading: false,
+    calendarLoading: false,
     error: "",
+    calendarError: "",
   });
 
   function applyUpdatedNote(updated: Note): void {
@@ -117,6 +131,11 @@ function createNotesStore() {
             }
           : current.selected,
       notes: current.notes.map((note) =>
+        note.id === updated.id
+          ? { ...note, ...updated, tags: updated.tags ?? note.tags }
+          : note,
+      ),
+      calendarNotes: current.calendarNotes.map((note) =>
         note.id === updated.id
           ? { ...note, ...updated, tags: updated.tags ?? note.tags }
           : note,
@@ -170,9 +189,44 @@ function createNotesStore() {
     }
   }
 
+  async function loadCalendarNotes() {
+    const sequence = ++calendarLoadSequence;
+    update((state) => ({ ...state, calendarLoading: true, calendarError: "" }));
+    const state = get({ subscribe });
+    const query = queryFor(state, { includeDateFilters: false });
+
+    try {
+      const notes = await apiFetch<Note[]>(
+        `/notes${query ? `?${query}` : ""}`,
+      );
+      if (sequence !== calendarLoadSequence) return;
+
+      update((current) => ({
+        ...current,
+        calendarNotes: notes,
+        calendarLoading: false,
+        calendarError: "",
+      }));
+    } catch (error) {
+      if (sequence !== calendarLoadSequence) return;
+
+      update((current) => ({
+        ...current,
+        calendarLoading: false,
+        calendarError:
+          error instanceof Error ? error.message : t("loadNotesFailed"),
+      }));
+    }
+  }
+
+  async function loadNotesAndCalendar() {
+    await Promise.all([load(), loadCalendarNotes()]);
+  }
+
   return {
     subscribe,
     load,
+    loadCalendarNotes,
     async create(folderID?: string | null) {
       const state = get({ subscribe });
       const targetFolderID =
@@ -198,7 +252,7 @@ function createNotesStore() {
         searchFilters: { ...emptySearchFilters },
         selected: note,
       }));
-      await load();
+      await loadNotesAndCalendar();
       update((state) => ({ ...state, selected: note }));
     },
     select(note: Note) {
@@ -216,7 +270,7 @@ function createNotesStore() {
         folderBrowserOpen: false,
         selected: null,
       }));
-      await load();
+      await loadNotesAndCalendar();
     },
     async setFolder(folderID: string | null) {
       update((state) => ({
@@ -227,7 +281,7 @@ function createNotesStore() {
         folderBrowserOpen: false,
         selected: null,
       }));
-      await load();
+      await loadNotesAndCalendar();
     },
     showFolderBrowser() {
       update((state) => ({
@@ -247,7 +301,7 @@ function createNotesStore() {
     },
     async setSearch(search: string) {
       update((state) => ({ ...state, search, folderBrowserOpen: false }));
-      await load();
+      await loadNotesAndCalendar();
     },
     async setSearchFilters(fields: Partial<NoteSearchFilters>) {
       update((state) => ({
@@ -258,7 +312,35 @@ function createNotesStore() {
           tags: fields.tags ?? state.searchFilters.tags,
         },
       }));
-      await load();
+      await loadNotesAndCalendar();
+    },
+    async setCalendarDateFilter(date: string, basis: CalendarTimeBasis) {
+      update((state) => ({
+        ...state,
+        folderBrowserOpen: false,
+        selected: null,
+        searchFilters: {
+          ...state.searchFilters,
+          createdFrom: basis === "created" ? date : "",
+          createdTo: basis === "created" ? date : "",
+          updatedFrom: basis === "updated" ? date : "",
+          updatedTo: basis === "updated" ? date : "",
+        },
+      }));
+      await loadNotesAndCalendar();
+    },
+    async clearCalendarDateFilter() {
+      update((state) => ({
+        ...state,
+        searchFilters: {
+          ...state.searchFilters,
+          createdFrom: "",
+          createdTo: "",
+          updatedFrom: "",
+          updatedTo: "",
+        },
+      }));
+      await loadNotesAndCalendar();
     },
     async clearSearchFilters() {
       update((state) => ({
@@ -266,7 +348,7 @@ function createNotesStore() {
         search: "",
         searchFilters: { ...emptySearchFilters },
       }));
-      await load();
+      await loadNotesAndCalendar();
     },
     async updateSelected(fields: NoteUpdateFields) {
       const state = get({ subscribe });
@@ -325,6 +407,11 @@ function createNotesStore() {
             ? { ...note, folder_id: folderID, updated_at: new Date().toISOString() }
             : note,
         ),
+        calendarNotes: state.calendarNotes.map((note) =>
+          uniqueNoteIDs.includes(note.id)
+            ? { ...note, folder_id: folderID, updated_at: new Date().toISOString() }
+            : note,
+        ),
       }));
     },
     replaceSelected(note: Note) {
@@ -332,6 +419,9 @@ function createNotesStore() {
         ...state,
         selected: note,
         notes: state.notes.map((item) => (item.id === note.id ? note : item)),
+        calendarNotes: state.calendarNotes.map((item) =>
+          item.id === note.id ? note : item,
+        ),
       }));
     },
     async deletePermanent(noteId: string) {
@@ -340,6 +430,7 @@ function createNotesStore() {
         ...state,
         selected: state.selected?.id === noteId ? null : state.selected,
         notes: state.notes.filter((note) => note.id !== noteId),
+        calendarNotes: state.calendarNotes.filter((note) => note.id !== noteId),
       }));
     },
     async emptyTrash() {
@@ -363,6 +454,10 @@ function createNotesStore() {
           current.filter === "trash"
             ? []
             : current.notes.filter((note) => !note.is_deleted),
+        calendarNotes:
+          current.filter === "trash"
+            ? []
+            : current.calendarNotes.filter((note) => !note.is_deleted),
       }));
     },
   };

@@ -39,7 +39,7 @@
     error = "";
     try {
       await tagsStore.addToNote(note.id, trimmed);
-      await notesStore.load();
+      await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
       tagName = "";
     } catch (err) {
       error = err instanceof Error ? err.message : t("addTagFailed", $preferencesStore.language);
