@@ -95,6 +95,7 @@ export default defineConfig({
     outDir: "../static/app",
     emptyOutDir: true,
     rollupOptions: {
+      maxParallelFileOps: 128,
       onwarn(warning, defaultHandler) {
         if (isIgnoredRadixDirectiveWarning(warning)) return;
         defaultHandler(warning);

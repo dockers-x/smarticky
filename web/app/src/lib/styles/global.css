@@ -5445,6 +5445,10 @@ h6 {
     display: none;
   }
 
+  .sidebar {
+    display: none;
+  }
+
   .sidebar,
   .note-list-pane,
   .index-view,
@@ -5676,10 +5680,6 @@ h6 {
   .workspace {
     grid-template-columns: 1fr;
     min-height: 100dvh;
-  }
-
-  .sidebar {
-    display: none;
   }
 
   .note-list-pane.editor-open {
