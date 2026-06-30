@@ -1,6 +1,6 @@
 import { $prose } from "@milkdown/kit/utils";
 import { Plugin, PluginKey, type EditorState } from "@milkdown/kit/prose/state";
-import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
+import { Decoration, DecorationSet, type EditorView } from "@milkdown/kit/prose/view";
 import type { Node as ProseNode } from "@milkdown/kit/prose/model";
 import {
   escapeHTML,
@@ -19,6 +19,12 @@ export interface EditorTocBlock {
 
 export interface EditorTocEntry extends TocEntry {
   pos: number;
+}
+
+interface EditorTocSnapshot {
+  blocks: EditorTocBlock[];
+  entries: EditorTocEntry[];
+  markerBlocks: EditorTocBlock[];
 }
 
 const editorTocPluginKey = new PluginKey("smarticky-editor-toc");
@@ -77,9 +83,40 @@ export function collectEditorTocEntries(blocks: EditorTocBlock[]): EditorTocEntr
   return entries;
 }
 
+function createEditorTocSnapshot(state: EditorState): EditorTocSnapshot {
+  const blocks = topLevelBlocks(state.doc);
+  const markerBlocks = blocks.filter(
+    (block) => block.type === "paragraph" && isTocMarkerText(block.text),
+  );
+
+  return {
+    blocks,
+    entries: collectEditorTocEntries(blocks),
+    markerBlocks,
+  };
+}
+
+function createEditorTocSignature(snapshot: EditorTocSnapshot): string {
+  if (snapshot.markerBlocks.length === 0) return "hidden";
+
+  const markers = snapshot.markerBlocks
+    .map((marker) => marker.pos)
+    .join(",");
+  const entries = snapshot.entries
+    .map((entry) => `${entry.pos}:${entry.depth}:${entry.id}:${entry.text}`)
+    .join("|");
+  return `${markers}::${entries}`;
+}
+
+function cleanupTocPreview(node: Element | null): void {
+  if (!(node instanceof HTMLElement)) return;
+  tocPreviewCleanup.get(node)?.();
+  tocPreviewCleanup.delete(node);
+}
+
 export function createEditorTocPreview(entries: EditorTocEntry[]): HTMLElement {
   const nav = document.createElement("nav");
-  nav.className = "markdown-toc editor-toc-float";
+  nav.className = "markdown-toc editor-toc-panel";
   nav.contentEditable = "false";
   nav.setAttribute("aria-label", "Table of contents");
 
@@ -98,11 +135,13 @@ export function createEditorTocPreview(entries: EditorTocEntry[]): HTMLElement {
   for (const entry of entries) {
     const item = document.createElement("li");
     item.className = `markdown-toc__item markdown-toc__item--depth-${entry.depth}`;
+    item.dataset.tocDepth = String(entry.depth);
 
     const button = document.createElement("button");
     button.type = "button";
     button.className = "editor-toc-button";
     button.dataset.editorHeadingTarget = entry.id;
+    button.dataset.tocDepth = String(entry.depth);
     button.innerHTML = escapeHTML(entry.text);
     const handleClick = (event: MouseEvent): void => {
       event.preventDefault();
@@ -127,14 +166,68 @@ export function createEditorTocPreview(entries: EditorTocEntry[]): HTMLElement {
   return nav;
 }
 
+export function createEditorTocLayer(): HTMLDivElement {
+  const layer = document.createElement("div");
+  layer.className = "editor-toc-layer";
+  layer.contentEditable = "false";
+  layer.hidden = true;
+  return layer;
+}
+
+export function renderEditorTocLayer(
+  layer: HTMLElement,
+  entries: EditorTocEntry[],
+  visible: boolean,
+): void {
+  cleanupTocPreview(layer.firstElementChild);
+  layer.replaceChildren();
+  layer.hidden = !visible;
+
+  if (visible) {
+    layer.append(createEditorTocPreview(entries));
+  }
+}
+
+function findEditorTocHost(view: EditorView): HTMLElement | null {
+  const host = view.dom.closest(".markdown-editor-host");
+  if (host instanceof HTMLElement) return host;
+  return view.dom.parentElement;
+}
+
+function createEditorTocPluginView(view: EditorView) {
+  const host = findEditorTocHost(view);
+  if (!host) return {};
+
+  const layer = createEditorTocLayer();
+  let signature = "";
+  host.prepend(layer);
+
+  const sync = (state: EditorState): void => {
+    const snapshot = createEditorTocSnapshot(state);
+    const nextSignature = createEditorTocSignature(snapshot);
+    if (nextSignature === signature) return;
+
+    signature = nextSignature;
+    renderEditorTocLayer(layer, snapshot.entries, snapshot.markerBlocks.length > 0);
+  };
+
+  sync(view.state);
+
+  return {
+    update(nextView: EditorView) {
+      sync(nextView.state);
+    },
+    destroy() {
+      cleanupTocPreview(layer.firstElementChild);
+      layer.remove();
+    },
+  };
+}
+
 function createEditorTocDecorations(state: EditorState): DecorationSet {
-  const blocks = topLevelBlocks(state.doc);
-  const markerBlocks = blocks.filter(
-    (block) => block.type === "paragraph" && isTocMarkerText(block.text),
-  );
+  const { blocks, entries, markerBlocks } = createEditorTocSnapshot(state);
   if (markerBlocks.length === 0) return DecorationSet.empty;
 
-  const entries = collectEditorTocEntries(blocks);
   const decorations: Decoration[] = [];
 
   for (const entry of entries) {
@@ -147,36 +240,12 @@ function createEditorTocDecorations(state: EditorState): DecorationSet {
     );
   }
 
-  const [firstMarker] = markerBlocks;
-  if (firstMarker) {
-    decorations.push(
-      Decoration.widget(firstMarker.pos, () => createEditorTocPreview(entries), {
-        key: `smarticky-editor-toc-${entries.map((entry) => entry.id).join("-")}`,
-        side: -1,
-        ignoreSelection: true,
-        destroy: (node: Node) => {
-          if (node instanceof HTMLElement) {
-            tocPreviewCleanup.get(node)?.();
-            tocPreviewCleanup.delete(node);
-          }
-        },
-        stopEvent: (event: Event) => {
-          const target = event.target;
-          return (
-            target instanceof Element &&
-            Boolean(target.closest(".editor-toc-button"))
-          );
-        },
-      }),
-    );
-  }
-
   for (const marker of markerBlocks) {
     if (!marker.node) continue;
     decorations.push(
       Decoration.node(marker.pos, marker.pos + marker.node.nodeSize, {
-        class: "editor-toc-source-hidden",
-        "aria-hidden": "true",
+        class: "editor-toc-source-marker",
+        "data-editor-toc-marker": "true",
       }),
     );
   }
@@ -189,6 +258,7 @@ export function createEditorTocPlugin() {
     () =>
       new Plugin({
         key: editorTocPluginKey,
+        view: createEditorTocPluginView,
         props: {
           decorations(state) {
             return createEditorTocDecorations(state);

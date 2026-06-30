@@ -81,7 +81,7 @@ export function renderTableOfContents(entries: TocEntry[]): string {
   const items = entries
     .map(
       (entry) =>
-        `<li class="markdown-toc__item markdown-toc__item--depth-${entry.depth}"><a href="#${escapeHTML(entry.id)}">${escapeHTML(entry.text)}</a></li>`,
+        `<li class="markdown-toc__item markdown-toc__item--depth-${entry.depth}" data-toc-depth="${entry.depth}"><a href="#${escapeHTML(entry.id)}" data-toc-depth="${entry.depth}">${escapeHTML(entry.text)}</a></li>`,
     )
     .join("");
 

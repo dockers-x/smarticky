@@ -556,6 +556,16 @@ describe("renderMarkdown table of contents", () => {
     expect(toc?.getAttribute("aria-label")).toBe("Table of contents");
     expect(toc?.querySelectorAll("a")).toHaveLength(3);
     expect(toc?.querySelector("a")?.getAttribute("href")).toBe("#overview");
+    expect(Array.from(toc?.querySelectorAll("li") ?? []).map((item) => item.dataset.tocDepth)).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
+    expect(Array.from(toc?.querySelectorAll("a") ?? []).map((link) => link.dataset.tocDepth)).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
     expect(toc?.textContent).toContain("Overview");
     expect(root.querySelector("h1")?.id).toBe("overview");
     expect(root.querySelector("h2")?.id).toBe("install");

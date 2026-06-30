@@ -4089,6 +4089,7 @@ h6 {
   background: var(--share-code, var(--color-surface-secondary));
   color: var(--share-text, var(--color-text-secondary));
   padding: 12px;
+  font-size: 13px;
 }
 
 .markdown-toc__list {
@@ -4100,39 +4101,86 @@ h6 {
 }
 
 .markdown-toc__item {
+  --toc-indent: 0px;
+  --toc-link-color: var(--share-text, var(--color-text));
+  --toc-link-font-size: 12px;
+  --toc-link-weight: 650;
+  --toc-rail-color: var(--share-accent, var(--color-brand));
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 var(--toc-indent);
+}
+
+.markdown-toc__item--depth-1 {
+  --toc-indent: 0px;
+  --toc-link-color: var(--share-text, var(--color-text));
+  --toc-link-font-size: 12.5px;
+  --toc-link-weight: 700;
 }
 
 .markdown-toc__item--depth-2 {
-  padding-left: 12px;
+  --toc-indent: 14px;
+  --toc-link-color: var(--share-text, var(--color-text));
+  --toc-link-font-size: 12px;
+  --toc-link-weight: 650;
 }
 
 .markdown-toc__item--depth-3 {
-  padding-left: 24px;
+  --toc-indent: 28px;
+  --toc-link-color: var(--share-muted, var(--color-text-secondary));
+  --toc-link-font-size: 11.5px;
+  --toc-link-weight: 550;
+  --toc-rail-color: color-mix(in srgb, var(--share-accent, var(--color-brand)) 52%, var(--share-divider, var(--color-divider)));
 }
 
 .markdown-toc__item--depth-4,
 .markdown-toc__item--depth-5,
 .markdown-toc__item--depth-6 {
-  padding-left: 36px;
+  --toc-indent: 42px;
+  --toc-link-color: var(--share-muted, var(--color-text-muted));
+  --toc-link-font-size: 11.5px;
+  --toc-link-weight: 500;
+  --toc-rail-color: var(--share-divider, var(--color-divider));
+}
+
+.markdown-toc__item--depth-5 {
+  --toc-indent: 50px;
+}
+
+.markdown-toc__item--depth-6 {
+  --toc-indent: 58px;
 }
 
 .markdown-toc a,
 .editor-toc-button {
   box-sizing: border-box;
   width: 100%;
-  min-height: 32px;
   display: flex;
   align-items: center;
+  gap: 7px;
   border-radius: 6px;
-  color: var(--share-muted, var(--color-text-secondary));
+  color: var(--toc-link-color);
   padding: 4px 8px;
-  font-size: 0.86em;
-  line-height: 1.35;
+  font-size: var(--toc-link-font-size);
+  font-weight: var(--toc-link-weight);
+  line-height: 1.32;
   text-align: left;
   text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+.markdown-toc a {
+  min-height: 30px;
+}
+
+.markdown-toc a::before,
+.editor-toc-button::before {
+  content: "";
+  width: 2px;
+  align-self: stretch;
+  min-height: 14px;
+  border-radius: 999px;
+  background: var(--toc-rail-color);
+  flex: 0 0 2px;
 }
 
 .markdown-toc a:hover,
@@ -4147,32 +4195,72 @@ h6 {
 .markdown-toc__empty {
   margin: 0;
   color: var(--share-muted, var(--color-text-muted));
-  font-size: 0.86em;
+  font-size: 12px;
   line-height: 1.45;
 }
 
-.markdown-editor-host .editor-toc-source-hidden {
-  display: none !important;
+.markdown-editor-host {
+  position: relative;
 }
 
-.markdown-editor-host .editor-toc-float {
+.markdown-editor-host .editor-toc-layer {
   position: sticky;
   top: 16px;
-  z-index: 4;
-  float: right;
-  width: 220px;
+  z-index: 10;
+  height: 0;
+  pointer-events: none;
+}
+
+.markdown-editor-host .editor-toc-layer[hidden] {
+  display: none;
+}
+
+.markdown-editor-host .editor-toc-panel {
+  width: 224px;
   max-height: min(48vh, 420px);
   overflow: auto;
-  margin: 0 -248px 16px 24px;
+  margin: 0 0 0 auto;
+  transform: translateX(calc(100% + 24px));
+  pointer-events: auto;
   background: color-mix(in srgb, var(--color-card) 96%, var(--color-surface-secondary));
   box-shadow: 0 10px 28px rgb(var(--color-shadow) / 12%);
+  overscroll-behavior: contain;
+  font-size: 12px;
+}
+
+.markdown-editor-host .editor-toc-source-marker {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 22px;
+  border: 1px dashed color-mix(in srgb, var(--color-brand) 34%, var(--color-divider));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-brand) 7%, var(--color-card));
+  color: var(--color-text-muted) !important;
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  cursor: text;
 }
 
 .markdown-editor-host .editor-toc-button {
+  min-height: 30px;
   border: 0;
   background: transparent;
   cursor: pointer;
   font: inherit;
+}
+
+.editor-main.details-open .markdown-editor-host .editor-toc-layer {
+  height: auto;
+  margin-bottom: 16px;
+}
+
+.editor-main.details-open .markdown-editor-host .editor-toc-panel {
+  width: 100%;
+  max-height: 34vh;
+  margin: 0;
+  transform: none;
 }
 
 .markdown-editor-host .ProseMirror .katex {
@@ -5459,11 +5547,43 @@ h6 {
 }
 
 @media (max-width: 1320px) {
-  .markdown-editor-host .editor-toc-float {
-    float: none;
+  .markdown-editor-host .editor-toc-layer,
+  .editor-main.details-open .markdown-editor-host .editor-toc-layer {
+    height: auto;
+    margin-bottom: 16px;
+  }
+
+  .markdown-editor-host .editor-toc-panel,
+  .editor-main.details-open .markdown-editor-host .editor-toc-panel {
     width: 100%;
     max-height: 34vh;
-    margin: 0 0 16px;
+    margin: 0;
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .markdown-toc {
+    padding: 10px;
+  }
+
+  .markdown-toc__item--depth-2 {
+    --toc-indent: 12px;
+  }
+
+  .markdown-toc__item--depth-3 {
+    --toc-indent: 22px;
+  }
+
+  .markdown-toc__item--depth-4,
+  .markdown-toc__item--depth-5,
+  .markdown-toc__item--depth-6 {
+    --toc-indent: 30px;
+  }
+
+  .markdown-toc a,
+  .editor-toc-button {
+    min-height: 38px;
   }
 }
 

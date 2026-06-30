@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   collectEditorTocEntries,
+  createEditorTocLayer,
   createEditorTocPreview,
+  renderEditorTocLayer,
   type EditorTocBlock,
 } from "./editorToc";
 
@@ -39,5 +41,45 @@ describe("editor table of contents", () => {
       behavior: "smooth",
       block: "start",
     });
+  });
+
+  it("marks editor TOC items with depth hooks for hierarchy styling", () => {
+    const preview = createEditorTocPreview([
+      { depth: 2, id: "install", pos: 4, text: "Install" },
+      { depth: 3, id: "run", pos: 12, text: "Run" },
+    ]);
+
+    const items = [...preview.querySelectorAll("li")];
+    expect(items.map((item) => item.dataset.tocDepth)).toEqual(["2", "3"]);
+    expect(items[0]?.classList.contains("markdown-toc__item--depth-2")).toBe(true);
+    expect(items[1]?.classList.contains("markdown-toc__item--depth-3")).toBe(true);
+    expect(
+      [...preview.querySelectorAll<HTMLButtonElement>("button")].map(
+        (button) => button.dataset.tocDepth,
+      ),
+    ).toEqual(["2", "3"]);
+  });
+
+  it("renders the editor TOC in a host layer that can be hidden without document content", () => {
+    const layer = createEditorTocLayer();
+
+    expect(layer.className).toBe("editor-toc-layer");
+    expect(layer.contentEditable).toBe("false");
+    expect(layer.hidden).toBe(true);
+
+    renderEditorTocLayer(
+      layer,
+      [{ depth: 2, id: "install", pos: 4, text: "Install" }],
+      true,
+    );
+
+    expect(layer.hidden).toBe(false);
+    expect(layer.querySelector("nav")?.classList.contains("editor-toc-panel")).toBe(true);
+    expect(layer.querySelector("button")?.dataset.editorHeadingTarget).toBe("install");
+
+    renderEditorTocLayer(layer, [], false);
+
+    expect(layer.hidden).toBe(true);
+    expect(layer.childElementCount).toBe(0);
   });
 });
