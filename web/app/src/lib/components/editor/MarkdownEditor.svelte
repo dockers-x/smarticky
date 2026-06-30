@@ -23,6 +23,7 @@
     type CodeGroupSourceEditRequest,
   } from "../../markdown/codeGroups";
   import { createCodeGroupEditorPlugin } from "../../markdown/editorCodeGroups";
+  import { createEditorTocPlugin } from "../../markdown/editorToc";
   import { createEditorDiagramCodeBlockConfig } from "../../markdown/diagrams/editorPreview";
   import { fetchProtectedImageObjectURL } from "../../markdown/protectedImages";
   import { uploadAttachment } from "../../stores/attachments";
@@ -186,6 +187,7 @@
       .addFeature(latex);
 
     crepe.editor.use(createCodeGroupEditorPlugin(() => lastMarkdown, replaceLocalCodeGroupSource));
+    crepe.editor.use(createEditorTocPlugin());
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {

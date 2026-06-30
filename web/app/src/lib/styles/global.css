@@ -4080,6 +4080,101 @@ h6 {
   background: var(--color-surface-secondary);
 }
 
+.markdown-toc {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 1em 0;
+  border: 1px solid var(--share-divider, var(--color-divider));
+  border-radius: 8px;
+  background: var(--share-code, var(--color-surface-secondary));
+  color: var(--share-text, var(--color-text-secondary));
+  padding: 12px;
+}
+
+.markdown-toc__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markdown-toc__item {
+  margin: 0;
+  padding: 0;
+}
+
+.markdown-toc__item--depth-2 {
+  padding-left: 12px;
+}
+
+.markdown-toc__item--depth-3 {
+  padding-left: 24px;
+}
+
+.markdown-toc__item--depth-4,
+.markdown-toc__item--depth-5,
+.markdown-toc__item--depth-6 {
+  padding-left: 36px;
+}
+
+.markdown-toc a,
+.editor-toc-button {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--share-muted, var(--color-text-secondary));
+  padding: 4px 8px;
+  font-size: 0.86em;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.markdown-toc a:hover,
+.markdown-toc a:focus-visible,
+.editor-toc-button:hover,
+.editor-toc-button:focus-visible {
+  background: color-mix(in srgb, var(--share-accent, var(--color-brand)) 10%, transparent);
+  color: var(--share-text, var(--color-text));
+  outline: none;
+}
+
+.markdown-toc__empty {
+  margin: 0;
+  color: var(--share-muted, var(--color-text-muted));
+  font-size: 0.86em;
+  line-height: 1.45;
+}
+
+.markdown-editor-host .editor-toc-source-hidden {
+  display: none !important;
+}
+
+.markdown-editor-host .editor-toc-float {
+  position: sticky;
+  top: 16px;
+  z-index: 4;
+  float: right;
+  width: 220px;
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  margin: 0 -248px 16px 24px;
+  background: color-mix(in srgb, var(--color-card) 96%, var(--color-surface-secondary));
+  box-shadow: 0 10px 28px rgb(var(--color-shadow) / 12%);
+}
+
+.markdown-editor-host .editor-toc-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
 .markdown-editor-host .ProseMirror .katex {
   color: inherit;
 }
@@ -5084,6 +5179,26 @@ h6 {
   outline-color: color-mix(in srgb, var(--color-brand) 42%, transparent);
 }
 
+.share-toggle-row {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.share-toggle-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-brand);
+}
+
 .editor-inspector {
   min-width: 0;
   overflow: auto;
@@ -5341,6 +5456,15 @@ h6 {
 
 .notification.tone-error {
   color: var(--color-danger);
+}
+
+@media (max-width: 1320px) {
+  .markdown-editor-host .editor-toc-float {
+    float: none;
+    width: 100%;
+    max-height: 34vh;
+    margin: 0 0 16px;
+  }
 }
 
 @media (max-width: 1180px) and (min-width: 961px) {

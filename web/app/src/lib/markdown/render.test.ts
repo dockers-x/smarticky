@@ -536,7 +536,85 @@ describe("renderMarkdown images", () => {
   });
 });
 
+describe("renderMarkdown table of contents", () => {
+  it("replaces a standalone [toc] marker with links to document headings", () => {
+    const html = renderMarkdown(
+      [
+        "[toc]",
+        "",
+        "# Overview",
+        "",
+        "## Install",
+        "",
+        "### Run",
+      ].join("\n"),
+    );
+    const root = document.createElement("div");
+    root.innerHTML = html;
+
+    const toc = root.querySelector("nav.markdown-toc");
+    expect(toc?.getAttribute("aria-label")).toBe("Table of contents");
+    expect(toc?.querySelectorAll("a")).toHaveLength(3);
+    expect(toc?.querySelector("a")?.getAttribute("href")).toBe("#overview");
+    expect(toc?.textContent).toContain("Overview");
+    expect(root.querySelector("h1")?.id).toBe("overview");
+    expect(root.querySelector("h2")?.id).toBe("install");
+    expect(root.querySelector("h3")?.id).toBe("run");
+    expect(root.textContent).not.toContain("[toc]");
+  });
+
+  it("keeps duplicate heading anchors unique", () => {
+    const html = renderMarkdown(
+      [
+        "[toc]",
+        "",
+        "## Same",
+        "",
+        "## Same",
+      ].join("\n"),
+    );
+    const root = document.createElement("div");
+    root.innerHTML = html;
+
+    expect([...root.querySelectorAll("h2")].map((heading) => heading.id)).toEqual([
+      "same",
+      "same-2",
+    ]);
+    expect([...root.querySelectorAll(".markdown-toc a")].map((link) => link.getAttribute("href"))).toEqual([
+      "#same",
+      "#same-2",
+    ]);
+  });
+
+  it("does not treat [toc] inside code blocks as a table of contents marker", () => {
+    const html = renderMarkdown(["```markdown", "[toc]", "```", "", "# Heading"].join("\n"));
+    const root = document.createElement("div");
+    root.innerHTML = html;
+
+    expect(root.querySelector(".markdown-toc")).toBeNull();
+    expect(root.querySelector("code")?.textContent).toContain("[toc]");
+  });
+
+  it("can omit standalone [toc] markers for exports", () => {
+    const html = renderMarkdown(["[toc]", "", "# Heading"].join("\n"), {
+      toc: "omit",
+    });
+    const root = document.createElement("div");
+    root.innerHTML = html;
+
+    expect(root.querySelector(".markdown-toc")).toBeNull();
+    expect(root.textContent).not.toContain("[toc]");
+    expect(root.querySelector("h1")?.textContent).toBe("Heading");
+  });
+});
+
 describe("stripMarkdown", () => {
+  it("does not include generated table of contents text", () => {
+    expect(stripMarkdown(["[toc]", "", "# Heading", "", "Body"].join("\n"))).toBe(
+      "Heading Body",
+    );
+  });
+
   it("does not count Mermaid, drawio, or whiteboard references as visible prose", () => {
     const markdown = [
       "Visible",

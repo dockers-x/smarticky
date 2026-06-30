@@ -14,6 +14,11 @@ import {
 } from "./whiteboards";
 import { transformCodeGroups } from "./codeGroups";
 import { isProtectedAttachmentURL, protectedImagePlaceholderSrc } from "./protectedImages";
+import {
+  collectTocEntries,
+  renderTableOfContents,
+  replaceTocMarkers,
+} from "./toc";
 
 const markedOptions = {
   async: false,
@@ -22,6 +27,7 @@ const markedOptions = {
 } as const;
 
 const fallbackRenderer = new Renderer();
+let activeHeadingIDs: string[] | null = null;
 
 function escapeAttribute(value: string): string {
   return value
@@ -38,6 +44,12 @@ const markdownRenderer = new Marked(
   }),
   {
     renderer: {
+      heading(token: Tokens.Heading): string {
+        const id = activeHeadingIDs?.shift();
+        const content = this.parser.parseInline(token.tokens);
+        const idAttribute = id ? ` id="${escapeAttribute(id)}"` : "";
+        return `<h${token.depth}${idAttribute}>${content}</h${token.depth}>\n`;
+      },
       code(token: Tokens.Code): string {
         if (isWhiteboardFenceLanguage(token.lang)) {
           const whiteboardID = extractWhiteboardID(token.text);
@@ -75,14 +87,31 @@ const markdownRenderer = new Marked(
   },
 );
 
-export function renderMarkdown(markdown: string): string {
-  return DOMPurify.sanitize(
-    markdownRenderer.parse(transformCodeGroups(markdown), markedOptions),
+export interface RenderMarkdownOptions {
+  toc?: "include" | "omit";
+}
+
+export function renderMarkdown(
+  markdown: string,
+  options: RenderMarkdownOptions = {},
+): string {
+  const transformed = transformCodeGroups(markdown);
+  const tokens = markdownRenderer.lexer(transformed, markedOptions);
+  const tocEntries = collectTocEntries(tokens);
+  const { tokens: tokensWithToc } = replaceTocMarkers(
+    tokens,
+    options.toc === "omit" ? "" : renderTableOfContents(tocEntries),
   );
+  activeHeadingIDs = tocEntries.map((entry) => entry.id);
+  try {
+    return DOMPurify.sanitize(markdownRenderer.parser(tokensWithToc));
+  } finally {
+    activeHeadingIDs = null;
+  }
 }
 
 export function stripMarkdown(markdown: string): string {
   const container = document.createElement("div");
-  container.innerHTML = renderMarkdown(stripDiagramFences(markdown));
-  return container.textContent?.trim() ?? "";
+  container.innerHTML = renderMarkdown(stripDiagramFences(markdown), { toc: "omit" });
+  return container.textContent?.replace(/\s+/g, " ").trim() ?? "";
 }

@@ -100,6 +100,7 @@
   let exportDiagramState: DiagramRuntimeState = { ...settledDiagramState };
   let diagramTheme: DiagramTheme = "light";
   let signature = "";
+  let includeToc = true;
 
   $: activeTheme = themes.find((theme) => theme.id === themeID) ?? themes[0];
   $: activeRatio = ratios.find((ratio) => ratio.id === ratioID) ?? ratios[0];
@@ -107,7 +108,9 @@
   $: bodyMarkdown =
     removeDuplicateLeadingHeading(content, plainTitle).trim() ||
     t("contentEmpty", $preferencesStore.language);
-  $: renderedContent = renderMarkdown(bodyMarkdown);
+  $: renderedContent = renderMarkdown(bodyMarkdown, {
+    toc: includeToc ? "include" : "omit",
+  });
   $: plainContent = stripMarkdown(content);
   $: wordCount = plainContent.replace(/\s/g, "").length;
   $: wordCountLabel = `${wordCount} ${t("wordUnit", $preferencesStore.language)}`;
@@ -347,6 +350,11 @@
             maxlength="40"
             placeholder={t("shareSignaturePlaceholder", $preferencesStore.language)}
           />
+        </label>
+
+        <label class="share-toggle-row">
+          <input bind:checked={includeToc} type="checkbox" />
+          <span>{t("exportToc", $preferencesStore.language)}</span>
         </label>
 
         <div class="share-dialog__actions">
