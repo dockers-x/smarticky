@@ -24,6 +24,7 @@ interface NotesState {
   filter: NoteFilter;
   folderID: string | null;
   folderBrowserOpen: boolean;
+  tagBrowserOpen: boolean;
   search: string;
   searchFilters: NoteSearchFilters;
   loading: boolean;
@@ -111,6 +112,7 @@ function createNotesStore() {
     filter: "all",
     folderID: null,
     folderBrowserOpen: false,
+    tagBrowserOpen: false,
     search: "",
     searchFilters: { ...emptySearchFilters },
     loading: false,
@@ -248,6 +250,7 @@ function createNotesStore() {
         filter: "all",
         folderID: targetFolderID,
         folderBrowserOpen: false,
+        tagBrowserOpen: false,
         search: "",
         searchFilters: { ...emptySearchFilters },
         selected: note,
@@ -268,6 +271,7 @@ function createNotesStore() {
         filter,
         folderID: null,
         folderBrowserOpen: false,
+        tagBrowserOpen: false,
         selected: null,
       }));
       await loadNotesAndCalendar();
@@ -279,28 +283,68 @@ function createNotesStore() {
         filter: "all",
         folderID,
         folderBrowserOpen: false,
+        tagBrowserOpen: false,
         selected: null,
       }));
       await loadNotesAndCalendar();
     },
-    showFolderBrowser() {
+    showFolderBrowser(options: { preserveContext?: boolean } = {}) {
+      update((state) => ({
+        ...state,
+        workspaceView: "notes",
+        filter: options.preserveContext ? state.filter : "all",
+        folderBrowserOpen: true,
+        tagBrowserOpen: false,
+      }));
+    },
+    showTagBrowser() {
+      update((state) => ({
+        ...state,
+        workspaceView: "notes",
+        folderBrowserOpen: false,
+        tagBrowserOpen: true,
+      }));
+    },
+    closeBrowsers() {
+      update((state) => ({
+        ...state,
+        folderBrowserOpen: false,
+        tagBrowserOpen: false,
+      }));
+    },
+    async setTagFilter(tags: string[]) {
       update((state) => ({
         ...state,
         workspaceView: "notes",
         filter: "all",
-        folderBrowserOpen: true,
+        folderID: null,
+        folderBrowserOpen: false,
+        tagBrowserOpen: false,
+        selected: null,
+        search: "",
+        searchFilters: {
+          ...emptySearchFilters,
+          tags,
+        },
       }));
+      await loadNotesAndCalendar();
     },
     async setWorkspaceView(view: WorkspaceView) {
       update((state) => ({
         ...state,
         workspaceView: view,
         folderBrowserOpen: false,
+        tagBrowserOpen: false,
       }));
       if (view === "index") await load();
     },
     async setSearch(search: string) {
-      update((state) => ({ ...state, search, folderBrowserOpen: false }));
+      update((state) => ({
+        ...state,
+        search,
+        folderBrowserOpen: false,
+        tagBrowserOpen: false,
+      }));
       await loadNotesAndCalendar();
     },
     async setSearchFilters(fields: Partial<NoteSearchFilters>) {
@@ -318,6 +362,7 @@ function createNotesStore() {
       update((state) => ({
         ...state,
         folderBrowserOpen: false,
+        tagBrowserOpen: false,
         selected: null,
         searchFilters: {
           ...state.searchFilters,

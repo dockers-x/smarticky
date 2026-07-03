@@ -16,6 +16,7 @@ export interface Tag {
   id: UUID;
   name: string;
   color: string;
+  note_count?: number;
   created_at?: string;
   updated_at?: string;
 }

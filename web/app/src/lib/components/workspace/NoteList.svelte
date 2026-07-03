@@ -20,7 +20,6 @@
   import { preferencesStore, t } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
   import EmptyState from "./EmptyState.svelte";
-  import FolderBrowserPane from "./FolderBrowserPane.svelte";
   import NoteCalendar from "./NoteCalendar.svelte";
   import NoteCard from "./NoteCard.svelte";
 
@@ -31,7 +30,9 @@
 
   let filterPanelOpen = false;
   let calendarOpen = false;
-  let selectedNoteIDs: string[] = [];
+  export let selectedNoteIDs: string[] = [];
+  export let onOpenFolderBrowser: (mode: "browse" | "move" | "create") => void =
+    () => {};
 
   onMount(() => {
     void tagsStore.load();
@@ -50,6 +51,7 @@
   $: activeFolderPath = activeFolder
     ? buildFolderPath(activeFolder, folderByID)
     : [];
+  $: activeTagLabel = $notesStore.searchFilters.tags.join(", ");
   $: childFolders = activeFolder
     ? sortFolders(
         $foldersStore.folders.filter(
@@ -58,7 +60,9 @@
       )
     : [];
   $: viewTitle =
-    $notesStore.filter === "trash"
+    activeTagLabel
+      ? `${t("tags", $preferencesStore.language)}: ${activeTagLabel}`
+      : $notesStore.filter === "trash"
       ? t("trash", $preferencesStore.language)
       : $notesStore.filter === "starred"
         ? t("starred", $preferencesStore.language)
@@ -190,12 +194,12 @@
   }
 
   function returnToNotebookGroups(): void {
-    notesStore.showFolderBrowser();
+    onOpenFolderBrowser("browse");
   }
 
   function openMovePane(): void {
     if (selectedNoteIDs.length === 0) return;
-    notesStore.showFolderBrowser();
+    onOpenFolderBrowser("move");
   }
 
   async function deleteSelected(): Promise<void> {
@@ -317,12 +321,6 @@
   class="note-list-pane"
   aria-label={t("noteList", $preferencesStore.language)}
 >
-  {#if $notesStore.folderBrowserOpen}
-    <FolderBrowserPane
-      {selectedNoteIDs}
-      onSelectionMoved={clearSelection}
-    />
-  {:else}
   <div class="note-list-titlebar">
     <div class="note-list-titlebar__heading">
       {#if folderViewActive}
@@ -371,7 +369,7 @@
         class="note-list-titlebar__new"
         type="button"
         aria-label={t("newNote", $preferencesStore.language)}
-        on:click={() => notesStore.create()}
+        on:click={() => onOpenFolderBrowser("create")}
       >
         <Plus size={18} strokeWidth={2} aria-hidden="true" />
       </button>
@@ -611,6 +609,5 @@
         </section>
       {/each}
     </div>
-  {/if}
   {/if}
 </section>

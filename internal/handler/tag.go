@@ -63,6 +63,11 @@ func (h *Handler) GetTags(c echo.Context) error {
 	ctx := context.Background()
 	userID := c.Get("user_id").(int)
 
+	type tagResponse struct {
+		*ent.Tag
+		NoteCount int `json:"note_count"`
+	}
+
 	tags, err := h.client.Tag.Query().
 		Where(tag.HasUserWith(user.IDEQ(userID))).
 		Order(ent.Asc(tag.FieldName)).
@@ -72,7 +77,24 @@ func (h *Handler) GetTags(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, tags)
+	response := make([]tagResponse, len(tags))
+	for i, item := range tags {
+		count, err := item.QueryNotes().
+			Where(
+				note.HasUserWith(user.IDEQ(userID)),
+				note.IsDeleted(false),
+			).
+			Count(ctx)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		response[i] = tagResponse{
+			Tag:       item,
+			NoteCount: count,
+		}
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 // UpdateTag updates an existing tag

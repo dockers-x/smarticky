@@ -65,6 +65,7 @@ h6 {
 }
 
 .workspace {
+  position: relative;
   display: grid;
   grid-template-columns: 212px 348px minmax(0, 1fr);
   height: 100%;
@@ -99,6 +100,36 @@ h6 {
 
 .mobile-nav {
   display: none;
+}
+
+.workspace-browser-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 58;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: default;
+}
+
+.workspace-browser-overlay {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 224px;
+  z-index: 59;
+  width: min(372px, calc(100vw - 252px));
+  min-width: 0;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--color-page) 88%, var(--color-card));
+  padding: 16px;
+  box-shadow: 0 18px 42px rgb(var(--color-shadow) / 16%);
+}
+
+.workspace:has(.sidebar.compact) .workspace-browser-overlay {
+  left: 84px;
+  width: min(372px, calc(100vw - 112px));
 }
 
 .sidebar,
@@ -1375,6 +1406,10 @@ h6 {
   padding: 0 4px 0 calc(4px + var(--folder-depth, 0) * 14px);
 }
 
+.folder-browser-row.select-mode {
+  grid-template-columns: 24px minmax(0, 1fr);
+}
+
 .folder-browser-row[draggable="true"] {
   cursor: grab;
 }
@@ -1618,6 +1653,156 @@ h6 {
 
 .folder-browser-message.error {
   color: var(--color-danger);
+}
+
+.tag-browser-pane {
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.tag-browser-header {
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tag-browser-header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.tag-browser-header h1 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 17px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-browser-header span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-search {
+  min-width: 0;
+  height: 42px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-card);
+  color: var(--color-text-muted);
+  padding: 0 12px;
+}
+
+.browser-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+}
+
+.tag-browser-list {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-bottom: 72px;
+}
+
+.tag-browser-group {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.tag-browser-group h2 {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.tag-browser-row {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0 10px;
+  text-align: left;
+}
+
+.tag-browser-row:hover,
+.tag-browser-row.active {
+  background: var(--color-surface-secondary);
+  color: var(--color-ink-accent);
+}
+
+.tag-browser-row.active {
+  box-shadow: inset 3px 0 0 var(--color-brand);
+}
+
+.tag-browser-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-browser-row small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.tag-browser-row--quick {
+  margin-bottom: 2px;
+}
+
+.tag-browser-empty {
+  border: 1px dashed color-mix(in srgb, var(--color-brand) 24%, var(--color-divider));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-card) 72%, transparent);
+  padding: 12px;
+}
+
+.tag-browser-empty p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .note-list-titlebar {
@@ -5687,6 +5872,28 @@ h6 {
 
   .mobile-nav__utility span {
     display: none;
+  }
+
+  .workspace-browser-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 68;
+  }
+
+  .workspace-browser-overlay {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    z-index: 69;
+    width: auto;
+    padding: 14px;
+  }
+
+  .workspace:has(.sidebar.compact) .workspace-browser-overlay {
+    left: 12px;
+    width: auto;
   }
 
   .sidebar {

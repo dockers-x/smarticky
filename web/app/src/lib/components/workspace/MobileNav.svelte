@@ -8,6 +8,7 @@
     Settings,
     Star,
     Sun,
+    Tag,
     Trash2,
   } from "@lucide/svelte";
   import { foldersStore } from "../../stores/folders";
@@ -16,6 +17,8 @@
 
   export let settingsOpen = false;
   export let onOpenSettings: () => void = () => {};
+  export let onOpenFolderBrowser: () => void = () => {};
+  export let onOpenTagBrowser: () => void = () => {};
 
   $: filters = [
     { id: "all" as NoteFilter, label: t("allNotes", $preferencesStore.language), icon: BookOpenText },
@@ -34,7 +37,11 @@
   }
 
   function openFolderBrowser(): void {
-    notesStore.showFolderBrowser();
+    onOpenFolderBrowser();
+  }
+
+  function openTagBrowser(): void {
+    onOpenTagBrowser();
   }
 </script>
 
@@ -49,13 +56,17 @@
         class:active={$notesStore.workspaceView === "notes" &&
           $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
-          !$notesStore.folderBrowserOpen}
+          !$notesStore.folderBrowserOpen &&
+          !$notesStore.tagBrowserOpen &&
+          $notesStore.searchFilters.tags.length === 0}
         type="button"
         aria-label={filter.label}
         aria-pressed={$notesStore.workspaceView === "notes" &&
           $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
-          !$notesStore.folderBrowserOpen}
+          !$notesStore.folderBrowserOpen &&
+          !$notesStore.tagBrowserOpen &&
+          $notesStore.searchFilters.tags.length === 0}
         on:click={() => void selectFilter(filter.id)}
       >
         <svelte:component this={filter.icon} size={18} strokeWidth={1.8} aria-hidden="true" />
@@ -85,6 +96,18 @@
     >
       <Folder size={18} strokeWidth={1.8} aria-hidden="true" />
       <span>{t("notebookGroups", $preferencesStore.language)}</span>
+    </button>
+    <button
+      class:active={$notesStore.workspaceView === "notes" &&
+        ($notesStore.tagBrowserOpen || $notesStore.searchFilters.tags.length > 0)}
+      type="button"
+      aria-label={t("tags", $preferencesStore.language)}
+      aria-pressed={$notesStore.workspaceView === "notes" &&
+        ($notesStore.tagBrowserOpen || $notesStore.searchFilters.tags.length > 0)}
+      on:click={openTagBrowser}
+    >
+      <Tag size={18} strokeWidth={1.8} aria-hidden="true" />
+      <span>{t("tags", $preferencesStore.language)}</span>
     </button>
     <button
       class="mobile-nav__utility"

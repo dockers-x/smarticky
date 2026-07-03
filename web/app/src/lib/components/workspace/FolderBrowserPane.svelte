@@ -9,6 +9,7 @@
     MoreHorizontal,
     Pencil,
     Plus,
+    Search,
     Star,
     Trash2,
   } from "@lucide/svelte";
@@ -20,6 +21,7 @@
 
   export let selectedNoteIDs: string[] = [];
   export let onSelectionMoved: () => void = () => {};
+  export let mode: "browse" | "move" | "create" = "browse";
 
   interface FolderRow {
     folder: FolderType;
@@ -32,10 +34,14 @@
   let draggedFolderID: string | null = null;
   let expandTimer: ReturnType<typeof window.setTimeout> | null = null;
   let activeFolderMenuID: string | null = null;
+  let query = "";
 
-  $: selectedCount = selectedNoteIDs.length;
+  $: selectedCount = mode === "move" ? selectedNoteIDs.length : 0;
   $: folderTree = buildFolderTree($foldersStore.folders);
-  $: folderRows = visibleFolderRows(folderTree, $foldersStore.expandedFolderIDs);
+  $: normalizedQuery = query.trim().toLowerCase();
+  $: folderRows = normalizedQuery
+    ? filteredFolderRows(folderTree, normalizedQuery)
+    : visibleFolderRows(folderTree, $foldersStore.expandedFolderIDs);
   $: totalFolderNoteCount = $foldersStore.folders.reduce(
     (total, folder) => total + folder.note_count,
     0,
@@ -55,6 +61,28 @@
           hasChildren: item.children.length > 0,
         });
         if (expandedIDs.includes(item.folder.id)) visit(item.children);
+      }
+    };
+    visit(items);
+    return rows;
+  }
+
+  function filteredFolderRows(
+    items: FolderTreeItem[],
+    searchQuery: string,
+  ): FolderRow[] {
+    const rows: FolderRow[] = [];
+    const visit = (nodes: FolderTreeItem[]) => {
+      for (const item of nodes) {
+        if (item.folder.name.toLowerCase().includes(searchQuery)) {
+          rows.push({
+            folder: item.folder,
+            depth: item.depth,
+            childCount: item.children.length,
+            hasChildren: item.children.length > 0,
+          });
+        }
+        visit(item.children);
       }
     };
     visit(items);
@@ -83,6 +111,12 @@
       const folder = await foldersStore.create({ name, parent_id: parentID });
       foldersStore.select(folder.id);
       activeFolderMenuID = null;
+      if (mode === "create") {
+        await notesStore.create(folder.id);
+        await foldersStore.load();
+        notify(t("folderCreated", $preferencesStore.language), "success");
+        return;
+      }
       notify(t("folderCreated", $preferencesStore.language), "success");
     } catch {
       notify(t("folderCreateFailed", $preferencesStore.language), "error");
@@ -269,6 +303,13 @@
 
   async function activateFolder(folderID: string | null): Promise<void> {
     activeFolderMenuID = null;
+    if (mode === "create") {
+      foldersStore.select(folderID);
+      await notesStore.create(folderID);
+      await foldersStore.load();
+      return;
+    }
+
     if (selectedCount > 0) {
       await moveNotesToFolder(selectedNoteIDs, folderID);
       return;
@@ -331,7 +372,9 @@
     <div>
       <h1>{t("notebookGroups", $preferencesStore.language)}</h1>
       <span>
-        {selectedCount > 0
+        {mode === "create"
+          ? t("newNote", $preferencesStore.language)
+          : selectedCount > 0
           ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}`
           : `${$foldersStore.folders.length} ${t("notebookGroups", $preferencesStore.language)} · ${totalFolderNoteCount} ${t("notes", $preferencesStore.language)}`}
       </span>
@@ -352,21 +395,33 @@
     </p>
   {/if}
 
+  <label class="browser-search folder-browser-search">
+    <Search size={15} strokeWidth={1.8} aria-hidden="true" />
+    <input
+      type="search"
+      bind:value={query}
+      placeholder={t("searchNotebookGroups", $preferencesStore.language)}
+      aria-label={t("searchNotebookGroups", $preferencesStore.language)}
+    />
+  </label>
+
   {#if $foldersStore.loading}
     <div class="folder-browser-message">{t("loading", $preferencesStore.language)}</div>
   {:else if $foldersStore.error}
     <div class="folder-browser-message error">{$foldersStore.error}</div>
   {:else}
     <div class="folder-browser-tree" role="list">
-      <button
-        class:active={$notesStore.filter === "all" && !$notesStore.folderID}
-        class="folder-browser-row folder-browser-row--quick"
-        type="button"
-        on:click={() => void activateAllNotes()}
-      >
-        <FileText size={17} strokeWidth={1.8} aria-hidden="true" />
-        <span>{t("allNotes", $preferencesStore.language)}</span>
-      </button>
+      {#if mode !== "create"}
+        <button
+          class:active={$notesStore.filter === "all" && !$notesStore.folderID}
+          class="folder-browser-row folder-browser-row--quick"
+          type="button"
+          on:click={() => void activateAllNotes()}
+        >
+          <FileText size={17} strokeWidth={1.8} aria-hidden="true" />
+          <span>{t("allNotes", $preferencesStore.language)}</span>
+        </button>
+      {/if}
 
       {#if folderRows.length === 0}
         <div class="folder-browser-empty">
@@ -385,9 +440,10 @@
           class:drop-target={dragOverFolderID === row.folder.id}
           class:folder-browser-row--deep={row.depth >= 3}
           class:move-target={selectedCount > 0}
+          class:select-mode={mode === "create"}
           class="folder-browser-row"
           role="listitem"
-          draggable={true}
+          draggable={mode !== "create"}
           aria-label={row.folder.name}
           style={`--folder-depth: ${row.depth - 1}`}
           on:dragstart={(event) => beginFolderDrag(event, row.folder)}
@@ -436,60 +492,62 @@
               {/if}
             </span>
           </button>
-          <div class="folder-browser-row__actions">
-            <button
-              class="folder-browser-row__more"
-              type="button"
-              aria-label={t("moreActions", $preferencesStore.language)}
-              aria-expanded={activeFolderMenuID === row.folder.id}
-              title={t("moreActions", $preferencesStore.language)}
-              on:click|stopPropagation={() =>
-                (activeFolderMenuID =
-                  activeFolderMenuID === row.folder.id ? null : row.folder.id)}
-            >
-              <MoreHorizontal size={16} strokeWidth={2} aria-hidden="true" />
-            </button>
-            {#if activeFolderMenuID === row.folder.id}
-              <div class="folder-browser-menu">
-                <button
-                  type="button"
-                  disabled={row.folder.depth >= $foldersStore.settings.max_depth}
-                  on:click|stopPropagation={() => void createNotebookGroup(row.folder.id)}
-                >
-                  <Plus size={14} strokeWidth={2} aria-hidden="true" />
-                  {t("newNotebookGroup", $preferencesStore.language)}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={row.folder.is_starred}
-                  on:click|stopPropagation={() => void toggleFolderStar(row.folder)}
-                >
-                  <Star
-                    size={14}
-                    strokeWidth={2}
-                    fill={row.folder.is_starred ? "currentColor" : "none"}
-                    aria-hidden="true"
-                  />
-                  {t("star", $preferencesStore.language)}
-                </button>
-                <button
-                  type="button"
-                  on:click|stopPropagation={() => void renameFolder(row.folder)}
-                >
-                  <Pencil size={14} strokeWidth={2} aria-hidden="true" />
-                  {t("renameNotebookGroup", $preferencesStore.language)}
-                </button>
-                <button
-                  class="danger"
-                  type="button"
-                  on:click|stopPropagation={() => void removeFolder(row.folder)}
-                >
-                  <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
-                  {t("delete", $preferencesStore.language)}
-                </button>
-              </div>
-            {/if}
-          </div>
+          {#if mode !== "create"}
+            <div class="folder-browser-row__actions">
+              <button
+                class="folder-browser-row__more"
+                type="button"
+                aria-label={t("moreActions", $preferencesStore.language)}
+                aria-expanded={activeFolderMenuID === row.folder.id}
+                title={t("moreActions", $preferencesStore.language)}
+                on:click|stopPropagation={() =>
+                  (activeFolderMenuID =
+                    activeFolderMenuID === row.folder.id ? null : row.folder.id)}
+              >
+                <MoreHorizontal size={16} strokeWidth={2} aria-hidden="true" />
+              </button>
+              {#if activeFolderMenuID === row.folder.id}
+                <div class="folder-browser-menu">
+                  <button
+                    type="button"
+                    disabled={row.folder.depth >= $foldersStore.settings.max_depth}
+                    on:click|stopPropagation={() => void createNotebookGroup(row.folder.id)}
+                  >
+                    <Plus size={14} strokeWidth={2} aria-hidden="true" />
+                    {t("newNotebookGroup", $preferencesStore.language)}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={row.folder.is_starred}
+                    on:click|stopPropagation={() => void toggleFolderStar(row.folder)}
+                  >
+                    <Star
+                      size={14}
+                      strokeWidth={2}
+                      fill={row.folder.is_starred ? "currentColor" : "none"}
+                      aria-hidden="true"
+                    />
+                    {t("star", $preferencesStore.language)}
+                  </button>
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => void renameFolder(row.folder)}
+                  >
+                    <Pencil size={14} strokeWidth={2} aria-hidden="true" />
+                    {t("renameNotebookGroup", $preferencesStore.language)}
+                  </button>
+                  <button
+                    class="danger"
+                    type="button"
+                    on:click|stopPropagation={() => void removeFolder(row.folder)}
+                  >
+                    <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                    {t("delete", $preferencesStore.language)}
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/each}
 

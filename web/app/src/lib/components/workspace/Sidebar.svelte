@@ -10,6 +10,7 @@
     Settings,
     Star,
     Sun,
+    Tag,
     Trash2,
   } from "@lucide/svelte";
   import { foldersStore } from "../../stores/folders";
@@ -18,6 +19,8 @@
 
   export let settingsOpen = false;
   export let onOpenSettings: () => void = () => {};
+  export let onOpenFolderBrowser: () => void = () => {};
+  export let onOpenTagBrowser: () => void = () => {};
 
   $: filters = [
     { id: "all" as NoteFilter, label: t("allNotes", $preferencesStore.language) },
@@ -31,7 +34,11 @@
   }
 
   function openFolderBrowser(): void {
-    notesStore.showFolderBrowser();
+    onOpenFolderBrowser();
+  }
+
+  function openTagBrowser(): void {
+    onOpenTagBrowser();
   }
 
   async function selectIndex(): Promise<void> {
@@ -42,7 +49,7 @@
   function handleFolderTabDragOver(event: DragEvent): void {
     if (!event.dataTransfer?.types.includes("application/x-smarticky-note-ids")) return;
     event.preventDefault();
-    notesStore.showFolderBrowser();
+    onOpenFolderBrowser();
     if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
   }
 </script>
@@ -81,13 +88,17 @@
         class:active={$notesStore.workspaceView === "notes" &&
           $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
-          !$notesStore.folderBrowserOpen}
+          !$notesStore.folderBrowserOpen &&
+          !$notesStore.tagBrowserOpen &&
+          $notesStore.searchFilters.tags.length === 0}
         type="button"
         aria-label={filter.label}
         aria-pressed={$notesStore.workspaceView === "notes" &&
           $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
-          !$notesStore.folderBrowserOpen}
+          !$notesStore.folderBrowserOpen &&
+          !$notesStore.tagBrowserOpen &&
+          $notesStore.searchFilters.tags.length === 0}
         title={$preferencesStore.sidebarCompact ? filter.label : undefined}
         on:click={() => void selectFilter(filter.id)}
       >
@@ -131,6 +142,21 @@
         >
           <Folder size={17} strokeWidth={1.8} aria-hidden="true" />
           <span class="sidebar__label">{t("notebookGroups", $preferencesStore.language)}</span>
+        </button>
+        <button
+          class:active={$notesStore.workspaceView === "notes" &&
+            ($notesStore.tagBrowserOpen || $notesStore.searchFilters.tags.length > 0)}
+          type="button"
+          aria-label={t("tags", $preferencesStore.language)}
+          aria-pressed={$notesStore.workspaceView === "notes" &&
+            ($notesStore.tagBrowserOpen || $notesStore.searchFilters.tags.length > 0)}
+          title={$preferencesStore.sidebarCompact
+            ? t("tags", $preferencesStore.language)
+            : undefined}
+          on:click={openTagBrowser}
+        >
+          <Tag size={17} strokeWidth={1.8} aria-hidden="true" />
+          <span class="sidebar__label">{t("tags", $preferencesStore.language)}</span>
         </button>
       {/if}
     {/each}
