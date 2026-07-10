@@ -7,6 +7,37 @@ import { preferencesStore, t } from "./preferences";
 export type NoteFilter = "all" | "starred" | "trash";
 export type WorkspaceView = "notes" | "index";
 
+export interface NewNoteContext {
+  requestFolderID: string | null;
+  viewFolderID: string | null;
+}
+
+export function resolveNewNoteContext(
+  filter: NoteFilter,
+  folderID: string | null,
+  requestedFolderID?: string | null,
+): NewNoteContext {
+  const viewFolderID =
+    requestedFolderID !== undefined
+      ? requestedFolderID
+      : filter === "all"
+        ? folderID
+        : null;
+  return {
+    requestFolderID: viewFolderID === "unfiled" ? null : viewFolderID,
+    viewFolderID,
+  };
+}
+
+export function resolveNewNoteFolderID(
+  filter: NoteFilter,
+  folderID: string | null,
+  requestedFolderID?: string | null,
+): string | null {
+  return resolveNewNoteContext(filter, folderID, requestedFolderID)
+    .requestFolderID;
+}
+
 export interface NoteSearchFilters {
   title: string;
   tags: string[];
@@ -231,24 +262,25 @@ function createNotesStore() {
     loadCalendarNotes,
     async create(folderID?: string | null) {
       const state = get({ subscribe });
-      const targetFolderID =
-        folderID === undefined && state.filter === "all"
-          ? state.folderID
-          : (folderID ?? null);
+      const context = resolveNewNoteContext(
+        state.filter,
+        state.folderID,
+        folderID,
+      );
       const note = await apiFetch<Note>("/notes", {
         method: "POST",
         body: JSON.stringify({
           title: t("untitled"),
           content: "",
           color: "",
-          folder_id: targetFolderID,
+          folder_id: context.requestFolderID,
         }),
       });
       update((state) => ({
         ...state,
         workspaceView: "notes",
         filter: "all",
-        folderID: targetFolderID,
+        folderID: context.viewFolderID,
         folderBrowserOpen: false,
         tagBrowserOpen: false,
         search: "",

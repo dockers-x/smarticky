@@ -1,12 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import {
-    ArrowLeft,
     CalendarDays,
     CheckSquare,
     ChevronRight,
-    Folder,
-    FolderOpen,
     FolderInput,
     Plus,
     SlidersHorizontal,
@@ -30,6 +27,7 @@
 
   let filterPanelOpen = false;
   let calendarOpen = false;
+  let creatingNote = false;
   export let selectedNoteIDs: string[] = [];
   export let onOpenFolderBrowser: (mode: "browse" | "move" | "create") => void =
     () => {};
@@ -38,11 +36,6 @@
     void tagsStore.load();
   });
 
-  $: filters = [
-    { id: "all" as const, label: t("allNotes", $preferencesStore.language) },
-    { id: "starred" as const, label: t("starred", $preferencesStore.language) },
-    { id: "trash" as const, label: t("trash", $preferencesStore.language) },
-  ];
   $: activeFolder =
     $notesStore.folderID && $notesStore.folderID !== "unfiled"
       ? $foldersStore.folders.find((folder) => folder.id === $notesStore.folderID)
@@ -52,13 +45,6 @@
     ? buildFolderPath(activeFolder, folderByID)
     : [];
   $: activeTagLabel = $notesStore.searchFilters.tags.join(", ");
-  $: childFolders = activeFolder
-    ? sortFolders(
-        $foldersStore.folders.filter(
-          (folder) => folder.parent_id === activeFolder?.id,
-        ),
-      )
-    : [];
   $: viewTitle =
     activeTagLabel
       ? `${t("tags", $preferencesStore.language)}: ${activeTagLabel}`
@@ -69,8 +55,6 @@
         : $notesStore.folderID === "unfiled"
           ? t("unfiledNotes", $preferencesStore.language)
           : activeFolder?.name ?? t("allNotes", $preferencesStore.language);
-  $: folderViewActive = $notesStore.filter === "all" && Boolean($notesStore.folderID);
-  $: starredFolders = $foldersStore.folders.filter((folder) => folder.is_starred);
   $: selectedCount = selectedNoteIDs.length;
   $: advancedFilterCount =
     ($notesStore.searchFilters.title.trim() ? 1 : 0) +
@@ -141,15 +125,6 @@
     return groups;
   }, []);
 
-  function sortFolders(folders: FolderType[]): FolderType[] {
-    return [...folders].sort((left, right) => {
-      if (left.sort_order !== right.sort_order) {
-        return left.sort_order - right.sort_order;
-      }
-      return left.name.localeCompare(right.name);
-    });
-  }
-
   function buildFolderPath(
     folder: FolderType,
     foldersByID: Map<string, FolderType>,
@@ -193,8 +168,17 @@
     await notesStore.setFolder(folderID);
   }
 
-  function returnToNotebookGroups(): void {
-    onOpenFolderBrowser("browse");
+  async function createNote(): Promise<void> {
+    if (creatingNote) return;
+    creatingNote = true;
+    try {
+      await notesStore.create();
+      await foldersStore.load();
+    } catch {
+      notify(t("noteCreateFailed", $preferencesStore.language), "error");
+    } finally {
+      creatingNote = false;
+    }
   }
 
   function openMovePane(): void {
@@ -323,31 +307,20 @@
 >
   <div class="note-list-titlebar">
     <div class="note-list-titlebar__heading">
-      {#if folderViewActive}
-        <button
-          class="note-list-titlebar__back"
-          type="button"
-          aria-label={t("backToNotebookGroups", $preferencesStore.language)}
-          title={t("backToNotebookGroups", $preferencesStore.language)}
-          on:click={returnToNotebookGroups}
-        >
-          <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
-          <span>{t("notebookGroups", $preferencesStore.language)}</span>
-        </button>
-      {/if}
       <div class="note-list-titlebar__copy">
-        <h1 title={viewTitle}>{viewTitle}</h1>
-        <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+        <div class="note-list-titlebar__title-line">
+          <h1 title={viewTitle}>{viewTitle}</h1>
+          <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+        </div>
         {#if activeFolderPath.length > 0}
           <nav
             class="note-list-breadcrumb"
             aria-label={t("notebookPath", $preferencesStore.language)}
           >
-            <button type="button" on:click={returnToNotebookGroups}>
-              {t("notebookGroups", $preferencesStore.language)}
-            </button>
             {#each activeFolderPath as folder, index (folder.id)}
-              <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />
+              {#if index > 0}
+                <ChevronRight size={13} strokeWidth={2} aria-hidden="true" />
+              {/if}
               {#if index < activeFolderPath.length - 1}
                 <button
                   type="button"
@@ -369,7 +342,10 @@
         class="note-list-titlebar__new"
         type="button"
         aria-label={t("newNote", $preferencesStore.language)}
-        on:click={() => onOpenFolderBrowser("create")}
+        aria-busy={creatingNote}
+        title={t("newNote", $preferencesStore.language)}
+        disabled={creatingNote}
+        on:click={() => void createNote()}
       >
         <Plus size={18} strokeWidth={2} aria-hidden="true" />
       </button>
@@ -394,11 +370,12 @@
         class:active={calendarOpen || calendarFilterActive}
         class="note-list-filter-tool"
         type="button"
+        aria-label={t("calendarView", $preferencesStore.language)}
+        title={t("calendarView", $preferencesStore.language)}
         aria-expanded={calendarOpen}
         on:click={() => (calendarOpen = !calendarOpen)}
       >
         <CalendarDays size={16} strokeWidth={1.8} aria-hidden="true" />
-        {t("calendarView", $preferencesStore.language)}
         {#if calendarFilterActive}
           <span>1</span>
         {/if}
@@ -407,11 +384,12 @@
         class:active={filterPanelOpen || advancedFilterCount > 0}
         class="note-list-filter-tool"
         type="button"
+        aria-label={t("searchFilters", $preferencesStore.language)}
+        title={t("searchFilters", $preferencesStore.language)}
         aria-expanded={filterPanelOpen}
         on:click={() => (filterPanelOpen = !filterPanelOpen)}
       >
         <SlidersHorizontal size={16} strokeWidth={1.8} aria-hidden="true" />
-        {t("searchFilters", $preferencesStore.language)}
         {#if advancedFilterCount > 0}
           <span>{advancedFilterCount}</span>
         {/if}
@@ -546,44 +524,6 @@
     </div>
   {/if}
 
-  {#if folderViewActive && childFolders.length > 0}
-    <section class="child-folder-strip" aria-label={t("childNotebookGroups", $preferencesStore.language)}>
-      <h2>{t("childNotebookGroups", $preferencesStore.language)}</h2>
-      <div>
-        {#each childFolders as folder (folder.id)}
-          <button type="button" title={folder.name} on:click={() => void selectFolder(folder.id)}>
-            {#if folder.child_count > 0}
-              <FolderOpen size={16} strokeWidth={1.8} aria-hidden="true" />
-            {:else}
-              <Folder size={16} strokeWidth={1.8} aria-hidden="true" />
-            {/if}
-            <span>{folder.name}</span>
-            <small>
-              {folder.note_count} {t("notes", $preferencesStore.language)}
-              {#if folder.child_count > 0}
-                · {folder.child_count} {t("folderChildGroups", $preferencesStore.language)}
-              {/if}
-            </small>
-          </button>
-        {/each}
-      </div>
-    </section>
-  {/if}
-
-  {#if $notesStore.filter === "starred" && starredFolders.length > 0}
-    <section class="starred-folder-strip" aria-label={t("starredFolders", $preferencesStore.language)}>
-      <h2>{t("starredFolders", $preferencesStore.language)}</h2>
-      <div>
-        {#each starredFolders as folder (folder.id)}
-          <button type="button" title={folder.name} on:click={() => void selectFolder(folder.id)}>
-            <span>{folder.name}</span>
-            <small>{folder.note_count}</small>
-          </button>
-        {/each}
-      </div>
-    </section>
-  {/if}
-
   {#if $notesStore.error}
     <div class="note-list-message" role="alert">{$notesStore.error}</div>
   {:else if $notesStore.loading}
@@ -600,6 +540,7 @@
               {note}
               active={$notesStore.selected?.id === note.id}
               selected={selectedNoteIDs.includes(note.id)}
+              selectionMode={selectedCount > 0}
               dragNoteIDs={selectedNoteIDs}
               onToggleSelected={toggleSelected}
               onToggleStar={toggleNoteStar}

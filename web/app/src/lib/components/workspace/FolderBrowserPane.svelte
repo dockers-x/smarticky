@@ -22,6 +22,7 @@
   export let selectedNoteIDs: string[] = [];
   export let onSelectionMoved: () => void = () => {};
   export let mode: "browse" | "move" | "create" = "browse";
+  export let variant: "browser" | "sidebar" = "browser";
 
   interface FolderRow {
     folder: FolderType;
@@ -36,6 +37,7 @@
   let activeFolderMenuID: string | null = null;
   let query = "";
 
+  $: sidebarVariant = variant === "sidebar";
   $: selectedCount = mode === "move" ? selectedNoteIDs.length : 0;
   $: folderTree = buildFolderTree($foldersStore.folders);
   $: normalizedQuery = query.trim().toLowerCase();
@@ -359,51 +361,57 @@
   }
 </script>
 
-<section class="folder-browser-pane" aria-label={t("notebookGroups", $preferencesStore.language)}>
-  <div
-    class:drop-target={dragOverFolderID === "root"}
-    class="folder-browser-header"
-    role="group"
-    aria-label={t("notebookGroups", $preferencesStore.language)}
-    on:dragover={(event) => handleFolderDragOver(event, null)}
-    on:dragleave={clearDragTarget}
-    on:drop={(event) => void moveDroppedFolder(event, null)}
-  >
-    <div>
-      <h1>{t("notebookGroups", $preferencesStore.language)}</h1>
-      <span>
-        {mode === "create"
-          ? t("newNote", $preferencesStore.language)
-          : selectedCount > 0
-          ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}`
-          : `${$foldersStore.folders.length} ${t("notebookGroups", $preferencesStore.language)} · ${totalFolderNoteCount} ${t("notes", $preferencesStore.language)}`}
-      </span>
-    </div>
-    <button
-      class="folder-browser-header__new"
-      type="button"
-      aria-label={t("newNotebookGroup", $preferencesStore.language)}
-      on:click={() => void createNotebookGroup()}
+<section
+  class:folder-browser-pane--sidebar={sidebarVariant}
+  class="folder-browser-pane"
+  aria-label={t("notebookGroups", $preferencesStore.language)}
+>
+  {#if !sidebarVariant}
+    <div
+      class:drop-target={dragOverFolderID === "root"}
+      class="folder-browser-header"
+      role="group"
+      aria-label={t("notebookGroups", $preferencesStore.language)}
+      on:dragover={(event) => handleFolderDragOver(event, null)}
+      on:dragleave={clearDragTarget}
+      on:drop={(event) => void moveDroppedFolder(event, null)}
     >
-      <Plus size={18} strokeWidth={2} aria-hidden="true" />
-    </button>
-  </div>
+      <div>
+        <h1>{t("notebookGroups", $preferencesStore.language)}</h1>
+        <span>
+          {mode === "create"
+            ? t("newNote", $preferencesStore.language)
+            : selectedCount > 0
+            ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}`
+            : `${$foldersStore.folders.length} ${t("notebookGroups", $preferencesStore.language)} · ${totalFolderNoteCount} ${t("notes", $preferencesStore.language)}`}
+        </span>
+      </div>
+      <button
+        class="folder-browser-header__new"
+        type="button"
+        aria-label={t("newNotebookGroup", $preferencesStore.language)}
+        on:click={() => void createNotebookGroup()}
+      >
+        <Plus size={18} strokeWidth={2} aria-hidden="true" />
+      </button>
+    </div>
 
-  {#if selectedCount > 0}
-    <p class="folder-browser-move-hint">
-      {t("moveToNotebookGroup", $preferencesStore.language)}
-    </p>
+    {#if selectedCount > 0}
+      <p class="folder-browser-move-hint">
+        {t("moveToNotebookGroup", $preferencesStore.language)}
+      </p>
+    {/if}
+
+    <label class="browser-search folder-browser-search">
+      <Search size={15} strokeWidth={1.8} aria-hidden="true" />
+      <input
+        type="search"
+        bind:value={query}
+        placeholder={t("searchNotebookGroups", $preferencesStore.language)}
+        aria-label={t("searchNotebookGroups", $preferencesStore.language)}
+      />
+    </label>
   {/if}
-
-  <label class="browser-search folder-browser-search">
-    <Search size={15} strokeWidth={1.8} aria-hidden="true" />
-    <input
-      type="search"
-      bind:value={query}
-      placeholder={t("searchNotebookGroups", $preferencesStore.language)}
-      aria-label={t("searchNotebookGroups", $preferencesStore.language)}
-    />
-  </label>
 
   {#if $foldersStore.loading}
     <div class="folder-browser-message">{t("loading", $preferencesStore.language)}</div>
@@ -411,7 +419,7 @@
     <div class="folder-browser-message error">{$foldersStore.error}</div>
   {:else}
     <div class="folder-browser-tree" role="list">
-      {#if mode !== "create"}
+      {#if mode !== "create" && !sidebarVariant}
         <button
           class:active={$notesStore.filter === "all" && !$notesStore.folderID}
           class="folder-browser-row folder-browser-row--quick"

@@ -68,6 +68,8 @@
   --radius-control: 7px;
   --shadow-panel: 0 18px 54px rgb(var(--color-shadow) / 14%);
   --shadow-hover: 0 8px 24px rgb(var(--color-shadow) / 9%);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;

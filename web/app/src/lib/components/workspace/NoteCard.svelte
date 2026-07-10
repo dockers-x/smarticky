@@ -7,6 +7,7 @@
   export let note: Note;
   export let active = false;
   export let selected = false;
+  export let selectionMode = false;
   export let dragNoteIDs: string[] = [];
   export let onToggleSelected: (noteID: string) => void = () => {};
   export let onToggleStar: (note: Note) => void | Promise<void> = () => {};
@@ -35,19 +36,51 @@
     plainTextPreview(note.content ?? "").slice(0, 96) ||
     t("contentEmpty", $preferencesStore.language);
   $: noteTitle = note.title || t("untitled", $preferencesStore.language);
-  $: visibleTags = note.tags?.slice(0, 3) ?? [];
+  $: visibleTags = note.tags?.slice(0, 2) ?? [];
   $: hiddenTagCount = Math.max((note.tags?.length ?? 0) - visibleTags.length, 0);
-  $: noteDate = new Date(note.updated_at).toLocaleString(
-    $preferencesStore.language === "zh" ? "zh-CN" : "en-US",
-    {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: $preferencesStore.timeZone,
-    },
+  $: noteDate = formatNoteDate(
+    note.updated_at,
+    $preferencesStore.language,
+    $preferencesStore.timeZone,
   );
+
+  function dateKey(date: Date, timeZone: string): string {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const value = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? "";
+    return `${value("year")}-${value("month")}-${value("day")}`;
+  }
+
+  function formatNoteDate(
+    value: string,
+    language: "zh" | "en",
+    timeZone: string,
+  ): string {
+    const date = new Date(value);
+    const noteKey = dateKey(date, timeZone);
+    const todayKey = dateKey(new Date(), timeZone);
+    const locale = language === "zh" ? "zh-CN" : "en-US";
+
+    if (noteKey === todayKey) {
+      return new Intl.DateTimeFormat(locale, {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone,
+      }).format(date);
+    }
+
+    return new Intl.DateTimeFormat(locale, {
+      month: language === "zh" ? "numeric" : "short",
+      day: "numeric",
+      year: noteKey.slice(0, 4) === todayKey.slice(0, 4) ? undefined : "numeric",
+      timeZone,
+    }).format(date);
+  }
 
   function startDrag(event: DragEvent): void {
     const ids = selected && dragNoteIDs.length > 0 ? dragNoteIDs : [note.id];
@@ -63,6 +96,7 @@
 <article
   class:active
   class:selected
+  class:selection-mode={selectionMode}
   class="note-card"
   draggable={!note.is_deleted}
   on:dragstart={startDrag}
@@ -86,6 +120,7 @@
     </button>
     <div class="note-card__actions">
       <button
+        class="note-card__star"
         type="button"
         aria-label={note.is_starred
           ? t("starRemoved", $preferencesStore.language)
@@ -104,6 +139,7 @@
         />
       </button>
       <button
+        class="note-card__trash"
         type="button"
         aria-label={note.is_deleted
           ? t("deleteForever", $preferencesStore.language)

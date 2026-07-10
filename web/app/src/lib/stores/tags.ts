@@ -3,9 +3,18 @@ import { apiFetch } from "../api/client";
 import type { Tag, UUID } from "../api/types";
 
 export const allTags = writable<Tag[]>([]);
+let tagLoadPromise: Promise<void> | null = null;
 
 export async function loadTags(): Promise<void> {
-  allTags.set(await apiFetch<Tag[]>("/tags"));
+  if (tagLoadPromise) return tagLoadPromise;
+
+  const request = apiFetch<Tag[]>("/tags").then((tags) => {
+    allTags.set(tags);
+  });
+  tagLoadPromise = request.finally(() => {
+    tagLoadPromise = null;
+  });
+  return tagLoadPromise;
 }
 
 export async function addToNote(noteId: UUID, tagName: string): Promise<void> {
