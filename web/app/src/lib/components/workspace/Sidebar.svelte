@@ -96,7 +96,7 @@
   aria-label={t("noteList", $preferencesStore.language)}
 >
   <div class="sidebar__brand-row">
-    <div class="sidebar__brand" aria-label="Smarticky">
+    <div class="sidebar__brand">
       <span class="sidebar__brand-short" aria-hidden="true">S</span>
       <span class="sidebar__label">Smarticky</span>
     </div>
@@ -283,7 +283,11 @@
   {/if}
 
   <div class="sidebar__spacer"></div>
-  <div class="sidebar__preferences" aria-label={t("settings", $preferencesStore.language)}>
+  <div
+    class="sidebar__preferences"
+    role="group"
+    aria-label={t("settings", $preferencesStore.language)}
+  >
     <button
       class="sidebar__icon-tool"
       type="button"

@@ -43,6 +43,7 @@
   --sm-info-bg: #e8f1f7;
   --color-brand: var(--sm-orange-500);
   --color-brand-hover: var(--sm-orange-600);
+  --color-brand-strong: var(--sm-orange-600);
   --color-on-brand: #fff8f2;
   --color-page: var(--sm-bg-page);
   --color-card: var(--sm-bg-card);
@@ -113,6 +114,7 @@
   --sm-info: #86b2e0;
   --sm-info-bg: #162939;
   --color-on-brand: #fff1e8;
+  --color-brand-strong: #a8421d;
   --color-selection: rgb(140 66 32 / 58%);
   --color-shadow: 10 9 8;
   --color-backdrop: rgb(20 20 18 / 54%);

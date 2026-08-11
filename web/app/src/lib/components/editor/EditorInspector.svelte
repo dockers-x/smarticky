@@ -112,6 +112,7 @@
       bind:this={fileInput}
       type="file"
       class="visually-hidden"
+      aria-label={t("addAttachment", $preferencesStore.language)}
       on:change={handleUpload}
     />
     <button

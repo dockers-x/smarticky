@@ -132,7 +132,7 @@ function queryFor(
   return params.toString();
 }
 
-function createNotesStore() {
+export function createNotesStore() {
   let loadSequence = 0;
   let calendarLoadSequence = 0;
   const { subscribe, update } = writable<NotesState>({
@@ -288,7 +288,6 @@ function createNotesStore() {
         selected: note,
       }));
       await loadNotesAndCalendar();
-      update((state) => ({ ...state, selected: note }));
     },
     select(note: Note) {
       update((state) => ({ ...state, selected: note }));

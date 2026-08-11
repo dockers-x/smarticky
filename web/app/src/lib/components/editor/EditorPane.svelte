@@ -5,6 +5,7 @@
     CloudUpload,
     CodeXml,
     FileCode,
+    FilePenLine,
     Image as ImageIcon,
     LockKeyhole,
     Network,
@@ -990,6 +991,7 @@
             ? t("wysiwygMode", $preferencesStore.language)
             : t("sourceMode", $preferencesStore.language)}
           aria-pressed={sourceMode}
+          aria-keyshortcuts="Control+/ Meta+/"
           disabled={contentLocked}
           on:click={toggleSourceMode}
         >
@@ -1378,6 +1380,9 @@
     {/if}
   {:else}
     <div class="editor-empty">
+      <div class="editor-empty__mark" aria-hidden="true">
+        <FilePenLine size={28} strokeWidth={1.5} />
+      </div>
       <p class="editor-empty-text">{t("selectOrCreate", $preferencesStore.language)}</p>
     </div>
   {/if}

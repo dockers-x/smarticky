@@ -418,7 +418,7 @@
   {:else if $foldersStore.error}
     <div class="folder-browser-message error">{$foldersStore.error}</div>
   {:else}
-    <div class="folder-browser-tree" role="list">
+    <div class="folder-browser-tree">
       {#if mode !== "create" && !sidebarVariant}
         <button
           class:active={$notesStore.filter === "all" && !$notesStore.folderID}
@@ -450,7 +450,7 @@
           class:move-target={selectedCount > 0}
           class:select-mode={mode === "create"}
           class="folder-browser-row"
-          role="listitem"
+          role="group"
           draggable={mode !== "create"}
           aria-label={row.folder.name}
           style={`--folder-depth: ${row.depth - 1}`}

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import {
     CalendarDays,
     CheckSquare,
     ChevronRight,
     FolderInput,
     Plus,
+    Search,
     SlidersHorizontal,
     Square,
     Trash2,
@@ -171,9 +172,25 @@
   async function createNote(): Promise<void> {
     if (creatingNote) return;
     creatingNote = true;
+    const focusOrigin = document.activeElement;
     try {
       await notesStore.create();
+      const createdNoteID = $notesStore.selected?.id;
       await foldersStore.load();
+      await tick();
+      if (!createdNoteID || $notesStore.selected?.id !== createdNoteID) return;
+      const activeElement = document.activeElement;
+      if (
+        document.querySelector('[role="dialog"][aria-modal="true"]') ||
+        (activeElement !== focusOrigin && activeElement !== document.body)
+      ) {
+        return;
+      }
+      const titleInput = document.querySelector<HTMLTextAreaElement>(
+        ".editor-title-input",
+      );
+      titleInput?.focus();
+      titleInput?.select();
     } catch {
       notify(t("noteCreateFailed", $preferencesStore.language), "error");
     } finally {
@@ -353,13 +370,16 @@
   </div>
 
   <div class="note-list-toolbar">
-    <input
-      type="search"
-      aria-label={t("searchNotes", $preferencesStore.language)}
-      placeholder={t("searchNotes", $preferencesStore.language)}
-      value={$notesStore.search}
-      on:input={(event) => notesStore.setSearch(event.currentTarget.value)}
-    />
+    <label class="note-list-search">
+      <Search size={16} strokeWidth={1.8} aria-hidden="true" />
+      <input
+        type="search"
+        aria-label={t("searchNotes", $preferencesStore.language)}
+        placeholder={t("searchNotes", $preferencesStore.language)}
+        value={$notesStore.search}
+        on:input={(event) => notesStore.setSearch(event.currentTarget.value)}
+      />
+    </label>
     <div class="note-list-toolbar__actions">
       {#if $notesStore.filter === "trash" && $notesStore.notes.length > 0}
         <button class="note-list-danger-tool" type="button" on:click={emptyTrash}>
@@ -529,7 +549,13 @@
   {:else if $notesStore.loading}
     <div class="note-list-message">{t("loadingNotes", $preferencesStore.language)}</div>
   {:else if $notesStore.notes.length === 0}
-    <EmptyState filter={$notesStore.filter} folderActive={Boolean($notesStore.folderID)} />
+    <EmptyState
+      filter={$notesStore.filter}
+      folderActive={Boolean($notesStore.folderID)}
+      showCreate={$notesStore.filter === "all"}
+      busy={creatingNote}
+      onCreate={() => void createNote()}
+    />
   {:else}
     <div class="note-card-list">
       {#each groupedNotes as group (group.label)}

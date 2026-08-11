@@ -78,6 +78,12 @@
     host?.querySelector<HTMLElement>(".ProseMirror")?.focus();
   }
 
+  function updateEditorAccessibility(): void {
+    host
+      ?.querySelector<HTMLElement>(".ProseMirror")
+      ?.setAttribute("aria-label", t("noteContent", $preferencesStore.language));
+  }
+
   async function setMarkdown(nextValue: string): Promise<void> {
     if (!crepe || nextValue === lastMarkdown) return;
 
@@ -207,6 +213,7 @@
 
     await crepe.create();
     lastMarkdown = value;
+    updateEditorAccessibility();
     refreshCodeGroupDecorations();
     bindEditor(handle);
   });
@@ -218,6 +225,10 @@
   $: if (crepe && $preferencesStore.theme !== activePreviewTheme) {
     activePreviewTheme = $preferencesStore.theme;
     void refreshPreviewTheme();
+  }
+
+  $: if (crepe && $preferencesStore.language) {
+    updateEditorAccessibility();
   }
 
   onDestroy(() => {
