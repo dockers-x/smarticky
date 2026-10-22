@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { dialog } from "../../actions/dialog";
   import type { ProtectionMode } from "../../api/types";
   import { preferencesStore, t } from "../../stores/preferences";
   import PasswordField from "../common/PasswordField.svelte";
@@ -13,7 +13,6 @@
   let selectedMode: ProtectionMode = currentMode;
   let password = "";
   let validationError = "";
-  let dialogElement: HTMLDivElement | null = null;
 
   $: requiresPassword = selectedMode === "password" || selectedMode === "encrypted";
   $: passwordError = requiresPassword && validationError ? validationError : "";
@@ -28,52 +27,17 @@
     await onSave(selectedMode, password);
   }
 
-  function focusableElements(): HTMLElement[] {
-    if (!dialogElement) return [];
-    return Array.from(
-      dialogElement.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-      ),
-    ).filter((element) => !element.hasAttribute("hidden"));
-  }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape" && !busy) {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const elements = focusableElements();
-    if (elements.length === 0) return;
-
-    const first = elements[0];
-    const last = elements[elements.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  onMount(() => {
-    dialogElement?.focus();
-  });
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 
 <div class="note-protection-backdrop">
   <div
-    bind:this={dialogElement}
+    use:dialog={{ onDismiss: onClose, initialFocus: 'input:checked', dismissible: !busy }}
     class="note-protection-dialog"
     role="dialog"
     aria-modal="true"
     aria-labelledby="note-protection-title"
     aria-describedby="note-protection-description"
+    aria-busy={busy}
     tabindex="-1"
   >
     <header class="note-protection-dialog__header">
@@ -81,7 +45,7 @@
         <h2 id="note-protection-title">{t("noteProtection", $preferencesStore.language)}</h2>
         <p id="note-protection-description">{t("noteProtectionHint", $preferencesStore.language)}</p>
       </div>
-      <button type="button" aria-label={t("cancel", $preferencesStore.language)} on:click={onClose}>
+      <button type="button" disabled={busy} aria-label={t("cancel", $preferencesStore.language)} on:click={onClose}>
         ×
       </button>
     </header>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Cloud, Download, Pencil, PlugZap, Plus, Trash2 } from "@lucide/svelte";
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
   import {
     createNoteConnectionAccount,
     deleteNoteConnectionAccount,
@@ -50,6 +50,7 @@
   let jobs: NoteConnectionJob[] = [];
   let targets: NoteConnectionTarget[] = [];
   let loading = true;
+  let loaded = false;
   let working = false;
   let saving = false;
   let error = "";
@@ -59,18 +60,27 @@
   let form: NoteConnectionAccountInput = { ...defaultForm };
   let testMessage = "";
   let testOK: boolean | null = null;
+  let formError = "";
+  let formOpener: HTMLElement | null = null;
+  let testingAccountID: number | null = null;
 
   let importAccountID: number | null = null;
   let importTargetID = "";
   let importLimit = 50;
   let importPreserveRemoteHierarchy = true;
   let importMessage = "";
+  let importError = "";
+  let importOpener: HTMLElement | null = null;
   let importing = false;
   let importProgressJob: NoteConnectionJob | null = null;
   let importPollTimer: ReturnType<typeof setInterval> | null = null;
+  let importPollGeneration = 0;
 
   $: selectedImportAccount = accounts.find((account) => account.id === importAccountID) ?? null;
   $: formProvider = form.provider;
+  $: editingAccount = accounts.find((account) => account.id === editingID);
+  $: endpointChanged = Boolean(editingAccount && form.provider !== "notion" && form.endpoint.trim() !== (editingAccount.endpoint || endpointPlaceholders[form.provider]));
+  $: testNeedsSavedEndpoint = endpointChanged && !form.token?.trim();
   $: visibleImportJob =
     importProgressJob ??
     jobs.find(
@@ -90,6 +100,7 @@
     importProgressTotal > 0
       ? Math.min(100, Math.round((importProcessedCount / importProgressTotal) * 100))
       : 0;
+  $: importInProgress = importing || visibleImportJob?.status === "pending" || visibleImportJob?.status === "running";
 
   onMount(() => {
     void loadState();
@@ -119,6 +130,7 @@
           : t("loadFailed", $preferencesStore.language);
     } finally {
       loading = false;
+      loaded = true;
     }
   }
 
@@ -175,6 +187,8 @@
   }
 
   function startCreate(provider: NoteConnectionProvider = "siyuan"): void {
+    if (saving || working || importing) return;
+    formOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     editingID = null;
     form = {
       ...defaultForm,
@@ -184,10 +198,14 @@
     };
     testMessage = "";
     testOK = null;
+    formError = "";
     formOpen = true;
+    void focusField("connected-account-name");
   }
 
   function startEdit(account: NoteConnectionAccount): void {
+    if (saving || working || importing) return;
+    formOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     editingID = account.id;
     form = {
       name: account.name,
@@ -200,14 +218,24 @@
     };
     testMessage = "";
     testOK = null;
+    formError = "";
     formOpen = true;
+    void focusField("connected-account-name");
   }
 
   function closeForm(): void {
+    if (saving || working) return;
     formOpen = false;
     editingID = null;
     testMessage = "";
     testOK = null;
+    formError = "";
+    formOpener?.focus({ preventScroll: true });
+  }
+
+  async function focusField(id: string): Promise<void> {
+    await tick();
+    document.getElementById(id)?.focus();
   }
 
   function formPayload(): NoteConnectionAccountInput {
@@ -228,13 +256,14 @@
   }
 
   async function testForm(): Promise<void> {
+    if (working || saving || testNeedsSavedEndpoint) return;
     working = true;
     testMessage = "";
     testOK = null;
     try {
       const payload = formPayload();
       const result =
-        editingID === null
+        editingID === null || endpointChanged
           ? await testUnsavedNoteConnectionAccount(payload)
           : await testNoteConnectionAccount(editingID, payload.token);
       testOK = result.status === "success";
@@ -254,7 +283,9 @@
   }
 
   async function saveAccount(): Promise<void> {
+    if (saving || working) return;
     saving = true;
+    formError = "";
     try {
       const payload = formPayload();
       if (editingID === null) {
@@ -263,21 +294,38 @@
         await updateNoteConnectionAccount(editingID, payload);
       }
       notify(t("saved", $preferencesStore.language), "success");
-      closeForm();
+      formOpen = false;
+      editingID = null;
+      formOpener?.focus({ preventScroll: true });
       await loadState();
     } catch (saveError) {
-      notify(
-        saveError instanceof Error
+      formError = saveError instanceof Error
           ? saveError.message
-          : t("saveFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("saveFailed", $preferencesStore.language);
     } finally {
       saving = false;
     }
   }
 
+  async function testSavedAccount(account: NoteConnectionAccount): Promise<void> {
+    if (working || saving || importing) return;
+    working = true;
+    testingAccountID = account.id;
+    try {
+      const result = await testNoteConnectionAccount(account.id);
+      const succeeded = result.status === "success";
+      notify(succeeded ? t("connectionTestSuccess", $preferencesStore.language) : result.error || t("connectionTestFailed", $preferencesStore.language), succeeded ? "success" : "error");
+      await loadState();
+    } catch (testError) {
+      notify(testError instanceof Error ? testError.message : t("connectionTestFailed", $preferencesStore.language), "error");
+    } finally {
+      working = false;
+      testingAccountID = null;
+    }
+  }
+
   async function removeAccount(account: NoteConnectionAccount): Promise<void> {
+    if (working || saving || importing) return;
     const confirmed = await confirmDialog({
       title: t("delete", $preferencesStore.language),
       message: t("noteConnectionDeleteConfirm", $preferencesStore.language),
@@ -286,6 +334,7 @@
     });
     if (!confirmed) return;
 
+    working = true;
     try {
       await deleteNoteConnectionAccount(account.id);
       if (importAccountID === account.id) resetImport();
@@ -297,27 +346,31 @@
           : t("deleteFailed", $preferencesStore.language),
         "error",
       );
+    } finally {
+      working = false;
     }
   }
 
   async function startImport(account: NoteConnectionAccount): Promise<void> {
+    if (working || saving || importing) return;
+    importOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     importAccountID = account.id;
     importTargetID = account.default_target_id;
     importMessage = "";
+    importError = "";
+    importProgressJob = null;
     targets = [];
     working = true;
+    void focusField("connected-import-title");
     try {
       targets = await listNoteConnectionTargets(account.id);
       if (!importTargetID && targets.length > 0) {
         importTargetID = targets[0].id;
       }
     } catch (targetError) {
-      notify(
-        targetError instanceof Error
+      importError = targetError instanceof Error
           ? targetError.message
-          : t("loadFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("loadFailed", $preferencesStore.language);
     } finally {
       working = false;
     }
@@ -330,13 +383,20 @@
     importPreserveRemoteHierarchy = true;
     targets = [];
     importMessage = "";
+    importError = "";
     importProgressJob = null;
+    importOpener?.focus({ preventScroll: true });
   }
 
   async function runImport(): Promise<void> {
-    if (!selectedImportAccount || importing) return;
+    if (!selectedImportAccount || importing || working || !targets.length) return;
+    if (!Number.isInteger(importLimit) || importLimit < 1 || importLimit > 200) {
+      importError = $preferencesStore.language === "zh" ? "请输入 1 到 200 之间的整数。" : "Enter a whole number from 1 to 200.";
+      return;
+    }
     importing = true;
     importMessage = "";
+    importError = "";
     importProgressJob = null;
     startImportPolling(selectedImportAccount.id);
     try {
@@ -346,32 +406,31 @@
         importLimit,
         importPreserveRemoteHierarchy,
       );
-      importMessage = `${t("noteConnectionImportSuccess", $preferencesStore.language)}: ${result.imported_count}/${result.total_count}`;
-      notify(t("noteConnectionImportSuccess", $preferencesStore.language), "success");
+      const outcome = t(result.failed_count > 0 ? "importCompletedPartial" : "noteConnectionImportSuccess", $preferencesStore.language);
+      importMessage = `${outcome}: ${result.imported_count}/${result.total_count}`;
+      notify(outcome, result.failed_count > 0 ? "info" : "success");
       await Promise.all([
         notesStore.load(),
         notesStore.loadCalendarNotes(),
         foldersStore.load(),
         loadState(),
       ]);
-    } catch (importError) {
-      notify(
-        importError instanceof Error
-          ? importError.message
-          : t("importFailed", $preferencesStore.language),
-        "error",
-      );
+    } catch (failure) {
+      importError = failure instanceof Error ? failure.message : t("importFailed", $preferencesStore.language);
     } finally {
       importing = false;
       stopImportPolling();
+      importProgressJob = null;
     }
   }
 
   function startImportPolling(accountID: number): void {
     stopImportPolling();
+    const generation = importPollGeneration;
     const poll = async () => {
       try {
         const nextJobs = await listNoteConnectionJobs();
+        if (generation !== importPollGeneration) return;
         jobs = nextJobs;
         importProgressJob =
           nextJobs.find(
@@ -391,6 +450,7 @@
   }
 
   function stopImportPolling(): void {
+    importPollGeneration += 1;
     if (importPollTimer) {
       clearInterval(importPollTimer);
       importPollTimer = null;
@@ -412,16 +472,21 @@
   }
 </script>
 
-<section class="connected-panel">
+<section class="settings-view connected-panel">
   <div class="connected-panel__header">
     <div>
       <h3>{t("noteConnections", $preferencesStore.language)}</h3>
       <p>{t("noteConnectionsHint", $preferencesStore.language)}</p>
     </div>
-    <button type="button" on:click={() => startCreate()}>
+    <div class="connected-panel__header-actions">
+    <button type="button" disabled={loading || working || saving || importing} on:click={() => void loadState()}>
+      {t("refresh", $preferencesStore.language)}
+    </button>
+    <button type="button" disabled={working || saving || importing} on:click={() => startCreate()}>
       <Plus size={16} strokeWidth={2} aria-hidden="true" />
       {t("noteConnectionAdd", $preferencesStore.language)}
     </button>
+    </div>
   </div>
 
   {#if error}
@@ -429,8 +494,10 @@
   {/if}
 
   {#if loading}
-    <p class="connected-panel__muted">{t("loading", $preferencesStore.language)}</p>
-  {:else if accounts.length === 0}
+    <p class="connected-panel__muted" role="status">{t("loading", $preferencesStore.language)}</p>
+  {/if}
+  {#if !loading || loaded}
+  {#if accounts.length === 0 && !error}
     <div class="connected-empty">
       <Cloud size={24} strokeWidth={1.8} aria-hidden="true" />
       <p>{t("noteConnectionNoAccounts", $preferencesStore.language)}</p>
@@ -472,19 +539,19 @@
             </div>
           </div>
           <div class="connected-account__actions">
-            <button type="button" disabled={working} on:click={() => void testNoteConnectionAccount(account.id).then(loadState)}>
+            <button type="button" disabled={working || saving || importing} aria-label={`${t("testConnection", $preferencesStore.language)} · ${account.name}`} on:click={() => void testSavedAccount(account)}>
               <PlugZap size={15} strokeWidth={2} aria-hidden="true" />
-              {t("testConnection", $preferencesStore.language)}
+              {t(testingAccountID === account.id ? "loading" : "testConnection", $preferencesStore.language)}
             </button>
-            <button type="button" disabled={working || !account.enabled || !account.has_credentials} on:click={() => void startImport(account)}>
+            <button type="button" disabled={working || saving || importing || !account.enabled || !account.has_credentials} aria-label={`${t("noteConnectionImport", $preferencesStore.language)} · ${account.name}`} on:click={() => void startImport(account)}>
               <Download size={15} strokeWidth={2} aria-hidden="true" />
               {t("noteConnectionImport", $preferencesStore.language)}
             </button>
-            <button type="button" on:click={() => startEdit(account)}>
+            <button type="button" disabled={working || saving || importing} aria-label={`${t("edit", $preferencesStore.language)} ${account.name}`} on:click={() => startEdit(account)}>
               <Pencil size={15} strokeWidth={2} aria-hidden="true" />
               {t("edit", $preferencesStore.language)}
             </button>
-            <button class="danger" type="button" on:click={() => void removeAccount(account)}>
+            <button class="danger" type="button" disabled={working || saving || importing} aria-label={`${t("delete", $preferencesStore.language)} ${account.name}`} on:click={() => void removeAccount(account)}>
               <Trash2 size={15} strokeWidth={2} aria-hidden="true" />
               {t("delete", $preferencesStore.language)}
             </button>
@@ -493,16 +560,17 @@
       {/each}
     </div>
   {/if}
+  {/if}
 
   {#if formOpen}
-    <form class="connected-form" on:submit|preventDefault={() => void saveAccount()}>
+    <form class="connected-form" aria-busy={saving || working} on:input={() => { testMessage = ""; testOK = null; }} on:submit|preventDefault={() => void saveAccount()}>
       <div class="connected-form__header">
         <h4>
           {editingID === null
             ? t("noteConnectionAdd", $preferencesStore.language)
             : t("noteConnectionEdit", $preferencesStore.language)}
         </h4>
-        <button type="button" on:click={closeForm}>{t("cancel", $preferencesStore.language)}</button>
+        <button type="button" disabled={saving || working} on:click={closeForm}>{t("cancel", $preferencesStore.language)}</button>
       </div>
 
       <div class="connected-form__grid">
@@ -510,7 +578,7 @@
           <span>{t("noteConnectionProvider", $preferencesStore.language)}</span>
           <select
             value={form.provider}
-            disabled={editingID !== null}
+            disabled={editingID !== null || saving || working}
             on:change={(event) => {
               const provider = providerFromEvent(event);
               form.provider = provider;
@@ -525,13 +593,13 @@
         </label>
         <label>
           <span>{t("mcpTokenName", $preferencesStore.language)}</span>
-          <input bind:value={form.name} required />
+          <input id="connected-account-name" bind:value={form.name} disabled={saving || working} required />
         </label>
         {#if formProvider !== "notion"}
           <label class="wide">
             <span>{t("noteConnectionEndpoint", $preferencesStore.language)}</span>
-            <input bind:value={form.endpoint} placeholder={endpointPlaceholders[formProvider]} />
-            <small>{t("noteConnectionEndpointHint", $preferencesStore.language)}</small>
+            <input bind:value={form.endpoint} type="url" required disabled={saving || working} aria-describedby="connected-endpoint-hint" placeholder={endpointPlaceholders[formProvider]} />
+            <small id="connected-endpoint-hint">{t("noteConnectionEndpointHint", $preferencesStore.language)}</small>
           </label>
         {/if}
         <div class="wide">
@@ -542,6 +610,7 @@
               ? t("noteConnectionTokenPlaceholder", $preferencesStore.language)
               : t("noteConnectionSavedCredential", $preferencesStore.language)}
             autocomplete="off"
+            disabled={saving || working}
             showPasswordLabel={t("showPassword", $preferencesStore.language)}
             hidePasswordLabel={t("hidePassword", $preferencesStore.language)}
           />
@@ -549,17 +618,21 @@
       </div>
 
       {#if testMessage}
-        <p class:success={testOK === true} class:failed={testOK === false} class="connected-test-message">
+        <p class:success={testOK === true} class:failed={testOK === false} class="connected-test-message" role={testOK === false ? "alert" : "status"}>
           {testMessage}
         </p>
       {/if}
+      {#if formError}<p class="connected-panel__error" role="alert">{formError}</p>{/if}
+      {#if testNeedsSavedEndpoint}
+        <p class="connected-panel__muted" id="connected-test-hint">{$preferencesStore.language === "zh" ? "保存新地址后再测试，或重新输入 API Token 以测试当前配置。" : "Save the new endpoint before testing, or enter the API token to test this draft."}</p>
+      {/if}
 
       <div class="connected-form__actions">
-        <button type="button" disabled={working} on:click={() => void testForm()}>
-          {t("testConnection", $preferencesStore.language)}
+        <button type="button" disabled={working || saving || testNeedsSavedEndpoint} aria-describedby={testNeedsSavedEndpoint ? "connected-test-hint" : undefined} on:click={() => void testForm()}>
+          {t(working ? "loading" : "testConnection", $preferencesStore.language)}
         </button>
-        <button class="primary" type="submit" disabled={saving}>
-          {t("saveSettings", $preferencesStore.language)}
+        <button class="primary" type="submit" disabled={saving || working}>
+          {t(saving ? "saving" : "saveSettings", $preferencesStore.language)}
         </button>
       </div>
     </form>
@@ -569,15 +642,15 @@
     <section class="connected-import">
       <div class="connected-form__header">
         <div>
-          <h4>{t("noteConnectionImport", $preferencesStore.language)}</h4>
+          <h4 id="connected-import-title" tabindex="-1">{t("noteConnectionImport", $preferencesStore.language)}</h4>
           <p>{selectedImportAccount.name}</p>
         </div>
-        <button type="button" disabled={importing} on:click={resetImport}>{t("cancel", $preferencesStore.language)}</button>
+        <button type="button" disabled={importing || working} on:click={resetImport}>{t("cancel", $preferencesStore.language)}</button>
       </div>
       <div class="connected-form__grid">
         <label>
           <span>{t("noteConnectionImportTarget", $preferencesStore.language)}</span>
-          <select bind:value={importTargetID} disabled={importing || targets.length === 0}>
+          <select bind:value={importTargetID} disabled={importing || working || targets.length === 0}>
             {#each targets as target (target.id)}
               <option value={target.id}>{target.name || target.id}</option>
             {/each}
@@ -585,13 +658,13 @@
         </label>
         <label>
           <span>{t("noteConnectionImportLimit", $preferencesStore.language)}</span>
-          <input bind:value={importLimit} disabled={importing} min="1" max="200" type="number" />
+          <input bind:value={importLimit} disabled={importing || working} min="1" max="200" step="1" inputmode="numeric" type="number" />
         </label>
       </div>
       <label class="connected-import-toggle">
         <input
           bind:checked={importPreserveRemoteHierarchy}
-          disabled={importing}
+          disabled={importing || working}
           type="checkbox"
         />
         <span aria-hidden="true"></span>
@@ -600,21 +673,27 @@
           <small>{t("noteConnectionPreserveHierarchyHint", $preferencesStore.language)}</small>
         </div>
       </label>
-      {#if targets.length === 0}
+      {#if working}
+        <p class="connected-panel__muted" role="status">{t("loading", $preferencesStore.language)}</p>
+      {:else if importError}
+        <p class="connected-panel__error" role="alert">{importError}</p>
+        <div class="connected-form__actions"><button type="button" disabled={importing} on:click={() => void startImport(selectedImportAccount!)}>{t("refresh", $preferencesStore.language)}</button></div>
+      {:else if targets.length === 0}
         <p class="connected-panel__muted">{t("noteConnectionNoTargets", $preferencesStore.language)}</p>
       {/if}
-      {#if importing || visibleImportJob}
+      {#if importInProgress}
         <div
           class:indeterminate={importProgressTotal === 0}
           class="connected-import-progress"
           role="progressbar"
+          aria-label={t("noteConnectionImport", $preferencesStore.language)}
           aria-valuemin="0"
           aria-valuemax={importProgressTotal || 100}
-          aria-valuenow={importProgressTotal ? importProcessedCount : undefined}
+          aria-valuenow={importProgressTotal ? Math.min(importProcessedCount, importProgressTotal) : undefined}
         >
-          <span style={`width: ${importProgressTotal ? importProgressPercent : 36}%`}></span>
+          <span style={`transform: scaleX(${importProgressTotal ? importProgressPercent / 100 : 0.36})`}></span>
         </div>
-        <p class="connected-panel__muted">
+        <p class="connected-panel__muted" role="status">
           {t("importing", $preferencesStore.language)}
           {#if importProgressTotal > 0}
             · {importProcessedCount}/{importProgressTotal}
@@ -622,11 +701,11 @@
         </p>
       {/if}
       {#if importMessage}
-        <p class="connected-test-message success">{importMessage}</p>
+        <p class="connected-test-message success" role="status">{importMessage}</p>
       {/if}
       <div class="connected-form__actions">
         <button class="primary" type="button" disabled={working || importing || targets.length === 0} on:click={() => void runImport()}>
-          {t("importStart", $preferencesStore.language)}
+          {t(importing ? "importing" : "importStart", $preferencesStore.language)}
         </button>
       </div>
     </section>
@@ -666,6 +745,7 @@
   }
 
   .connected-panel__header,
+  .connected-panel__header-actions,
   .connected-form__header,
   .connected-form__actions,
   .connected-account,
@@ -681,6 +761,12 @@
   .connected-account {
     justify-content: space-between;
     gap: 16px;
+  }
+
+  .connected-panel__header-actions {
+    flex: 0 0 auto;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   .connected-panel__header p,
@@ -740,9 +826,9 @@
   .connected-panel button,
   .connected-form__grid input,
   .connected-form__grid select {
-    min-height: 38px;
+    min-height: var(--size-touch, 44px);
     border: 1px solid var(--color-divider, #e2e0d8);
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     background: var(--color-card, #fffefa);
     color: var(--color-text, #1a1a18);
   }
@@ -752,20 +838,14 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
-    padding: 0 12px;
+    padding: 8px 12px;
     font-size: 13px;
-    line-height: 1;
+    line-height: 1.35;
     transition:
       background 140ms ease,
       border-color 140ms ease,
       color 140ms ease,
       opacity 140ms ease;
-  }
-
-  .connected-panel button:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--color-brand, #e8531a) 28%, var(--color-divider, #e2e0d8));
-    background: color-mix(in srgb, var(--color-brand, #e8531a) 8%, var(--color-card, #fffefa));
-    color: var(--color-brand, #e8531a);
   }
 
   .connected-panel button:disabled {
@@ -948,7 +1028,7 @@
     border-radius: 999px;
     background: var(--color-card, #fffefa);
     box-shadow: 0 1px 3px rgb(var(--color-shadow, 26 26 24) / 18%);
-    transition: transform 140ms ease;
+    transition: transform var(--duration-press, 120ms) var(--ease-out);
   }
 
   .connected-import-toggle input:checked + span {
@@ -961,6 +1041,16 @@
 
   .connected-import-toggle input:disabled + span {
     opacity: 0.55;
+  }
+
+  .connected-import-toggle input:focus-visible + span {
+    outline: 2px solid var(--color-focus, var(--color-brand));
+    outline-offset: 3px;
+  }
+
+  :global(:root[data-input-method="keyboard"]) .connected-import-toggle > span,
+  :global(:root[data-input-method="keyboard"]) .connected-import-toggle > span::after {
+    transition-duration: 0ms;
   }
 
   .connected-import-toggle strong,
@@ -991,29 +1081,20 @@
 
   .connected-import-progress span {
     position: absolute;
-    inset: 0 auto 0 0;
+    inset: 0;
     border-radius: inherit;
     background: var(--color-brand, #e8531a);
-    transition: width 160ms ease;
+    transform-origin: left;
+    transition: transform 160ms var(--ease-out);
   }
 
   .connected-import-progress.indeterminate span {
-    animation: connected-progress-slide 1.1s ease-in-out infinite;
+    animation: connected-progress-slide 1.1s linear infinite;
   }
 
   @keyframes connected-progress-slide {
-    0% {
-      left: -36%;
-      width: 36%;
-    }
-    50% {
-      left: 32%;
-      width: 48%;
-    }
-    100% {
-      left: 100%;
-      width: 36%;
-    }
+    from { transform: translateX(-36%) scaleX(0.36); }
+    to { transform: translateX(100%) scaleX(0.36); }
   }
 
   .connected-empty {
@@ -1075,22 +1156,42 @@
     color: var(--color-danger, #cc3333);
   }
 
-  button.danger:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--color-danger, #cc3333) 28%, var(--color-divider, #e2e0d8));
-    background: var(--sm-error-bg, #fceaea);
-    color: var(--color-danger, #cc3333);
-  }
-
   button.primary {
     border-color: var(--color-brand, #e8531a);
     background: var(--color-brand, #e8531a);
     color: var(--color-on-brand, #fff8f2);
   }
 
-  button.primary:hover:not(:disabled) {
-    border-color: var(--color-brand-hover, #c03b0d);
-    background: var(--color-brand-hover, #c03b0d);
-    color: var(--color-on-brand, #fff8f2);
+  @media (hover: hover) and (pointer: fine) {
+    .connected-panel button:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--color-brand, #e8531a) 28%, var(--color-divider, #e2e0d8));
+      background: color-mix(in srgb, var(--color-brand, #e8531a) 8%, var(--color-card, #fffefa));
+      color: var(--color-brand, #e8531a);
+    }
+
+    button.danger:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--color-danger, #cc3333) 28%, var(--color-divider, #e2e0d8));
+      background: var(--sm-error-bg, #fceaea);
+      color: var(--color-danger, #cc3333);
+    }
+
+    button.primary:hover:not(:disabled) {
+      border-color: var(--color-brand-hover, #c03b0d);
+      background: var(--color-brand-hover, #c03b0d);
+      color: var(--color-on-brand, #fff8f2);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .connected-import-toggle > span,
+    .connected-import-toggle > span::after,
+    .connected-import-progress span {
+      transition: none;
+    }
+
+    .connected-import-progress.indeterminate span {
+      animation: none;
+    }
   }
 
   @media (max-width: 720px) {
@@ -1112,6 +1213,15 @@
 
     .connected-form__grid {
       grid-template-columns: 1fr;
+    }
+
+    .connected-form__grid input,
+    .connected-form__grid select {
+      font-size: 16px;
+    }
+
+    .connected-panel__header-actions > button {
+      flex: 1;
     }
   }
 </style>

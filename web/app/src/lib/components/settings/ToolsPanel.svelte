@@ -10,7 +10,8 @@
     Users,
     X,
   } from "@lucide/svelte";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
+  import { dialog } from "../../actions/dialog";
   import type { ImportResult } from "../../api/imports";
   import type { User } from "../../api/types";
   import { getVersionInfo, type VersionInfo } from "../../api/version";
@@ -48,6 +49,7 @@
   let view: ToolsView = "profile";
   let versionInfo: VersionInfo | null = null;
   let versionLoadFailed = false;
+  let contentElement: HTMLDivElement;
 
   onMount(() => {
     let active = true;
@@ -64,9 +66,13 @@
     };
   });
 
-  function selectView(nextView: ToolsView): void {
+  async function selectView(nextView: ToolsView, focusContent = false): Promise<void> {
+    if (view === nextView) return;
     if (nextView === "import") importsStore.reset();
     view = nextView;
+    await tick();
+    contentElement.scrollTop = 0;
+    if (focusContent) contentElement.focus({ preventScroll: true });
   }
 
   async function handleImported(result: ImportResult): Promise<void> {
@@ -78,10 +84,6 @@
         : t("importCompleted", $preferencesStore.language),
       result.failed_count > 0 ? "info" : "success",
     );
-  }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape") onClose();
   }
 
   async function logout(): Promise<void> {
@@ -131,6 +133,10 @@
 
   const navItems: ToolNavItem[] = [
     {
+      labelKey: "personalProfile",
+      view: "profile",
+    },
+    {
       labelKey: "import",
       view: "import",
     },
@@ -150,10 +156,6 @@
     {
       labelKey: "fontManagement",
       view: "fonts",
-    },
-    {
-      labelKey: "personalProfile",
-      view: "profile",
     },
     {
       labelKey: "userManagement",
@@ -179,25 +181,23 @@
                 : t("userManagement", $preferencesStore.language);
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
-
 <div
   class="tools-panel-backdrop"
   role="presentation"
-  on:click={(event) => {
-    if (event.currentTarget === event.target) onClose();
-  }}
 >
   <div
     class="tools-panel"
     role="dialog"
     aria-modal="true"
     aria-labelledby="settings-dialog-title"
+    aria-describedby="settings-section-title"
+    tabindex="-1"
+    use:dialog={{ onDismiss: onClose, initialFocus: ".tools-panel__close" }}
   >
     <div class="tools-panel__header">
       <div>
         <h2 id="settings-dialog-title">{t("settings", $preferencesStore.language)}</h2>
-        <p>
+        <p id="settings-section-title">
           {panelTitle}
           {#if versionInfo}
             - {t("appVersion", $preferencesStore.language)} {displayValue(versionInfo.version)}
@@ -210,13 +210,30 @@
     </div>
 
     <div class="tools-panel__body">
+      <div class="tools-panel__mobile-nav">
+        <label for="settings-section-select">
+          {$preferencesStore.language === "zh" ? "设置分类" : "Settings section"}
+        </label>
+        <div>
+          <select id="settings-section-select" value={view} on:change={(event) => void selectView(event.currentTarget.value as ToolsView)}>
+            {#each visibleNavItems as item}
+              <option value={item.view}>{t(item.labelKey, $preferencesStore.language)}</option>
+            {/each}
+          </select>
+          <button class="danger" type="button" on:click={() => void logout()}>
+            <LogOut size={17} strokeWidth={1.8} aria-hidden="true" />
+            {t("logout", $preferencesStore.language)}
+          </button>
+        </div>
+      </div>
       <nav class="tools-panel__nav" aria-label={t("settings", $preferencesStore.language)}>
         {#each visibleNavItems as item}
           <button
             class:active={view === item.view}
             type="button"
             aria-current={view === item.view ? "page" : undefined}
-            on:click={() => selectView(item.view)}
+            aria-controls="settings-section-content"
+            on:click={(event) => void selectView(item.view, event.detail === 0)}
           >
             {#if item.view === "import"}
               <FileUp size={17} strokeWidth={1.8} aria-hidden="true" />
@@ -271,7 +288,7 @@
         </div>
       </nav>
 
-      <div class="tools-panel__content">
+      <div class="tools-panel__content" id="settings-section-content" role="region" aria-labelledby="settings-section-title" tabindex="-1" bind:this={contentElement}>
         {#if view === "import"}
           <ImportCenter showBack={false} onBack={() => selectView("profile")} onImported={handleImported} />
         {:else if view === "backup"}

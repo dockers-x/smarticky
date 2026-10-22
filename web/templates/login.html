@@ -3,56 +3,111 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Login - Smarticky Notes</title>
     <link rel="icon" type="image/png" href="/static/img/logo.png">
     <link rel="stylesheet" href="/static/css/custom.css">
+    <script>
+        const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        try {
+            const savedTheme = localStorage.getItem('theme');
+            document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : preferredTheme;
+        } catch {
+            document.documentElement.dataset.theme = preferredTheme;
+        }
+    </script>
     <style>
+        :root {
+            --font-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+            --font-reader: "Iowan Old Style", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif;
+            --color-page: #f7f4ee;
+            --color-card: #fffdf8;
+            --color-floor: #ede9e1;
+            --color-text: #171511;
+            --color-text-secondary: #3f3a34;
+            --color-text-sub: #6a6258;
+            --color-divider: #e0d9ce;
+            --color-brand: #d85a24;
+            --color-brand-strong: #b34319;
+            --color-focus: #b34319;
+            --color-danger: #b93434;
+            --color-danger-bg: #f9e8e5;
+            --radius-control: 9px;
+            --radius-sheet: 18px;
+            --duration-press: 120ms;
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+            color-scheme: light;
+        }
+
+        :root[data-theme="dark"] {
+            --color-page: #191816;
+            --color-card: #22201d;
+            --color-floor: #11100e;
+            --color-text: #f0ece3;
+            --color-text-secondary: #d2cbc0;
+            --color-text-sub: #aaa196;
+            --color-divider: #4a4339;
+            --color-brand: #d96a34;
+            --color-brand-strong: #a8421d;
+            --color-focus: #ee8652;
+            --color-danger: #df746e;
+            --color-danger-bg: #371e1b;
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+            overflow: visible;
+        }
+
         html,
         body {
+            height: auto;
             min-height: 100%;
-            overflow: auto;
+            overflow: visible;
         }
 
         body {
-            background: #f7f3ec;
-            color: #171511;
-            font-family:
-                -apple-system, BlinkMacSystemFont, "PingFang SC", "Source Han Sans SC",
-                "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+            margin: 0;
+            background: var(--color-page);
+            color: var(--color-text);
+            font: 1rem/1.5 var(--font-ui);
             letter-spacing: 0;
+        }
+
+        [hidden] {
+            display: none !important;
         }
 
         .login-container {
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 100vh;
             min-height: 100dvh;
-            background: #f7f3ec;
-            padding: 24px;
-            box-sizing: border-box;
+            padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
         }
 
         .login-card {
-            background: #fffdf8;
-            border: 1px solid #ddd4c6;
-            border-radius: 8px;
-            padding: 40px;
-            max-width: 430px;
+            background: var(--color-card);
+            border: 1px solid var(--color-divider);
+            border-radius: var(--radius-sheet);
+            padding: 36px;
+            max-width: 432px;
             width: 100%;
-            box-shadow: 0 18px 54px rgb(34 30 24 / 14%);
-            box-sizing: border-box;
+            box-shadow: 0 16px 48px rgb(34 30 24 / 8%), 0 2px 6px rgb(34 30 24 / 4%);
+            overflow-wrap: anywhere;
         }
 
         .login-card .about-logo {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 24px;
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 20px;
             animation: none;
         }
 
         .login-card .about-logo img {
-            filter: drop-shadow(0 8px 18px rgb(216 90 36 / 18%));
+            filter: none;
         }
 
         .login-header {
@@ -61,120 +116,228 @@
         }
 
         .login-header h1 {
-            color: #171511;
-            font-size: 26px;
-            font-weight: 650;
-            line-height: 1.25;
+            color: var(--color-text);
+            font: 500 clamp(1.65rem, 4vw, 2rem)/1.2 var(--font-reader);
+            letter-spacing: -0.025em;
             margin: 0 0 10px;
         }
 
+        :lang(zh) .login-header h1 {
+            letter-spacing: 0;
+        }
+
         .login-header p {
-            color: #8b8277;
+            color: var(--color-text-sub);
             font-size: 14px;
             line-height: 1.5;
             margin: 0;
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 7px;
-            font-weight: 500;
-            color: #3f3a34;
+            font-weight: 600;
+            color: var(--color-text-secondary);
             font-size: 13px;
+            text-transform: none;
+            letter-spacing: 0;
         }
 
         .form-group input {
             width: 100%;
-            min-height: 44px;
-            padding: 0 12px;
-            border: 1px solid #ddd4c6;
-            border-radius: 7px;
-            background: #fffdf8;
-            color: #171511;
-            font-size: 14px;
-            transition:
-                border-color 0.18s ease,
-                box-shadow 0.18s ease;
-            box-sizing: border-box;
+            min-height: 48px;
+            padding: 11px 13px;
+            border: 1px solid var(--color-divider);
+            border-radius: var(--radius-control);
+            background: var(--color-page);
+            color: var(--color-text);
+            font: 1rem/1.5 var(--font-ui);
+            transition: none;
         }
 
         .form-group input:focus {
-            outline: none;
-            border-color: #d85a24;
-            box-shadow: 0 0 0 3px rgb(216 90 36 / 14%);
+            outline: 2px solid var(--color-focus);
+            outline-offset: 2px;
+            border-color: var(--color-focus);
+            box-shadow: none;
+        }
+
+        .form-group input[aria-invalid="true"] {
+            border-color: var(--color-danger);
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-field input {
+            padding-inline-end: 56px;
+        }
+
+        button {
+            font-family: var(--font-ui);
+            touch-action: manipulation;
+        }
+
+        .password-toggle {
+            position: absolute;
+            inset-inline-end: 2px;
+            top: 2px;
+            display: grid;
+            place-items: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--color-text-sub);
+            cursor: pointer;
+            transition: transform var(--duration-press) var(--ease-out);
+        }
+
+        .password-toggle[aria-pressed="false"] .password-slash {
+            display: none;
+        }
+
+        button:focus-visible {
+            outline: 2px solid var(--color-focus);
+            outline-offset: 3px;
+            transition: none;
+            transform: none;
         }
 
         .btn-login {
             width: 100%;
-            min-height: 44px;
+            min-height: 48px;
             margin-top: 4px;
-            padding: 0 14px;
-            background: #d85a24;
+            padding: 12px 16px;
+            background: var(--color-brand-strong);
             color: #fff8f2;
-            border: none;
-            border-radius: 7px;
-            font-size: 14px;
+            border: 1px solid transparent;
+            border-radius: var(--radius-control);
+            font-size: 15px;
+            line-height: 1.5;
             font-weight: 650;
             cursor: pointer;
-            transition: background 0.18s ease;
+            box-shadow: 0 1px 2px rgb(34 30 24 / 8%), inset 0 1px 0 rgb(255 255 255 / 12%);
+            transition: transform var(--duration-press) var(--ease-out);
         }
 
-        .btn-login:hover {
-            background: #b34319;
+        .btn-login:active:not(:disabled):not(:focus-visible),
+        .password-toggle:active:not(:focus-visible),
+        .language-toggle button:active:not(:focus-visible) {
+            transform: scale(0.98);
+        }
+
+        .btn-login:disabled {
+            cursor: wait;
+            opacity: 0.7;
         }
 
         .error-message {
-            background: #f9e8e5;
-            color: #b93434;
-            padding: 11px 12px;
-            border-radius: 7px;
-            margin-bottom: 20px;
+            background: var(--color-danger-bg);
+            color: var(--color-danger);
+            padding: 12px 14px;
+            border: 1px solid currentColor;
+            border-radius: var(--radius-control);
+            margin-bottom: 24px;
             font-size: 13px;
             line-height: 1.5;
-            display: none;
         }
 
         .language-toggle {
-            text-align: center;
+            display: flex;
+            justify-content: center;
             margin-top: 24px;
         }
 
         .language-toggle button {
+            min-height: 44px;
+            padding: 8px 14px;
             background: none;
             border: none;
-            color: #304656;
+            border-radius: var(--radius-control);
+            color: var(--color-text-sub);
             cursor: pointer;
             font-size: 13px;
-            text-decoration: none;
+            transition: transform var(--duration-press) var(--ease-out);
         }
 
-        .language-toggle button:hover {
-            color: #d85a24;
+        @media (hover: hover) and (pointer: fine) {
+            .btn-login:hover:not(:disabled) {
+                background: #9c3713;
+            }
+
+            .password-toggle:hover,
+            .language-toggle button:hover {
+                background: var(--color-floor);
+                color: var(--color-text);
+            }
         }
 
         @media (max-width: 520px) {
             .login-container {
-                padding: 16px;
+                padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
             }
 
             .login-card {
-                padding: 30px 22px;
+                padding: 28px 24px;
+            }
+        }
+
+        @media (max-height: 640px) {
+            .login-card {
+                padding: 24px;
             }
 
-            .login-header h1 {
-                font-size: 23px;
+            .login-card .about-logo {
+                width: 40px;
+                height: 40px;
+                margin-bottom: 16px;
+            }
+
+            .login-header {
+                margin-bottom: 24px;
+            }
+
+            .language-toggle {
+                margin-top: 16px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            button {
+                transition: none !important;
+            }
+
+            button:active {
+                transform: none !important;
+            }
+        }
+
+        @media (prefers-contrast: more) {
+            :root,
+            :root[data-theme="dark"] {
+                --color-divider: var(--color-text-sub);
+                --color-focus: var(--color-text);
+            }
+
+            .login-card,
+            .btn-login {
+                box-shadow: none;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="login-container">
-        <div class="login-card">
+    <main class="login-container">
+        <section class="login-card" aria-labelledby="login-title" aria-describedby="login-subtitle">
             <div class="about-logo">
                 <img src="/static/img/logo.png" alt="Smarticky Logo">
             </div>
@@ -183,27 +346,36 @@
                 <p id="login-subtitle">Sign in to continue</p>
             </div>
 
-            <div class="error-message" id="error-message"></div>
+            <div class="error-message" id="error-message" role="alert" aria-atomic="true" hidden></div>
 
-            <form id="login-form">
+            <form id="login-form" aria-busy="false">
                 <div class="form-group">
                     <label for="username" id="label-username">Username</label>
-                    <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+                    <input type="text" id="username" name="username" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus>
                 </div>
 
                 <div class="form-group">
                     <label for="password" id="label-password">Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="password-toggle" aria-controls="password" aria-label="Show password" aria-pressed="false">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                                <circle cx="12" cy="12" r="3" />
+                                <path class="password-slash" d="m3 3 18 18" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn-login" id="btn-submit">Sign In</button>
+                <button type="submit" class="btn-login" id="btn-submit" aria-live="polite">Sign In</button>
             </form>
 
             <div class="language-toggle">
-                <button onclick="toggleLanguage()" id="lang-toggle">中文 / English</button>
+                <button type="button" onclick="toggleLanguage()" id="lang-toggle">中文 / English</button>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script>
         const API_BASE = '/api';
@@ -216,6 +388,9 @@
                 username: '用户名',
                 password: '密码',
                 btn_login: '登录',
+                btn_signing_in: '正在登录…',
+                show_password: '显示密码',
+                hide_password: '隐藏密码',
                 error_invalid_credentials: '用户名或密码错误',
                 error_login_failed: '登录失败：'
             },
@@ -225,6 +400,9 @@
                 username: 'Username',
                 password: 'Password',
                 btn_login: 'Sign In',
+                btn_signing_in: 'Signing in…',
+                show_password: 'Show password',
+                hide_password: 'Hide password',
                 error_invalid_credentials: 'Invalid username or password',
                 error_login_failed: 'Login failed: '
             }
@@ -238,14 +416,45 @@
         }
 
         const t = (key) => i18n[lang][key] || key;
+        const form = document.getElementById('login-form');
+        const submitButton = document.getElementById('btn-submit');
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('password-toggle');
+        let submitting = false;
+        let authenticated = false;
+
+        function updatePasswordToggle() {
+            const visible = passwordInput.type === 'text';
+            passwordToggle.setAttribute('aria-pressed', String(visible));
+            passwordToggle.setAttribute('aria-label', t(visible ? 'hide_password' : 'show_password'));
+            passwordToggle.title = t(visible ? 'hide_password' : 'show_password');
+        }
+
+        passwordToggle.addEventListener('click', (event) => {
+            passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+            updatePasswordToggle();
+            if (event.detail > 0) passwordInput.focus({ preventScroll: true });
+        });
+
+        function setSubmitting(value) {
+            submitting = value;
+            form.setAttribute('aria-busy', String(value));
+            submitButton.disabled = value;
+            submitButton.textContent = t(value ? 'btn_signing_in' : 'btn_login');
+        }
 
         // Apply translations
         function applyTranslations() {
+            document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
             document.getElementById('login-title').textContent = t('title');
             document.getElementById('login-subtitle').textContent = t('subtitle');
             document.getElementById('label-username').textContent = t('username');
             document.getElementById('label-password').textContent = t('password');
-            document.getElementById('btn-submit').textContent = t('btn_login');
+            submitButton.textContent = t(submitting ? 'btn_signing_in' : 'btn_login');
+            const languageToggle = document.getElementById('lang-toggle');
+            languageToggle.textContent = lang === 'zh' ? 'English' : '简体中文';
+            languageToggle.lang = lang === 'zh' ? 'en' : 'zh-CN';
+            updatePasswordToggle();
         }
 
         applyTranslations();
@@ -261,15 +470,31 @@
         function showError(message) {
             const errorEl = document.getElementById('error-message');
             errorEl.textContent = message;
-            errorEl.style.display = 'block';
+            errorEl.hidden = false;
         }
 
+        form.addEventListener('input', () => {
+            document.getElementById('error-message').hidden = true;
+            document.getElementById('username').removeAttribute('aria-invalid');
+            passwordInput.removeAttribute('aria-invalid');
+        });
+
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                authenticated = false;
+                setSubmitting(false);
+            }
+        });
+
         // Handle form submission
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (submitting) return;
 
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
+            document.getElementById('error-message').hidden = true;
+            setSubmitting(true);
 
             try {
                 const response = await fetch(`${API_BASE}/auth/login`, {
@@ -286,11 +511,15 @@
                     // Save JWT token and user info
                     localStorage.setItem('jwt_token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    authenticated = true;
+                    form.setAttribute('aria-busy', 'false');
 
                     // Redirect to main app
                     window.location.href = '/';
                 } else {
                     if (response.status === 401) {
+                        document.getElementById('username').setAttribute('aria-invalid', 'true');
+                        passwordInput.setAttribute('aria-invalid', 'true');
                         showError(t('error_invalid_credentials'));
                     } else {
                         showError(t('error_login_failed') + (data.error || response.statusText));
@@ -298,6 +527,8 @@
                 }
             } catch (error) {
                 showError(t('error_login_failed') + error.message);
+            } finally {
+                if (!authenticated) setSubmitting(false);
             }
         });
     </script>

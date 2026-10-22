@@ -29,6 +29,7 @@
   export let onOpenSettings: () => void = () => {};
   export let onOpenFolderBrowser: () => void = () => {};
   export let onOpenTagBrowser: () => void = () => {};
+  export let onSearch: () => void = () => {};
 
   let notebooksExpanded = true;
   let tagsExpanded = false;
@@ -119,18 +120,35 @@
     </button>
   </div>
 
-  <nav class="sidebar__nav">
+  <button
+    class="sidebar__search"
+    type="button"
+    aria-label={t("searchNotes", $preferencesStore.language)}
+    title={`${t("searchNotes", $preferencesStore.language)} (/)`}
+    aria-keyshortcuts="/"
+    on:click={onSearch}
+  >
+    <Search size={17} strokeWidth={1.8} aria-hidden="true" />
+    <span class="sidebar__label">{t("searchNotes", $preferencesStore.language)}</span>
+    {#if !$preferencesStore.sidebarCompact}<kbd aria-hidden="true">/</kbd>{/if}
+  </button>
+
+  <nav class="sidebar__nav" aria-label={$preferencesStore.language === "zh" ? "资料库" : "Library"}>
     {#each filters as filter (filter.id)}
       <button
         class:active={$notesStore.workspaceView === "notes" &&
           $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
+          !$notesStore.folderBrowserOpen &&
+          !$notesStore.tagBrowserOpen &&
           $notesStore.searchFilters.tags.length === 0}
         type="button"
         aria-label={filter.label}
         aria-pressed={$notesStore.workspaceView === "notes" &&
           $notesStore.filter === filter.id &&
           !$notesStore.folderID &&
+          !$notesStore.folderBrowserOpen &&
+          !$notesStore.tagBrowserOpen &&
           $notesStore.searchFilters.tags.length === 0}
         title={$preferencesStore.sidebarCompact ? filter.label : undefined}
         on:click={() => void selectFilter(filter.id)}
@@ -171,6 +189,8 @@
             ($notesStore.filter === "all" && Boolean($notesStore.folderID)))}
         type="button"
         aria-label={t("notebookGroups", $preferencesStore.language)}
+        aria-haspopup="dialog"
+        aria-expanded={$notesStore.folderBrowserOpen}
         title={t("notebookGroups", $preferencesStore.language)}
         on:dragover={handleFolderTabDragOver}
         on:click={onOpenFolderBrowser}
@@ -182,6 +202,8 @@
           ($notesStore.tagBrowserOpen || $notesStore.searchFilters.tags.length > 0)}
         type="button"
         aria-label={t("tags", $preferencesStore.language)}
+        aria-haspopup="dialog"
+        aria-expanded={$notesStore.tagBrowserOpen}
         title={t("tags", $preferencesStore.language)}
         on:click={onOpenTagBrowser}
       >
@@ -196,6 +218,7 @@
             class="sidebar-section__toggle"
             type="button"
             aria-expanded={notebooksExpanded}
+            aria-controls="sidebar-notebooks"
             on:click={() => (notebooksExpanded = !notebooksExpanded)}
           >
             {#if notebooksExpanded}
@@ -225,7 +248,7 @@
           </div>
         </header>
         {#if notebooksExpanded}
-          <div class="sidebar-section__content sidebar-section__content--notebooks">
+          <div id="sidebar-notebooks" class="sidebar-section__content sidebar-section__content--notebooks">
             <FolderBrowserPane variant="sidebar" />
           </div>
         {/if}
@@ -237,6 +260,7 @@
             class="sidebar-section__toggle"
             type="button"
             aria-expanded={tagsExpanded}
+            aria-controls="sidebar-tags"
             on:click={() => (tagsExpanded = !tagsExpanded)}
           >
             {#if tagsExpanded}
@@ -258,7 +282,7 @@
           </div>
         </header>
         {#if tagsExpanded}
-          <div class="sidebar-section__content sidebar-tag-list">
+          <div id="sidebar-tags" class="sidebar-section__content sidebar-tag-list">
             {#if visibleTags.length === 0}
               <p>{t("noTags", $preferencesStore.language)}</p>
             {:else}
@@ -276,6 +300,10 @@
                 </button>
               {/each}
             {/if}
+            <button class="sidebar-tag-list__all" type="button" on:click={onOpenTagBrowser}>
+              <Search size={14} strokeWidth={1.8} aria-hidden="true" />
+              <span>{$preferencesStore.language === "zh" ? "浏览全部标签" : "Browse all tags"}</span>
+            </button>
           </div>
         {/if}
       </section>
@@ -320,6 +348,7 @@
     type="button"
     aria-label={t("settings", $preferencesStore.language)}
     aria-expanded={settingsOpen}
+    aria-haspopup="dialog"
     title={$preferencesStore.sidebarCompact ? t("settings", $preferencesStore.language) : undefined}
     on:click={onOpenSettings}
   >
@@ -327,3 +356,77 @@
     <span class="sidebar__label">{t("settings", $preferencesStore.language)}</span>
   </button>
 </aside>
+
+<style>
+  .sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sidebar__brand-row,
+  .sidebar__nav,
+  .sidebar__preferences,
+  .sidebar__tool {
+    flex-shrink: 0;
+  }
+
+  .sidebar__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 40px;
+    margin: 4px 0 12px;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--color-card) 75%, var(--color-floor));
+    color: var(--color-text-sub);
+    padding: 0 10px;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .sidebar__search kbd {
+    margin-inline-start: auto;
+    border: 1px solid var(--color-divider);
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 10px;
+    line-height: 18px;
+  }
+
+  .sidebar.compact .sidebar__search {
+    width: 36px;
+    min-width: 36px;
+    justify-content: center;
+    margin-inline: auto;
+    padding: 0;
+  }
+
+  .sidebar__organize {
+    min-height: 8rem;
+  }
+
+  .sidebar-tag-list__all {
+    color: var(--color-ink-accent);
+  }
+
+  @media (pointer: coarse) {
+    .sidebar__search {
+      min-height: 44px;
+    }
+
+    .sidebar.compact .sidebar__search {
+      width: 44px;
+      min-width: 44px;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .sidebar__search:hover {
+      border-color: var(--color-divider-em);
+      color: var(--color-text);
+    }
+  }
+</style>

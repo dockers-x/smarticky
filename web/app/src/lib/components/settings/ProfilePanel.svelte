@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { scrollRegion } from "../../actions/dialog";
   import {
     createMCPToken,
     deleteMCPToken,
@@ -8,7 +9,8 @@
   import type { User } from "../../api/types";
   import { updatePassword, updateUser, uploadAvatar } from "../../api/users";
   import { authStore } from "../../stores/auth";
-  import { notify } from "../../stores/dialogs";
+  import { confirmDialog, notify } from "../../stores/dialogs";
+  import PasswordField from "../common/PasswordField.svelte";
   import {
     preferencesStore,
     supportedTimeZones,
@@ -30,6 +32,12 @@
   let profileBusy = false;
   let passwordBusy = false;
   let mcpBusy = false;
+  let mcpConfirming = false;
+  let mcpLoading = false;
+  let avatarError = "";
+  let profileError = "";
+  let passwordError = "";
+  let mcpError = "";
   let mcpLoadedUserID = 0;
   let mcpTokenName = "";
   let mcpPlainToken = "";
@@ -62,19 +70,20 @@
   }
 
   async function handleAvatarChange(event: Event): Promise<void> {
-    if (!user) return;
+    if (!user || avatarBusy) return;
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (!file) return;
+    avatarError = "";
 
     if (!file.type.startsWith("image/")) {
-      notify(t("imageFileRequired", $preferencesStore.language), "error");
+      avatarError = t("imageFileRequired", $preferencesStore.language);
       input.value = "";
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      notify(t("avatarFileTooLarge", $preferencesStore.language), "error");
+      avatarError = t("avatarFileTooLarge", $preferencesStore.language);
       input.value = "";
       return;
     }
@@ -85,12 +94,9 @@
       updateCurrentUser({ avatar: result.avatar });
       notify(t("avatarUploaded", $preferencesStore.language), "success");
     } catch (error) {
-      notify(
-        error instanceof Error
+      avatarError = error instanceof Error
           ? error.message
-          : t("avatarUploadFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("avatarUploadFailed", $preferencesStore.language);
     } finally {
       avatarBusy = false;
       input.value = "";
@@ -98,10 +104,11 @@
   }
 
   async function saveProfile(): Promise<void> {
-    if (!user) return;
+    if (!user || profileBusy) return;
+    profileError = "";
 
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      notify(t("emailInvalid", $preferencesStore.language), "error");
+      profileError = t("emailInvalid", $preferencesStore.language);
       return;
     }
 
@@ -117,30 +124,28 @@
       authStore.setUser(updated);
       notify(t("profileSaved", $preferencesStore.language), "success");
     } catch (error) {
-      notify(
-        error instanceof Error
+      profileError = error instanceof Error
           ? error.message
-          : t("profileSaveFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("profileSaveFailed", $preferencesStore.language);
     } finally {
       profileBusy = false;
     }
   }
 
   async function changePassword(): Promise<void> {
-    if (!user) return;
+    if (!user || passwordBusy) return;
+    passwordError = "";
 
     if (!oldPassword || !newPassword || !confirmPassword) {
-      notify(t("passwordRequired", $preferencesStore.language), "error");
+      passwordError = t("passwordRequired", $preferencesStore.language);
       return;
     }
     if (newPassword.length < 6) {
-      notify(t("passwordTooShort", $preferencesStore.language), "error");
+      passwordError = t("passwordTooShort", $preferencesStore.language);
       return;
     }
     if (newPassword !== confirmPassword) {
-      notify(t("passwordNotMatch", $preferencesStore.language), "error");
+      passwordError = t("passwordNotMatch", $preferencesStore.language);
       return;
     }
 
@@ -155,12 +160,9 @@
       confirmPassword = "";
       notify(t("passwordChanged", $preferencesStore.language), "success");
     } catch (error) {
-      notify(
-        error instanceof Error
+      passwordError = error instanceof Error
           ? error.message
-          : t("passwordChangeFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("passwordChangeFailed", $preferencesStore.language);
     } finally {
       passwordBusy = false;
     }
@@ -168,24 +170,23 @@
 
   async function loadMcpTokens(): Promise<void> {
     if (!user) return;
-    mcpBusy = true;
+    mcpLoading = true;
+    mcpError = "";
     try {
       mcpTokens = await listMCPTokens();
     } catch (error) {
-      notify(
-        error instanceof Error
+      mcpError = error instanceof Error
           ? error.message
-          : t("mcpTokenLoadFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("mcpTokenLoadFailed", $preferencesStore.language);
     } finally {
-      mcpBusy = false;
+      mcpLoading = false;
     }
   }
 
   async function createToken(): Promise<void> {
-    if (!user) return;
+    if (!user || mcpBusy || mcpLoading || mcpConfirming) return;
     mcpBusy = true;
+    mcpError = "";
     try {
       const created = await createMCPToken(
         mcpTokenName.trim() ||
@@ -196,36 +197,37 @@
       await loadMcpTokens();
       notify(t("mcpTokenCreated", $preferencesStore.language), "success");
     } catch (error) {
-      notify(
-        error instanceof Error
+      mcpError = error instanceof Error
           ? error.message
-          : t("mcpTokenCreateFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("mcpTokenCreateFailed", $preferencesStore.language);
     } finally {
       mcpBusy = false;
     }
   }
 
   async function revokeToken(token: MCPToken): Promise<void> {
-    if (!window.confirm(t("mcpTokenDeleteConfirm", $preferencesStore.language))) {
-      return;
-    }
-
-    mcpBusy = true;
+    if (mcpBusy || mcpLoading || mcpConfirming) return;
+    mcpConfirming = true;
+    mcpError = "";
     try {
+      const confirmed = await confirmDialog({
+        title: t("delete", $preferencesStore.language),
+        message: t("mcpTokenDeleteConfirm", $preferencesStore.language),
+        confirmLabel: t("delete", $preferencesStore.language),
+        cancelLabel: t("cancel", $preferencesStore.language),
+      });
+      if (!confirmed) return;
+      mcpBusy = true;
       await deleteMCPToken(token.id);
       mcpTokens = mcpTokens.filter((item) => item.id !== token.id);
       notify(t("mcpTokenDeleted", $preferencesStore.language), "success");
     } catch (error) {
-      notify(
-        error instanceof Error
+      mcpError = error instanceof Error
           ? error.message
-          : t("mcpTokenDeleteFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("mcpTokenDeleteFailed", $preferencesStore.language);
     } finally {
       mcpBusy = false;
+      mcpConfirming = false;
     }
   }
 
@@ -270,22 +272,26 @@
             accept="image/*"
             disabled={avatarBusy}
             type="file"
+            aria-describedby="profile-avatar-hint"
             on:change={handleAvatarChange}
           />
         </label>
       </div>
-      <p class="settings-muted">{t("avatarHint", $preferencesStore.language)}</p>
+      <p class="settings-muted" id="profile-avatar-hint">{t("avatarHint", $preferencesStore.language)}</p>
+      {#if avatarError}<p class="settings-error" role="alert">{avatarError}</p>{/if}
     </section>
 
     <section class="settings-section">
       <h3>{t("personalProfile", $preferencesStore.language)}</h3>
-      <div class="settings-form">
+      <form class="settings-form" aria-busy={profileBusy} on:submit|preventDefault={() => void saveProfile()}>
         <label>
           <span>{t("emailAddress", $preferencesStore.language)}</span>
           <input
             bind:value={email}
             type="email"
             autocomplete="email"
+            name="email"
+            disabled={profileBusy}
             placeholder={t("enterEmail", $preferencesStore.language)}
           />
         </label>
@@ -293,6 +299,9 @@
           <span>{t("nickname", $preferencesStore.language)}</span>
           <input
             bind:value={nickname}
+            name="nickname"
+            autocomplete="nickname"
+            disabled={profileBusy}
             type="text"
             placeholder={t("enterNickname", $preferencesStore.language)}
           />
@@ -301,6 +310,7 @@
           <span>{t("lazycatUid", $preferencesStore.language)}</span>
           <input
             bind:value={lazycatUID}
+            disabled={profileBusy}
             type="text"
             placeholder={t("lazycatUidPlaceholder", $preferencesStore.language)}
           />
@@ -310,6 +320,7 @@
           <span>{t("shareSignature", $preferencesStore.language)}</span>
           <input
             bind:value={shareSignature}
+            disabled={profileBusy}
             type="text"
             maxlength="40"
             placeholder={t("shareSignaturePlaceholder", $preferencesStore.language)}
@@ -318,7 +329,7 @@
         </label>
         <label>
           <span>{t("timeZone", $preferencesStore.language)}</span>
-          <select bind:value={timeZone}>
+          <select bind:value={timeZone} disabled={profileBusy}>
             {#each timeZoneOptions as option}
               <option value={option}>{option}</option>
             {/each}
@@ -326,75 +337,87 @@
           <small>{t("timeZoneHint", $preferencesStore.language)}</small>
         </label>
         <div class="settings-actions">
-          <button class="primary" type="button" disabled={profileBusy} on:click={saveProfile}>
-            {t("saveSettings", $preferencesStore.language)}
+          <button class="primary" type="submit" disabled={profileBusy}>
+            {t(profileBusy ? "saving" : "saveSettings", $preferencesStore.language)}
           </button>
         </div>
-      </div>
+        {#if profileError}<p class="settings-error" role="alert">{profileError}</p>{/if}
+      </form>
     </section>
 
     <section class="settings-section">
       <h3>{t("changePassword", $preferencesStore.language)}</h3>
-      <div class="settings-form">
-        <label>
-          <span>{t("oldPassword", $preferencesStore.language)}</span>
-          <input
-            bind:value={oldPassword}
-            type="password"
-            autocomplete="current-password"
-            placeholder={t("enterOldPassword", $preferencesStore.language)}
-          />
-        </label>
-        <label>
-          <span>{t("newPassword", $preferencesStore.language)}</span>
-          <input
-            bind:value={newPassword}
-            type="password"
-            autocomplete="new-password"
-            placeholder={t("enterNewPassword", $preferencesStore.language)}
-          />
-        </label>
-        <label>
-          <span>{t("confirmPassword", $preferencesStore.language)}</span>
-          <input
-            bind:value={confirmPassword}
-            type="password"
-            autocomplete="new-password"
-            placeholder={t("confirmNewPassword", $preferencesStore.language)}
-          />
-        </label>
+      <form class="settings-form" aria-busy={passwordBusy} on:submit|preventDefault={() => void changePassword()}>
+        <PasswordField
+          bind:value={oldPassword}
+          label={t("oldPassword", $preferencesStore.language)}
+          autocomplete="current-password"
+          placeholder={t("enterOldPassword", $preferencesStore.language)}
+          disabled={passwordBusy}
+          required
+          describedBy={passwordError ? "profile-password-error" : ""}
+          showPasswordLabel={t("showPassword", $preferencesStore.language)}
+          hidePasswordLabel={t("hidePassword", $preferencesStore.language)}
+        />
+        <PasswordField
+          bind:value={newPassword}
+          label={t("newPassword", $preferencesStore.language)}
+          autocomplete="new-password"
+          placeholder={t("enterNewPassword", $preferencesStore.language)}
+          disabled={passwordBusy}
+          required
+          minlength={6}
+          describedBy={passwordError ? "profile-password-error" : ""}
+          showPasswordLabel={t("showPassword", $preferencesStore.language)}
+          hidePasswordLabel={t("hidePassword", $preferencesStore.language)}
+        />
+        <PasswordField
+          bind:value={confirmPassword}
+          label={t("confirmPassword", $preferencesStore.language)}
+          autocomplete="new-password"
+          placeholder={t("confirmNewPassword", $preferencesStore.language)}
+          disabled={passwordBusy}
+          required
+          minlength={6}
+          describedBy={passwordError ? "profile-password-error" : ""}
+          showPasswordLabel={t("showPassword", $preferencesStore.language)}
+          hidePasswordLabel={t("hidePassword", $preferencesStore.language)}
+        />
         <div class="settings-actions">
-          <button class="primary" type="button" disabled={passwordBusy} on:click={changePassword}>
-            {t("changePassword", $preferencesStore.language)}
+          <button class="primary" type="submit" disabled={passwordBusy}>
+            {t(passwordBusy ? "saving" : "changePassword", $preferencesStore.language)}
           </button>
         </div>
-      </div>
+        {#if passwordError}<p class="settings-error" id="profile-password-error" role="alert">{passwordError}</p>{/if}
+      </form>
     </section>
 
     <section class="settings-section">
       <div class="settings-section__header">
         <h3>{t("mcpAccess", $preferencesStore.language)}</h3>
-        <button type="button" disabled={mcpBusy} on:click={loadMcpTokens}>
+        <button type="button" disabled={mcpBusy || mcpLoading} on:click={loadMcpTokens}>
           {t("refresh", $preferencesStore.language)}
         </button>
       </div>
       <p class="settings-muted">{t("mcpAccessHint", $preferencesStore.language)}</p>
 
-      <div class="settings-form">
+      <form class="settings-form" aria-busy={mcpBusy} on:submit|preventDefault={() => void createToken()}>
         <label>
           <span>{t("mcpTokenName", $preferencesStore.language)}</span>
           <input
             bind:value={mcpTokenName}
+            disabled={mcpBusy || mcpLoading}
             type="text"
             placeholder={t("mcpTokenNamePlaceholder", $preferencesStore.language)}
           />
         </label>
         <div class="settings-actions">
-          <button class="primary" type="button" disabled={mcpBusy} on:click={createToken}>
-            {t("mcpTokenCreate", $preferencesStore.language)}
+          <button class="primary" type="submit" disabled={mcpBusy || mcpLoading}>
+            {t(mcpBusy ? "saving" : "mcpTokenCreate", $preferencesStore.language)}
           </button>
         </div>
-      </div>
+      </form>
+      {#if mcpError}<p class="settings-error" role="alert">{mcpError}</p>{/if}
 
       {#if mcpPlainToken}
         <div class="settings-secret-box">
@@ -404,31 +427,31 @@
         </div>
       {/if}
 
-      <div class="settings-table-wrap">
+      <div class="settings-table-wrap" role="region" aria-label={t("mcpAccess", $preferencesStore.language)} use:scrollRegion aria-busy={mcpLoading}>
         <table class="settings-table">
           <thead>
             <tr>
-              <th>{t("mcpTokenName", $preferencesStore.language)}</th>
-              <th>{t("createdAt", $preferencesStore.language)}</th>
-              <th>{t("mcpTokenLastUsed", $preferencesStore.language)}</th>
-              <th>{t("actions", $preferencesStore.language)}</th>
+              <th scope="col">{t("mcpTokenName", $preferencesStore.language)}</th>
+              <th scope="col">{t("createdAt", $preferencesStore.language)}</th>
+              <th scope="col">{t("mcpTokenLastUsed", $preferencesStore.language)}</th>
+              <th scope="col">{t("actions", $preferencesStore.language)}</th>
             </tr>
           </thead>
           <tbody>
-            {#each mcpTokens as token}
+            {#each mcpTokens as token (token.id)}
               <tr>
                 <td>{token.name}</td>
                 <td>{formatDate(token.created_at)}</td>
                 <td>{formatDate(token.last_used_at)}</td>
                 <td>
-                  <button class="danger" type="button" disabled={mcpBusy} on:click={() => revokeToken(token)}>
+                  <button class="danger" type="button" disabled={mcpBusy || mcpLoading} aria-label={`${t("delete", $preferencesStore.language)} ${token.name}`} on:click={() => revokeToken(token)}>
                     {t("delete", $preferencesStore.language)}
                   </button>
                 </td>
               </tr>
             {:else}
               <tr>
-                <td colspan="4">{t("mcpTokenEmpty", $preferencesStore.language)}</td>
+                <td colspan="4">{t(mcpLoading ? "loading" : "mcpTokenEmpty", $preferencesStore.language)}</td>
               </tr>
             {/each}
           </tbody>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { CloudUpload, X } from "@lucide/svelte";
   import { onMount } from "svelte";
+  import { dialog } from "../../actions/dialog";
   import type { Note } from "../../api/types";
   import {
     listNoteConnectionAccounts,
@@ -103,21 +104,21 @@
   }
 </script>
 
-<div class="connection-push-backdrop" role="presentation" on:click={(event) => {
-  if (event.currentTarget === event.target) onClose();
-}}>
+<div class="connection-push-backdrop">
   <div
+    use:dialog={{ onDismiss: onClose, dismissible: !pushing }}
     class="connection-push-dialog"
     role="dialog"
     aria-modal="true"
     aria-labelledby="connection-push-title"
+    aria-busy={pushing || loading}
   >
     <header>
       <div>
         <h3 id="connection-push-title">{t("noteConnectionPush", $preferencesStore.language)}</h3>
         <p>{note.title || t("untitled", $preferencesStore.language)}</p>
       </div>
-      <button type="button" aria-label={t("cancel", $preferencesStore.language)} on:click={onClose}>
+      <button type="button" disabled={pushing} aria-label={t("cancel", $preferencesStore.language)} on:click={onClose}>
         <X size={18} strokeWidth={2} aria-hidden="true" />
       </button>
     </header>
@@ -158,7 +159,7 @@
     {/if}
 
     <footer>
-      <button type="button" on:click={onClose}>{t("cancel", $preferencesStore.language)}</button>
+      <button type="button" disabled={pushing} on:click={onClose}>{t("cancel", $preferencesStore.language)}</button>
       <button
         class="primary"
         type="button"
@@ -166,7 +167,7 @@
         on:click={() => void pushNote()}
       >
         <CloudUpload size={16} strokeWidth={2} aria-hidden="true" />
-        {t("noteConnectionPush", $preferencesStore.language)}
+        {pushing ? t("loading", $preferencesStore.language) : t("noteConnectionPush", $preferencesStore.language)}
       </button>
     </footer>
   </div>
@@ -179,7 +180,7 @@
     z-index: 80;
     display: grid;
     place-items: center;
-    padding: 18px;
+    padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
     background: var(--color-backdrop, rgb(26 26 24 / 28%));
     backdrop-filter: blur(2px);
   }
@@ -188,10 +189,10 @@
     display: grid;
     gap: 14px;
     width: min(520px, 100%);
-    max-height: min(680px, calc(100vh - 36px));
+    max-height: min(680px, calc(var(--app-height) - 36px));
     overflow: auto;
     border: 1px solid var(--color-divider, #e2e0d8);
-    border-radius: 8px;
+    border-radius: var(--radius-sheet);
     background: color-mix(in srgb, var(--color-card, #fffefa) 94%, var(--color-surface-secondary, #f4f3ee));
     color: var(--color-text, #1a1a18);
     padding: 18px;

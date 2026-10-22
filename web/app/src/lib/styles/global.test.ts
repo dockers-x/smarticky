@@ -34,3 +34,39 @@ describe("global sidebar styles", () => {
     expect(mobileLayout).toContain(".sidebar {\n    display: none;\n  }");
   });
 });
+
+describe("paper workspace accessibility", () => {
+  it("bounds the workspace to the available visual viewport", () => {
+    expect(css).toContain("height: var(--app-height)");
+    const mobileLayout = mediaBlock("@media (max-width: 960px)");
+    expect(mobileLayout).toContain("overflow: hidden");
+    expect(mobileLayout).toContain("min-height: 0");
+    expect(css).not.toContain("min-height: 100dvh");
+  });
+
+  it("uses readable paper typography while preserving custom fonts", () => {
+    expect(css).toContain("--crepe-font-default: var(--editor-font-family, var(--font-reader))");
+    expect(css).toContain("font-family: var(--editor-font-family, var(--font-reader))");
+  });
+
+  it("provides touch targets and an instant keyboard interaction mode", () => {
+    expect(css).toContain("@media (pointer: coarse), (max-width: 960px)");
+    expect(css).toContain("min-height: var(--size-touch)");
+    expect(css).toContain(".share-dialog__controls button,");
+    expect(css).toContain(':root[data-input-method="keyboard"]');
+    expect(css).toContain("--duration-sheet: 0ms");
+  });
+
+  it("keeps confirmation dialogs inside short viewports", () => {
+    expect(css).toContain("max-height: calc(var(--app-height) - 40px)");
+    expect(css).toContain("@media (prefers-reduced-transparency: reduce)");
+    expect(css).toContain("@media (prefers-contrast: more)");
+  });
+
+  it("does not let the mobile writing surface outgrow a keyboard-reduced viewport", () => {
+    const mobileLayout = mediaBlock("@media (max-width: 768px)");
+    expect(mobileLayout).not.toContain("min-height: calc(100dvh - 90px)");
+    expect(mobileLayout).toContain("min-height: max(12rem, calc(var(--app-height) - 220px))");
+    expect(css).toContain("height: calc(52px + env(safe-area-inset-top))");
+  });
+});

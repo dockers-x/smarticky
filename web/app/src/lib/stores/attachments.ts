@@ -4,14 +4,16 @@ import type { Attachment, UUID } from "../api/types";
 
 export const attachments = writable<Attachment[]>([]);
 let loadSequence = 0;
+let currentNoteId: UUID | null = null;
 
 export async function loadAttachments(noteId: UUID): Promise<void> {
+  currentNoteId = noteId;
   const sequence = ++loadSequence;
   const nextAttachments = await apiFetch<Attachment[] | null>(
     `/notes/${noteId}/attachments`,
   );
 
-  if (sequence === loadSequence) {
+  if (sequence === loadSequence && currentNoteId === noteId) {
     attachments.set(nextAttachments ?? []);
   }
 }
@@ -26,7 +28,9 @@ export async function uploadAttachment(
     method: "POST",
     body: form,
   });
-  await loadAttachments(noteId);
+  if (currentNoteId === noteId) {
+    await loadAttachments(noteId).catch(() => undefined);
+  }
   return attachment;
 }
 

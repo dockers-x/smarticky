@@ -10,6 +10,7 @@
     SlidersHorizontal,
     Square,
     Trash2,
+    X,
   } from "@lucide/svelte";
   import type { Folder as FolderType, Note } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
@@ -29,6 +30,8 @@
   let filterPanelOpen = false;
   let calendarOpen = false;
   let creatingNote = false;
+  let searchInput: HTMLInputElement;
+  let loadedResultScope = "";
   export let selectedNoteIDs: string[] = [];
   export let onOpenFolderBrowser: (mode: "browse" | "move" | "create") => void =
     () => {};
@@ -64,6 +67,12 @@
     ($notesStore.searchFilters.createdTo ? 1 : 0) +
     ($notesStore.searchFilters.updatedFrom ? 1 : 0) +
     ($notesStore.searchFilters.updatedTo ? 1 : 0);
+  $: filtered = Boolean($notesStore.search.trim()) || advancedFilterCount > 0;
+  $: resultScope = JSON.stringify([
+    $notesStore.filter, $notesStore.folderID, $notesStore.search, $notesStore.searchFilters,
+  ]);
+  $: if (!$notesStore.loading && !$notesStore.error) loadedResultScope = resultScope;
+  $: showNotes = $notesStore.notes.length > 0 && resultScope === loadedResultScope;
   $: calendarFilterActive = Boolean(
     $notesStore.searchFilters.createdFrom ||
       $notesStore.searchFilters.createdTo ||
@@ -151,6 +160,21 @@
 
   function clearSelection(): void {
     selectedNoteIDs = [];
+  }
+
+  function clearSearch(): void {
+    void notesStore.setSearch("");
+    searchInput?.focus();
+  }
+
+  function togglePanel(panel: "calendar" | "filters"): void {
+    if (panel === "calendar") {
+      calendarOpen = !calendarOpen;
+      filterPanelOpen = false;
+    } else {
+      filterPanelOpen = !filterPanelOpen;
+      calendarOpen = false;
+    }
   }
 
   function selectAllVisible(): void {
@@ -327,7 +351,11 @@
       <div class="note-list-titlebar__copy">
         <div class="note-list-titlebar__title-line">
           <h1 title={viewTitle}>{viewTitle}</h1>
-          <span>{selectedCount > 0 ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}` : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
+          <span role="status">{selectedCount > 0
+            ? `${selectedCount} ${t("selectedNotes", $preferencesStore.language)}`
+            : $notesStore.loading
+              ? t("loadingNotes", $preferencesStore.language)
+              : `${$notesStore.notes.length} ${t("notes", $preferencesStore.language)}`}</span>
         </div>
         {#if activeFolderPath.length > 0}
           <nav
@@ -365,21 +393,36 @@
         on:click={() => void createNote()}
       >
         <Plus size={18} strokeWidth={2} aria-hidden="true" />
+        <span>{t("newNote", $preferencesStore.language)}</span>
       </button>
     {/if}
   </div>
 
   <div class="note-list-toolbar">
-    <label class="note-list-search">
+    <div class="note-list-search" role="search" aria-label={t("searchNotes", $preferencesStore.language)}>
       <Search size={16} strokeWidth={1.8} aria-hidden="true" />
       <input
         type="search"
+        id="note-search"
+        bind:this={searchInput}
+        enterkeyhint="search"
+        autocomplete="off"
         aria-label={t("searchNotes", $preferencesStore.language)}
         placeholder={t("searchNotes", $preferencesStore.language)}
         value={$notesStore.search}
         on:input={(event) => notesStore.setSearch(event.currentTarget.value)}
       />
-    </label>
+      {#if $notesStore.search}
+        <button
+          class="note-list-search__clear"
+          type="button"
+          aria-label={$preferencesStore.language === "zh" ? "清除搜索" : "Clear search"}
+          on:click={clearSearch}
+        >
+          <X size={15} strokeWidth={1.8} aria-hidden="true" />
+        </button>
+      {/if}
+    </div>
     <div class="note-list-toolbar__actions">
       {#if $notesStore.filter === "trash" && $notesStore.notes.length > 0}
         <button class="note-list-danger-tool" type="button" on:click={emptyTrash}>
@@ -393,7 +436,8 @@
         aria-label={t("calendarView", $preferencesStore.language)}
         title={t("calendarView", $preferencesStore.language)}
         aria-expanded={calendarOpen}
-        on:click={() => (calendarOpen = !calendarOpen)}
+        aria-controls="note-calendar-region"
+        on:click={() => togglePanel("calendar")}
       >
         <CalendarDays size={16} strokeWidth={1.8} aria-hidden="true" />
         {#if calendarFilterActive}
@@ -407,7 +451,8 @@
         aria-label={t("searchFilters", $preferencesStore.language)}
         title={t("searchFilters", $preferencesStore.language)}
         aria-expanded={filterPanelOpen}
-        on:click={() => (filterPanelOpen = !filterPanelOpen)}
+        aria-controls="note-search-filters"
+        on:click={() => togglePanel("filters")}
       >
         <SlidersHorizontal size={16} strokeWidth={1.8} aria-hidden="true" />
         {#if advancedFilterCount > 0}
@@ -417,12 +462,25 @@
     </div>
   </div>
 
+  {#if filtered}
+    <div class="note-list-filter-summary">
+      <span>{$preferencesStore.language === "zh" ? "正在筛选笔记" : "Filtered notes"}</span>
+      <button type="button" on:click={() => void notesStore.clearSearchFilters()}>
+        {t("clearSearchFilters", $preferencesStore.language)}
+        <X size={13} strokeWidth={1.8} aria-hidden="true" />
+      </button>
+    </div>
+  {/if}
+
+  <div class="note-list-content" aria-busy={$notesStore.loading}>
   {#if calendarOpen}
-    <NoteCalendar />
+    <section id="note-calendar-region" aria-label={t("calendarView", $preferencesStore.language)}>
+      <NoteCalendar />
+    </section>
   {/if}
 
   {#if filterPanelOpen}
-    <div class="note-list-filter-panel">
+    <div class="note-list-filter-panel" id="note-search-filters">
       <label class="note-list-filter-field">
         <span>{t("titleKeyword", $preferencesStore.language)}</span>
         <input
@@ -440,6 +498,7 @@
               <button
                 class:active={$notesStore.searchFilters.tags.includes(tag.name)}
                 type="button"
+                aria-pressed={$notesStore.searchFilters.tags.includes(tag.name)}
                 on:click={() => void toggleSearchTag(tag.name)}
               >
                 {tag.name}
@@ -499,7 +558,7 @@
     </div>
   {/if}
 
-  {#if selectedCount > 0}
+  {#if selectedCount > 0 && showNotes}
     <div class="note-list-selection-bar">
       <span>{selectedCount} {t("selectedNotes", $preferencesStore.language)}</span>
       <div class="note-list-selection-bar__actions">
@@ -545,18 +604,26 @@
   {/if}
 
   {#if $notesStore.error}
-    <div class="note-list-message" role="alert">{$notesStore.error}</div>
-  {:else if $notesStore.loading}
-    <div class="note-list-message">{t("loadingNotes", $preferencesStore.language)}</div>
-  {:else if $notesStore.notes.length === 0}
+    <div class="note-list-message" role="alert">
+      <p>{$notesStore.error}</p>
+      <button type="button" on:click={() => void notesStore.load()}>
+        {$preferencesStore.language === "zh" ? "重试" : "Try again"}
+      </button>
+    </div>
+  {/if}
+  {#if $notesStore.loading && !showNotes}
+    <div class="note-list-message" role="status">{t("loadingNotes", $preferencesStore.language)}</div>
+  {:else if $notesStore.notes.length === 0 && !$notesStore.error}
     <EmptyState
       filter={$notesStore.filter}
       folderActive={Boolean($notesStore.folderID)}
       showCreate={$notesStore.filter === "all"}
       busy={creatingNote}
+      {filtered}
+      onClearFilters={() => void notesStore.clearSearchFilters()}
       onCreate={() => void createNote()}
     />
-  {:else}
+  {:else if showNotes}
     <div class="note-card-list">
       {#each groupedNotes as group (group.label)}
         <section class="note-group" aria-label={group.label}>
@@ -577,4 +644,161 @@
       {/each}
     </div>
   {/if}
+  </div>
 </section>
+
+<style>
+  .note-list-titlebar,
+  .note-list-toolbar,
+  .note-list-filter-summary {
+    flex-shrink: 0;
+  }
+
+  .note-list-titlebar__title-line {
+    display: grid;
+    gap: 3px;
+  }
+
+  .note-list-titlebar__title-line > span {
+    font-size: 11px;
+    color: var(--color-text-sub);
+  }
+
+  .note-list-titlebar__new {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 40px;
+    min-height: 40px;
+    padding-inline: 9px;
+  }
+
+  .note-list-titlebar__new span {
+    color: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .note-list-search {
+    height: 44px;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+  }
+
+  .note-list-search input::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  .note-list-search__clear {
+    width: 32px;
+    min-height: 36px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-text-sub);
+    padding: 0;
+  }
+
+  .note-list-filter-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    margin-top: 6px;
+    color: var(--color-text-sub);
+    font-size: 11px;
+  }
+
+  .note-list-filter-summary button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 36px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-ink-accent);
+    padding: 0 5px;
+    font-size: 11px;
+  }
+
+  .note-list-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    margin: 8px -3px 0;
+    padding: 0 3px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .note-card-list {
+    margin: 0;
+    overflow: visible;
+    padding: 0;
+    scrollbar-gutter: auto;
+  }
+
+  .note-list-selection-bar {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    flex-wrap: wrap;
+    margin-top: 0;
+    background: var(--color-card);
+  }
+
+  .note-list-message {
+    padding: 20px 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .note-list-message p {
+    margin: 0 0 12px;
+  }
+
+  .note-list-message button {
+    min-height: 40px;
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-control);
+    background: var(--color-card);
+    color: var(--color-text-secondary);
+    padding: 0 14px;
+  }
+
+  @media (max-width: 960px), (pointer: coarse) {
+    .note-list-titlebar__new,
+    .note-list-message button,
+    .note-list-filter-summary button,
+    .note-list-search__clear {
+      min-height: 44px;
+    }
+
+    .note-list-search__clear {
+      width: 44px;
+    }
+
+    .note-list-search {
+      height: 48px;
+      padding-inline-end: 2px;
+    }
+
+    .note-list-search input {
+      font-size: 16px;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .note-list-pane {
+      padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+      border-bottom: 0;
+    }
+  }
+</style>

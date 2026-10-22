@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { FileUp, Type, Upload } from "@lucide/svelte";
+  import { scrollRegion } from "../../actions/dialog";
   import type { User } from "../../api/types";
   import { confirmDialog, notify } from "../../stores/dialogs";
   import {
@@ -24,6 +25,9 @@
   let uploadProgress = 0;
   let localPreviewURL = "";
   let previewError = "";
+  let uploadError = "";
+  let deletingFontID = "";
+  let confirmingFontDeletion = false;
 
   function resetForm(): void {
     selectedFile = null;
@@ -31,6 +35,7 @@
     isShared = true;
     previewFamily = "";
     previewError = "";
+    uploadError = "";
     uploadProgress = 0;
     if (localPreviewURL) {
       URL.revokeObjectURL(localPreviewURL);
@@ -42,20 +47,21 @@
   async function handleFileChange(event: Event): Promise<void> {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0] ?? null;
+    uploadError = "";
     if (!file) {
       resetForm();
       return;
     }
 
     if (file.size > maxFontSize) {
-      notify(t("fontFileTooLarge", $preferencesStore.language), "error");
       resetForm();
+      uploadError = t("fontFileTooLarge", $preferencesStore.language);
       return;
     }
 
     if (!/\.(ttf|otf|woff|woff2)$/i.test(file.name)) {
-      notify(t("fontFormatInvalid", $preferencesStore.language), "error");
       resetForm();
+      uploadError = t("fontFormatInvalid", $preferencesStore.language);
       return;
     }
 
@@ -87,12 +93,14 @@
   }
 
   async function uploadSelectedFont(): Promise<void> {
+    if (uploadBusy) return;
+    uploadError = "";
     if (!selectedFile) {
-      notify(t("fontFileRequired", $preferencesStore.language), "error");
+      uploadError = t("fontFileRequired", $preferencesStore.language);
       return;
     }
     if (!displayName.trim()) {
-      notify(t("displayNameRequired", $preferencesStore.language), "error");
+      uploadError = t("displayNameRequired", $preferencesStore.language);
       return;
     }
 
@@ -112,26 +120,27 @@
       resetForm();
     } catch (error) {
       uploadProgress = 0;
-      notify(
-        error instanceof Error
+      uploadError = error instanceof Error
           ? error.message
-          : t("fontUploadFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("fontUploadFailed", $preferencesStore.language);
     } finally {
       uploadBusy = false;
     }
   }
 
   async function deleteSelectedFont(fontID: string, name: string): Promise<void> {
+    if (deletingFontID || confirmingFontDeletion) return;
+    confirmingFontDeletion = true;
     const confirmed = await confirmDialog({
       title: t("delete", $preferencesStore.language),
       message: `${t("fontDeleteConfirm", $preferencesStore.language)} ${name}?`,
       confirmLabel: t("delete", $preferencesStore.language),
       cancelLabel: t("cancel", $preferencesStore.language),
     });
+    confirmingFontDeletion = false;
     if (!confirmed) return;
 
+    deletingFontID = fontID;
     try {
       await fontsStore.delete(fontID);
       notify(t("fontDeleteSuccess", $preferencesStore.language), "success");
@@ -142,6 +151,8 @@
           : t("fontDeleteFailed", $preferencesStore.language),
         "error",
       );
+    } finally {
+      deletingFontID = "";
     }
   }
 
@@ -170,6 +181,7 @@
 <div class="settings-view">
   <section class="settings-section">
     <h3>{t("selectedFont", $preferencesStore.language)}</h3>
+    <div class="settings-form">
     <label>
       <span>{t("fontManagement", $preferencesStore.language)}</span>
       <select
@@ -194,19 +206,23 @@
         {/if}
       </select>
     </label>
+    </div>
   </section>
 
   <section class="settings-section">
     <h3>{t("uploadFont", $preferencesStore.language)}</h3>
-    <div class="settings-form">
+    <form class="settings-form" aria-busy={uploadBusy} on:submit|preventDefault={() => void uploadSelectedFont()}>
       <div class="settings-field">
         <span>{t("fontFile", $preferencesStore.language)}</span>
         <div class="font-upload-control">
           <input
             bind:this={fileInput}
+            id="settings-font-file"
             class="font-upload-input"
             accept=".ttf,.otf,.woff,.woff2"
             type="file"
+            aria-label={t("fontFile", $preferencesStore.language)}
+            aria-describedby="settings-font-file-hint"
             disabled={uploadBusy}
             tabindex="-1"
             on:change={handleFileChange}
@@ -214,6 +230,7 @@
           <button
             class="font-upload-button"
             type="button"
+            aria-controls="settings-font-file"
             disabled={uploadBusy}
             on:click={() => fileInput?.click()}
           >
@@ -232,12 +249,14 @@
             </div>
           {/if}
         </div>
-        <small>{t("fontFileHint", $preferencesStore.language)}</small>
+        <small id="settings-font-file-hint">{t("fontFileHint", $preferencesStore.language)}</small>
       </div>
       <label>
         <span>{t("fontDisplayName", $preferencesStore.language)}</span>
         <input
           bind:value={displayName}
+          disabled={uploadBusy}
+          required
           type="text"
           placeholder={t("fontDisplayNamePlaceholder", $preferencesStore.language)}
         />
@@ -247,7 +266,7 @@
           <strong>{t("shareWithAllUsers", $preferencesStore.language)}</strong>
           <small>{t("fontPrivateHint", $preferencesStore.language)}</small>
         </span>
-        <input bind:checked={isShared} type="checkbox" />
+        <input bind:checked={isShared} type="checkbox" disabled={uploadBusy} />
       </label>
       {#if previewFamily || previewError}
         <div class="font-preview-card">
@@ -268,6 +287,7 @@
         <div
           class="font-upload-progress"
           role="progressbar"
+          aria-label={t("fontUploadProgress", $preferencesStore.language)}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow={uploadProgress}
@@ -284,9 +304,8 @@
       <div class="settings-actions">
         <button
           class="primary"
-          type="button"
+          type="submit"
           disabled={uploadBusy}
-          on:click={uploadSelectedFont}
         >
           <Upload size={15} strokeWidth={1.8} aria-hidden="true" />
           {uploadBusy
@@ -294,7 +313,8 @@
             : t("uploadFontButton", $preferencesStore.language)}
         </button>
       </div>
-    </div>
+      {#if uploadError}<p class="settings-error" role="alert">{uploadError}</p>{/if}
+    </form>
   </section>
 
   <section class="settings-section">
@@ -305,23 +325,23 @@
       </button>
     </div>
     {#if $fontsStore.loading}
-      <p class="settings-muted">{t("loading", $preferencesStore.language)}</p>
+      <p class="settings-muted" role="status">{t("loading", $preferencesStore.language)}</p>
     {:else if $fontsStore.error}
-      <p class="settings-error">{$fontsStore.error}</p>
+      <p class="settings-error" role="alert">{$fontsStore.error}</p>
     {:else if $fontsStore.fonts.length === 0}
       <p class="settings-empty">{t("noFonts", $preferencesStore.language)}</p>
     {:else}
-      <div class="settings-table-wrap">
+      <div class="settings-table-wrap" role="region" aria-label={t("uploadedFonts", $preferencesStore.language)} use:scrollRegion>
         <table class="settings-table">
           <thead>
             <tr>
-              <th>{t("fontName", $preferencesStore.language)}</th>
-              <th>{t("fontPreview", $preferencesStore.language)}</th>
-              <th>{t("format", $preferencesStore.language)}</th>
-              <th>{t("size", $preferencesStore.language)}</th>
-              <th>{t("uploadedBy", $preferencesStore.language)}</th>
-              <th>{t("shared", $preferencesStore.language)}</th>
-              <th>{t("actions", $preferencesStore.language)}</th>
+              <th scope="col">{t("fontName", $preferencesStore.language)}</th>
+              <th scope="col">{t("fontPreview", $preferencesStore.language)}</th>
+              <th scope="col">{t("format", $preferencesStore.language)}</th>
+              <th scope="col">{t("size", $preferencesStore.language)}</th>
+              <th scope="col">{t("uploadedBy", $preferencesStore.language)}</th>
+              <th scope="col">{t("shared", $preferencesStore.language)}</th>
+              <th scope="col">{t("actions", $preferencesStore.language)}</th>
             </tr>
           </thead>
           <tbody>
@@ -340,12 +360,14 @@
                 <td>
                   <div class="settings-row-actions">
                     <button type="button" on:click={() => fontsStore.select(font.name)}>
-                      {t("apply", $preferencesStore.language)}
+                      {t($fontsStore.selected === font.name ? "selectedFont" : "apply", $preferencesStore.language)}
                     </button>
                     {#if canDelete(font.uploader_id)}
                       <button
                         class="danger"
                         type="button"
+                        disabled={Boolean(deletingFontID)}
+                        aria-label={`${t("delete", $preferencesStore.language)} ${font.display_name}`}
                         on:click={() => deleteSelectedFont(font.id, font.display_name)}
                       >
                         {t("delete", $preferencesStore.language)}

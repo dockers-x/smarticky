@@ -3,56 +3,115 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Setup - Smarticky Notes</title>
     <link rel="icon" type="image/png" href="/static/img/logo.png">
     <link rel="stylesheet" href="/static/css/custom.css">
+    <script>
+        const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        try {
+            const savedTheme = localStorage.getItem('theme');
+            document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : preferredTheme;
+        } catch {
+            document.documentElement.dataset.theme = preferredTheme;
+        }
+    </script>
     <style>
+        :root {
+            --font-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+            --font-reader: "Iowan Old Style", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif;
+            --color-page: #f7f4ee;
+            --color-card: #fffdf8;
+            --color-floor: #ede9e1;
+            --color-text: #171511;
+            --color-text-secondary: #3f3a34;
+            --color-text-sub: #6a6258;
+            --color-divider: #e0d9ce;
+            --color-brand: #d85a24;
+            --color-brand-strong: #b34319;
+            --color-focus: #b34319;
+            --color-danger: #b93434;
+            --color-danger-bg: #f9e8e5;
+            --color-success: #2d776f;
+            --color-success-bg: #eaf5ee;
+            --radius-control: 9px;
+            --radius-sheet: 18px;
+            --duration-press: 120ms;
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+            color-scheme: light;
+        }
+
+        :root[data-theme="dark"] {
+            --color-page: #191816;
+            --color-card: #22201d;
+            --color-floor: #11100e;
+            --color-text: #f0ece3;
+            --color-text-secondary: #d2cbc0;
+            --color-text-sub: #aaa196;
+            --color-divider: #4a4339;
+            --color-brand: #d96a34;
+            --color-brand-strong: #a8421d;
+            --color-focus: #ee8652;
+            --color-danger: #df746e;
+            --color-danger-bg: #371e1b;
+            --color-success: #73bdb2;
+            --color-success-bg: #17312f;
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+            overflow: visible;
+        }
+
         html,
         body {
+            height: auto;
             min-height: 100%;
-            overflow: auto;
+            overflow: visible;
         }
 
         body {
-            background: #f7f3ec;
-            color: #171511;
-            font-family:
-                -apple-system, BlinkMacSystemFont, "PingFang SC", "Source Han Sans SC",
-                "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+            margin: 0;
+            background: var(--color-page);
+            color: var(--color-text);
+            font: 1rem/1.5 var(--font-ui);
             letter-spacing: 0;
+        }
+
+        [hidden] {
+            display: none !important;
         }
 
         .setup-container {
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 100vh;
             min-height: 100dvh;
-            background: #f7f3ec;
-            padding: 24px;
-            box-sizing: border-box;
+            padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
         }
 
         .setup-card {
-            background: #fffdf8;
-            border: 1px solid #ddd4c6;
-            border-radius: 8px;
-            padding: 40px;
-            max-width: 470px;
+            background: var(--color-card);
+            border: 1px solid var(--color-divider);
+            border-radius: var(--radius-sheet);
+            padding: 36px;
+            max-width: 480px;
             width: 100%;
-            box-shadow: 0 18px 54px rgb(34 30 24 / 14%);
-            box-sizing: border-box;
+            box-shadow: 0 16px 48px rgb(34 30 24 / 8%), 0 2px 6px rgb(34 30 24 / 4%);
+            overflow-wrap: anywhere;
         }
 
         .setup-card .about-logo {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 24px;
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 20px;
             animation: none;
         }
 
         .setup-card .about-logo img {
-            filter: drop-shadow(0 8px 18px rgb(216 90 36 / 18%));
+            filter: none;
         }
 
         .setup-header {
@@ -61,113 +120,237 @@
         }
 
         .setup-header h1 {
-            color: #171511;
-            font-size: 26px;
-            font-weight: 650;
-            line-height: 1.25;
+            color: var(--color-text);
+            font: 500 clamp(1.65rem, 4vw, 2rem)/1.2 var(--font-reader);
+            letter-spacing: -0.025em;
             margin: 0 0 10px;
         }
 
+        :lang(zh) .setup-header h1 {
+            letter-spacing: 0;
+        }
+
         .setup-header p {
-            color: #8b8277;
+            color: var(--color-text-sub);
             font-size: 14px;
             line-height: 1.5;
             margin: 0;
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 7px;
-            font-weight: 500;
-            color: #3f3a34;
+            font-weight: 600;
+            color: var(--color-text-secondary);
             font-size: 13px;
+            text-transform: none;
+            letter-spacing: 0;
         }
 
         .form-group input {
             width: 100%;
-            min-height: 44px;
-            padding: 0 12px;
-            border: 1px solid #ddd4c6;
-            border-radius: 7px;
-            background: #fffdf8;
-            color: #171511;
-            font-size: 14px;
-            transition:
-                border-color 0.18s ease,
-                box-shadow 0.18s ease;
-            box-sizing: border-box;
+            min-height: 48px;
+            padding: 11px 13px;
+            border: 1px solid var(--color-divider);
+            border-radius: var(--radius-control);
+            background: var(--color-page);
+            color: var(--color-text);
+            font: 1rem/1.5 var(--font-ui);
+            transition: none;
         }
 
         .form-group input:focus {
-            outline: none;
-            border-color: #d85a24;
-            box-shadow: 0 0 0 3px rgb(216 90 36 / 14%);
+            outline: 2px solid var(--color-focus);
+            outline-offset: 2px;
+            border-color: var(--color-focus);
+            box-shadow: none;
+        }
+
+        .form-group input[aria-invalid="true"] {
+            border-color: var(--color-danger);
+        }
+
+        .form-group .form-hint {
+            margin: 8px 0 0;
+            color: var(--color-text-sub);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-field input {
+            padding-inline-end: 56px;
+        }
+
+        button {
+            font-family: var(--font-ui);
+            touch-action: manipulation;
+        }
+
+        .password-toggle {
+            position: absolute;
+            inset-inline-end: 2px;
+            top: 2px;
+            display: grid;
+            place-items: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--color-text-sub);
+            cursor: pointer;
+            transition: transform var(--duration-press) var(--ease-out);
+        }
+
+        .password-toggle[aria-pressed="false"] .password-slash {
+            display: none;
+        }
+
+        button:focus-visible,
+        .success-message a:focus-visible {
+            outline: 2px solid var(--color-focus);
+            outline-offset: 3px;
+            transition: none;
+            transform: none;
         }
 
         .btn-setup {
             width: 100%;
-            min-height: 44px;
+            min-height: 48px;
             margin-top: 4px;
-            padding: 0 14px;
-            background: #d85a24;
+            padding: 12px 16px;
+            background: var(--color-brand-strong);
             color: #fff8f2;
-            border: none;
-            border-radius: 7px;
-            font-size: 14px;
+            border: 1px solid transparent;
+            border-radius: var(--radius-control);
+            font-size: 15px;
+            line-height: 1.5;
             font-weight: 650;
             cursor: pointer;
-            transition: background 0.18s ease;
+            box-shadow: 0 1px 2px rgb(34 30 24 / 8%), inset 0 1px 0 rgb(255 255 255 / 12%);
+            transition: transform var(--duration-press) var(--ease-out);
         }
 
-        .btn-setup:hover {
-            background: #b34319;
+        .btn-setup:active:not(:disabled):not(:focus-visible),
+        .password-toggle:active:not(:focus-visible) {
+            transform: scale(0.98);
+        }
+
+        .btn-setup:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        .error-message,
+        .success-message {
+            padding: 12px 14px;
+            border: 1px solid currentColor;
+            border-radius: var(--radius-control);
+            margin-bottom: 24px;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .error-message {
-            background: #f9e8e5;
-            color: #b93434;
-            padding: 11px 12px;
-            border-radius: 7px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            line-height: 1.5;
-            display: none;
+            background: var(--color-danger-bg);
+            color: var(--color-danger);
         }
 
         .success-message {
-            background: #eaf5ee;
-            color: #2d776f;
-            padding: 11px 12px;
-            border-radius: 7px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            line-height: 1.5;
-            display: none;
+            background: var(--color-success-bg);
+            color: var(--color-success);
+        }
+
+        .success-message p {
+            margin: 0;
+        }
+
+        .success-message a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 44px;
+            margin-top: 4px;
+            border-radius: 4px;
+            color: inherit;
+            font-weight: 600;
+            text-underline-offset: 3px;
+            touch-action: manipulation;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .btn-setup:hover:not(:disabled) {
+                background: #9c3713;
+            }
+
+            .password-toggle:hover {
+                background: var(--color-floor);
+                color: var(--color-text);
+            }
         }
 
         @media (max-width: 520px) {
             .setup-container {
-                padding: 16px;
+                padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
             }
 
             .setup-card {
-                padding: 30px 22px;
+                padding: 28px 24px;
+            }
+        }
+
+        @media (max-height: 640px) {
+            .setup-card {
+                padding: 24px;
             }
 
-            .setup-header h1 {
-                font-size: 23px;
+            .setup-card .about-logo {
+                width: 40px;
+                height: 40px;
+                margin-bottom: 16px;
+            }
+
+            .setup-header {
+                margin-bottom: 24px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            button {
+                transition: none !important;
+            }
+
+            button:active {
+                transform: none !important;
+            }
+        }
+
+        @media (prefers-contrast: more) {
+            :root,
+            :root[data-theme="dark"] {
+                --color-divider: var(--color-text-sub);
+                --color-focus: var(--color-text);
+            }
+
+            .setup-card,
+            .btn-setup {
+                box-shadow: none;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="setup-container">
-        <div class="setup-card">
+    <main class="setup-container">
+        <section class="setup-card" aria-labelledby="setup-title" aria-describedby="setup-subtitle">
             <div class="about-logo">
                 <img src="/static/img/logo.png" alt="Smarticky Logo">
             </div>
@@ -176,34 +359,56 @@
                 <p id="setup-subtitle">Create your admin account to get started</p>
             </div>
 
-            <div class="error-message" id="error-message"></div>
-            <div class="success-message" id="success-message"></div>
+            <div class="error-message" id="error-message" role="alert" aria-atomic="true" hidden></div>
+            <div class="success-message" id="success-message" role="status" aria-atomic="true" hidden>
+                <p id="success-message-text"></p>
+                <a href="/login" id="success-link">Continue to sign in</a>
+            </div>
 
-            <form id="setup-form">
+            <form id="setup-form" aria-busy="false">
                 <div class="form-group">
                     <label for="username" id="label-username">Username</label>
-                    <input type="text" id="username" name="username" required autocomplete="username">
+                    <input type="text" id="username" name="username" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
                 </div>
 
                 <div class="form-group">
                     <label for="email" id="label-email">Email (Optional)</label>
-                    <input type="email" id="email" name="email" autocomplete="email">
+                    <input type="email" id="email" name="email" autocomplete="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false">
                 </div>
 
                 <div class="form-group">
                     <label for="password" id="label-password">Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="new-password">
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" required autocomplete="new-password" aria-describedby="password-hint" aria-errormessage="error-message">
+                        <button type="button" class="password-toggle" aria-controls="password" aria-label="Show password" aria-pressed="false">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                                <circle cx="12" cy="12" r="3" />
+                                <path class="password-slash" d="m3 3 18 18" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="form-hint" id="password-hint">At least 6 characters.</p>
                 </div>
 
                 <div class="form-group">
                     <label for="password-confirm" id="label-password-confirm">Confirm Password</label>
-                    <input type="password" id="password-confirm" name="password-confirm" required autocomplete="new-password">
+                    <div class="password-field">
+                        <input type="password" id="password-confirm" name="password-confirm" required autocomplete="new-password" aria-errormessage="error-message">
+                        <button type="button" class="password-toggle" aria-controls="password-confirm" aria-label="Show password confirmation" aria-pressed="false">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                                <circle cx="12" cy="12" r="3" />
+                                <path class="password-slash" d="m3 3 18 18" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn-setup" id="btn-submit">Create Admin Account</button>
+                <button type="submit" class="btn-setup" id="btn-submit" aria-live="polite">Create Admin Account</button>
             </form>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script>
         const API_BASE = '/api';
@@ -217,7 +422,15 @@
                 email: '邮箱（可选）',
                 password: '密码',
                 password_confirm: '确认密码',
+                password_hint: '至少 6 个字符。',
+                show_password: '显示密码',
+                hide_password: '隐藏密码',
+                show_password_confirm: '显示确认密码',
+                hide_password_confirm: '隐藏确认密码',
                 btn_create: '创建管理员账号',
+                btn_creating: '正在创建账号…',
+                btn_created: '账号已创建',
+                continue_login: '前往登录',
                 error_password_mismatch: '两次密码不一致',
                 error_password_short: '密码至少需要6个字符',
                 success_created: '管理员账号创建成功！正在跳转...',
@@ -230,7 +443,15 @@
                 email: 'Email (Optional)',
                 password: 'Password',
                 password_confirm: 'Confirm Password',
+                password_hint: 'At least 6 characters.',
+                show_password: 'Show password',
+                hide_password: 'Hide password',
+                show_password_confirm: 'Show password confirmation',
+                hide_password_confirm: 'Hide password confirmation',
                 btn_create: 'Create Admin Account',
+                btn_creating: 'Creating account…',
+                btn_created: 'Account created',
+                continue_login: 'Continue to sign in',
                 error_password_mismatch: 'Passwords do not match',
                 error_password_short: 'Password must be at least 6 characters',
                 success_created: 'Admin account created successfully! Redirecting...',
@@ -242,35 +463,78 @@
         const browserLang = navigator.language || navigator.userLanguage;
         const lang = browserLang.startsWith('zh') ? 'zh' : 'en';
         const t = (key) => i18n[lang][key] || key;
+        const form = document.getElementById('setup-form');
+        const submitButton = document.getElementById('btn-submit');
+        let submitting = false;
+        let created = false;
+
+        function setSubmitting(value) {
+            submitting = value;
+            form.setAttribute('aria-busy', String(value));
+            submitButton.disabled = value || created;
+            submitButton.textContent = t(created ? 'btn_created' : value ? 'btn_creating' : 'btn_create');
+        }
+
+        document.querySelectorAll('.password-toggle').forEach((button) => {
+            const input = document.getElementById(button.getAttribute('aria-controls'));
+            const suffix = input.id === 'password-confirm' ? '_confirm' : '';
+            const updateToggle = () => {
+                const visible = input.type === 'text';
+                const label = t((visible ? 'hide_password' : 'show_password') + suffix);
+                button.setAttribute('aria-pressed', String(visible));
+                button.setAttribute('aria-label', label);
+                button.title = label;
+            };
+            updateToggle();
+            button.addEventListener('click', (event) => {
+                input.type = input.type === 'password' ? 'text' : 'password';
+                updateToggle();
+                if (event.detail > 0) input.focus({ preventScroll: true });
+            });
+        });
 
         // Apply translations
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
         document.getElementById('setup-title').textContent = t('title');
         document.getElementById('setup-subtitle').textContent = t('subtitle');
         document.getElementById('label-username').textContent = t('username');
         document.getElementById('label-email').textContent = t('email');
         document.getElementById('label-password').textContent = t('password');
         document.getElementById('label-password-confirm').textContent = t('password_confirm');
+        document.getElementById('password-hint').textContent = t('password_hint');
+        document.getElementById('success-link').textContent = t('continue_login');
         document.getElementById('btn-submit').textContent = t('btn_create');
 
         // Show error message
-        function showError(message) {
+        function showError(message, input) {
             const errorEl = document.getElementById('error-message');
             errorEl.textContent = message;
-            errorEl.style.display = 'block';
-            document.getElementById('success-message').style.display = 'none';
+            errorEl.hidden = false;
+            document.getElementById('success-message').hidden = true;
+            if (input) {
+                input.setAttribute('aria-invalid', 'true');
+                input.focus();
+            }
         }
 
         // Show success message
         function showSuccess(message) {
             const successEl = document.getElementById('success-message');
-            successEl.textContent = message;
-            successEl.style.display = 'block';
-            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('success-message-text').textContent = message;
+            successEl.hidden = false;
+            document.getElementById('error-message').hidden = true;
         }
 
+        form.addEventListener('input', () => {
+            document.getElementById('error-message').hidden = true;
+            document.getElementById('password').removeAttribute('aria-invalid');
+            document.getElementById('password-confirm').removeAttribute('aria-invalid');
+        });
+
         // Handle form submission
-        document.getElementById('setup-form').addEventListener('submit', async (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (submitting || created) return;
 
             const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
@@ -279,14 +543,17 @@
 
             // Validate passwords
             if (password !== passwordConfirm) {
-                showError(t('error_password_mismatch'));
+                showError(t('error_password_mismatch'), document.getElementById('password-confirm'));
                 return;
             }
 
             if (password.length < 6) {
-                showError(t('error_password_short'));
+                showError(t('error_password_short'), document.getElementById('password'));
                 return;
             }
+
+            document.getElementById('error-message').hidden = true;
+            setSubmitting(true);
 
             // Submit to API
             try {
@@ -301,6 +568,7 @@
                 const data = await response.json();
 
                 if (response.ok) {
+                    created = true;
                     showSuccess(t('success_created'));
                     setTimeout(() => {
                         window.location.href = '/login';
@@ -310,6 +578,8 @@
                 }
             } catch (error) {
                 showError(t('error_create_failed') + error.message);
+            } finally {
+                setSubmitting(false);
             }
         });
     </script>

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
+  import { dialog } from "../../actions/dialog";
   import {
     createBackupTarget,
     createBackupTask,
@@ -27,6 +28,7 @@
   import { confirmDialog, notify } from "../../stores/dialogs";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
+  import PasswordField from "../common/PasswordField.svelte";
 
   const restorePhrase = "RESTORE";
 
@@ -56,6 +58,7 @@
   let targets: BackupTarget[] = [];
   let tasks: BackupTask[] = [];
   let loading = true;
+  let loaded = false;
   let working = false;
   let saving = false;
   let error = "";
@@ -65,20 +68,28 @@
   let targetForm: BackupTargetInput = { ...defaultTargetForm };
   let targetTestText = "";
   let targetTestOK: boolean | null = null;
+  let targetSaveError = "";
+  let targetOpener: HTMLElement | null = null;
+  let testingTargetID: number | null = null;
 
   let taskFormOpen = false;
   let editingTaskID: number | null = null;
   let taskForm: BackupTaskInput = { ...defaultTaskForm };
+  let taskSaveError = "";
+  let taskOpener: HTMLElement | null = null;
 
   let filesTarget: BackupTarget | null = null;
   let backups: BackupFileInfo[] = [];
   let filesLoading = false;
+  let filesError = "";
+  let filesRequest = 0;
   let verificationText = "";
 
   let restoreBackup: BackupFileInfo | null = null;
   let restoreVerification: BackupVerificationResult | null = null;
   let restoreInput = "";
   let restoreRestartRequired = false;
+  let restoreError = "";
 
   $: selectedTargetCount = taskForm.target_ids.length;
   $: canSubmitRestore = restoreInput === restorePhrase && restoreBackup && filesTarget;
@@ -111,18 +122,25 @@
           : t("loadFailed", $preferencesStore.language);
     } finally {
       loading = false;
+      loaded = true;
     }
   }
 
   function startCreateTarget(): void {
+    if (saving || working) return;
+    targetOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     editingTargetID = null;
     targetForm = freshTargetForm();
     targetTestText = "";
     targetTestOK = null;
+    targetSaveError = "";
     targetFormOpen = true;
+    void focusField("backup-target-name");
   }
 
   function startEditTarget(target: BackupTarget): void {
+    if (saving || working) return;
+    targetOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     editingTargetID = target.id;
     targetForm = {
       ...freshTargetForm(target.type),
@@ -136,7 +154,26 @@
     };
     targetTestText = "";
     targetTestOK = null;
+    targetSaveError = "";
     targetFormOpen = true;
+    void focusField("backup-target-name");
+  }
+
+  async function focusField(id: string): Promise<void> {
+    await tick();
+    document.getElementById(id)?.focus();
+  }
+
+  function closeTargetForm(): void {
+    if (saving || working) return;
+    targetFormOpen = false;
+    targetOpener?.focus({ preventScroll: true });
+  }
+
+  function closeTaskForm(): void {
+    if (saving || working) return;
+    taskFormOpen = false;
+    taskOpener?.focus({ preventScroll: true });
   }
 
   function targetPayload(): BackupTargetInput {
@@ -171,6 +208,7 @@
   }
 
   async function testTargetForm(): Promise<void> {
+    if (working || saving) return;
     working = true;
     targetTestText = "";
     targetTestOK = null;
@@ -196,7 +234,9 @@
   }
 
   async function saveTarget(): Promise<void> {
+    if (saving || working) return;
     saving = true;
+    targetSaveError = "";
     try {
       if (editingTargetID === null) {
         await createBackupTarget(targetPayload());
@@ -207,18 +247,36 @@
       notify(t("saved", $preferencesStore.language), "success");
       await loadBackupState();
     } catch (saveError) {
-      notify(
-        saveError instanceof Error
+      targetSaveError = saveError instanceof Error
           ? saveError.message
-          : t("saveFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("saveFailed", $preferencesStore.language);
     } finally {
       saving = false;
+      if (!targetFormOpen) {
+        await tick();
+        if (targetOpener?.isConnected) targetOpener.focus({ preventScroll: true });
+      }
+    }
+  }
+
+  async function testSavedTarget(target: BackupTarget): Promise<void> {
+    if (working || saving) return;
+    working = true;
+    testingTargetID = target.id;
+    try {
+      const result = await testBackupTarget(target.id);
+      notify(t(result.ok ? "connectionTestSuccess" : "connectionTestFailed", $preferencesStore.language), result.ok ? "success" : "error");
+      await loadBackupState();
+    } catch (testError) {
+      notify(testError instanceof Error ? testError.message : t("connectionTestFailed", $preferencesStore.language), "error");
+    } finally {
+      working = false;
+      testingTargetID = null;
     }
   }
 
   async function removeTarget(target: BackupTarget): Promise<void> {
+    if (working || saving) return;
     const confirmed = await confirmDialog({
       title: t("delete", $preferencesStore.language),
       message: `${t("deleteBackupTargetConfirm", $preferencesStore.language)} "${target.name}"?`,
@@ -245,12 +303,18 @@
   }
 
   function startCreateTask(): void {
+    if (saving || working) return;
+    taskOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     editingTaskID = null;
     taskForm = freshTaskForm();
     taskFormOpen = true;
+    taskSaveError = "";
+    void focusField("backup-task-name");
   }
 
   function startEditTask(task: BackupTask): void {
+    if (saving || working) return;
+    taskOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     editingTaskID = task.id;
     taskForm = {
       name: task.name,
@@ -261,6 +325,8 @@
       target_ids: [...task.target_ids],
     };
     taskFormOpen = true;
+    taskSaveError = "";
+    void focusField("backup-task-name");
   }
 
   function toggleTaskTarget(targetID: number, checked: boolean): void {
@@ -271,7 +337,9 @@
   }
 
   async function saveTask(): Promise<void> {
+    if (saving || working || !selectedTargetCount) return;
     saving = true;
+    taskSaveError = "";
     try {
       const payload: BackupTaskInput = {
         ...taskForm,
@@ -288,18 +356,20 @@
       notify(t("saved", $preferencesStore.language), "success");
       await loadBackupState();
     } catch (saveError) {
-      notify(
-        saveError instanceof Error
+      taskSaveError = saveError instanceof Error
           ? saveError.message
-          : t("saveFailed", $preferencesStore.language),
-        "error",
-      );
+          : t("saveFailed", $preferencesStore.language);
     } finally {
       saving = false;
+      if (!taskFormOpen) {
+        await tick();
+        if (taskOpener?.isConnected) taskOpener.focus({ preventScroll: true });
+      }
     }
   }
 
   async function removeTask(task: BackupTask): Promise<void> {
+    if (working || saving) return;
     const confirmed = await confirmDialog({
       title: t("delete", $preferencesStore.language),
       message: `${t("deleteBackupTaskConfirm", $preferencesStore.language)} "${task.name}"?`,
@@ -325,6 +395,7 @@
   }
 
   async function runTask(task: BackupTask): Promise<void> {
+    if (working || saving) return;
     working = true;
     try {
       const result = await runBackupTask(task.id);
@@ -347,36 +418,39 @@
   }
 
   async function openFiles(target: BackupTarget): Promise<void> {
+    const request = ++filesRequest;
     filesTarget = target;
     backups = [];
     filesLoading = true;
+    filesError = "";
     verificationText = "";
     restoreBackup = null;
     restoreVerification = null;
     restoreInput = "";
     try {
       const result = await listBackupFiles(target.id);
-      backups = result.backups ?? [];
+      if (request === filesRequest) backups = result.backups ?? [];
     } catch (listError) {
-      notify(
-        listError instanceof Error
+      if (request !== filesRequest) return;
+      filesError = listError instanceof Error
           ? listError.message
-          : t("loadFailed", $preferencesStore.language),
-        "error",
-      );
-      filesTarget = null;
+          : t("loadFailed", $preferencesStore.language);
     } finally {
-      filesLoading = false;
+      if (request === filesRequest) filesLoading = false;
     }
   }
 
   function closeFiles(): void {
+    if (working) return;
+    filesRequest += 1;
     filesTarget = null;
     backups = [];
     verificationText = "";
     restoreBackup = null;
     restoreVerification = null;
     restoreInput = "";
+    filesError = "";
+    filesLoading = false;
   }
 
   function verificationSummary(result: BackupVerificationResult): string {
@@ -420,11 +494,21 @@
     restoreBackup = backup;
     restoreVerification = result;
     restoreInput = "";
+    restoreError = "";
+  }
+
+  function closeRestore(): void {
+    if (working) return;
+    restoreBackup = null;
+    restoreVerification = null;
+    restoreInput = "";
+    restoreError = "";
   }
 
   async function submitRestore(): Promise<void> {
-    if (!filesTarget || !restoreBackup || restoreInput !== restorePhrase) return;
+    if (working || !filesTarget || !restoreBackup || restoreInput !== restorePhrase) return;
     working = true;
+    restoreError = "";
     try {
       const result = await restoreBackupFileAPI(
         filesTarget.id,
@@ -443,13 +527,8 @@
       if (!needsRestart) {
         await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
       }
-    } catch (restoreError) {
-      notify(
-        restoreError instanceof Error
-          ? restoreError.message
-          : t("restoreFailed", $preferencesStore.language),
-        "error",
-      );
+    } catch (failure) {
+      restoreError = failure instanceof Error ? failure.message : t("restoreFailed", $preferencesStore.language);
     } finally {
       working = false;
     }
@@ -507,10 +586,11 @@
 
 <div class="settings-view">
   {#if restoreBackup && filesTarget}
-    <div class="backup-restore-dialog" role="dialog" aria-modal="true">
-      <div class="backup-restore-dialog__panel">
-        <h3>{t("restoreDangerTitle", $preferencesStore.language)}</h3>
-        <p>{t("restoreDangerMessage", $preferencesStore.language)}</p>
+    <div class="backup-restore-dialog" role="presentation">
+      <div class="backup-restore-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="backup-restore-title" aria-describedby="backup-restore-description" aria-busy={working} tabindex="-1" use:dialog={{ onDismiss: closeRestore, initialFocus: "[data-restore-cancel]", dismissible: !working }}>
+        <form class="settings-form" on:submit|preventDefault={() => void submitRestore()}>
+        <h3 id="backup-restore-title">{t("restoreDangerTitle", $preferencesStore.language)}</h3>
+        <p id="backup-restore-description">{t("restoreDangerMessage", $preferencesStore.language)}</p>
         <div class="settings-kv">
           <span>{t("backupTarget", $preferencesStore.language)}</span>
           <strong>{filesTarget.name} · {targetTypeLabel(filesTarget.type)}</strong>
@@ -530,32 +610,35 @@
           <span>{t("typeRestoreToConfirm", $preferencesStore.language)}</span>
           <input
             bind:value={restoreInput}
+            disabled={working}
             type="text"
             autocomplete="off"
+            autocapitalize="characters"
+            autocorrect="off"
+            enterkeyhint="done"
             spellcheck="false"
             placeholder={restorePhrase}
           />
         </label>
+        {#if restoreError}<p class="settings-error" role="alert">{restoreError}</p>{/if}
         <div class="settings-actions">
           <button
             type="button"
-            on:click={() => {
-              restoreBackup = null;
-              restoreVerification = null;
-              restoreInput = "";
-            }}
+            data-restore-cancel
+            disabled={working}
+            on:click={closeRestore}
           >
             {t("cancel", $preferencesStore.language)}
           </button>
           <button
-            type="button"
+            type="submit"
             class="danger"
             disabled={!canSubmitRestore || working}
-            on:click={submitRestore}
           >
-            {t("restore", $preferencesStore.language)}
+            {t(working ? "loading" : "restore", $preferencesStore.language)}
           </button>
         </div>
+        </form>
       </div>
     </div>
   {/if}
@@ -572,16 +655,18 @@
       <div class="settings-section__header">
         <h3>{t("backupListTitle", $preferencesStore.language)} · {filesTarget.name}</h3>
         <div class="settings-row-actions">
-          <button type="button" disabled={filesLoading} on:click={() => openFiles(filesTarget!)}>
+          <button type="button" disabled={filesLoading || working} on:click={() => openFiles(filesTarget!)}>
             {t("refresh", $preferencesStore.language)}
           </button>
-          <button type="button" on:click={closeFiles}>
+          <button type="button" disabled={working} on:click={closeFiles}>
             {t("back", $preferencesStore.language)}
           </button>
         </div>
       </div>
       {#if filesLoading}
-        <p class="settings-muted">{t("loading", $preferencesStore.language)}</p>
+        <p class="settings-muted" role="status">{t("loading", $preferencesStore.language)}</p>
+      {:else if filesError}
+        <p class="settings-error" role="alert">{filesError}</p>
       {:else if backups.length === 0}
         <p class="settings-empty">{t("backupNoFiles", $preferencesStore.language)}</p>
       {:else}
@@ -605,20 +690,24 @@
         </div>
       {/if}
       {#if verificationText}
-        <pre class="settings-result">{verificationText}</pre>
+        <pre class="settings-result" role="status">{verificationText}</pre>
       {/if}
     </section>
-  {:else if loading}
-    <p class="settings-muted">{t("loading", $preferencesStore.language)}</p>
+  {:else if loading && !loaded}
+    <p class="settings-muted" role="status">{t("loading", $preferencesStore.language)}</p>
   {:else}
     {#if error}
       <p class="settings-error" role="alert">{error}</p>
+      <div class="settings-actions"><button type="button" disabled={loading} on:click={() => void loadBackupState()}>{t("refresh", $preferencesStore.language)}</button></div>
+    {/if}
+    {#if loading}
+      <p class="settings-muted" role="status">{t("loading", $preferencesStore.language)}</p>
     {/if}
 
     <section class="settings-section">
       <div class="settings-section__header">
         <h3>{t("backupTargets", $preferencesStore.language)}</h3>
-        <button type="button" on:click={startCreateTarget}>
+        <button type="button" disabled={working || saving} on:click={startCreateTarget}>
           {t("addBackupTarget", $preferencesStore.language)}
         </button>
       </div>
@@ -638,16 +727,16 @@
                 </span>
               </div>
               <div class="settings-row-actions">
-                <button type="button" disabled={working} on:click={() => testBackupTarget(target.id).then(loadBackupState)}>
-                  {t("testConnection", $preferencesStore.language)}
+                <button type="button" disabled={working || saving} on:click={() => void testSavedTarget(target)}>
+                  {t(testingTargetID === target.id ? "loading" : "testConnection", $preferencesStore.language)}
                 </button>
-                <button type="button" disabled={working} on:click={() => openFiles(target)}>
+                <button type="button" disabled={working || saving} on:click={() => openFiles(target)}>
                   {t("backupList", $preferencesStore.language)}
                 </button>
-                <button type="button" on:click={() => startEditTarget(target)}>
+                <button type="button" disabled={working || saving} on:click={() => startEditTarget(target)}>
                   {t("edit", $preferencesStore.language)}
                 </button>
-                <button type="button" class="danger" disabled={working} on:click={() => removeTarget(target)}>
+                <button type="button" class="danger" disabled={working || saving} on:click={() => removeTarget(target)}>
                   {t("delete", $preferencesStore.language)}
                 </button>
               </div>
@@ -657,7 +746,7 @@
       {/if}
 
       {#if targetFormOpen}
-        <div class="backup-editor">
+        <form class="backup-editor" aria-busy={saving || working} on:input={() => { targetTestText = ""; targetTestOK = null; }} on:submit|preventDefault={() => void saveTarget()}>
           <h3>
             {editingTargetID === null
               ? t("addBackupTarget", $preferencesStore.language)
@@ -666,79 +755,71 @@
           <div class="settings-form settings-form--grid">
             <label>
               <span>{t("backupTargetName", $preferencesStore.language)}</span>
-              <input bind:value={targetForm.name} type="text" />
+              <input id="backup-target-name" bind:value={targetForm.name} type="text" required disabled={saving || working} />
             </label>
             <label>
               <span>{t("backupTargetType", $preferencesStore.language)}</span>
-              <select bind:value={targetForm.type}>
+              <select bind:value={targetForm.type} disabled={saving || working}>
                 <option value="webdav">WebDAV</option>
                 <option value="s3">S3</option>
               </select>
             </label>
             <label class="settings-switch-row">
               <span>{t("enabled", $preferencesStore.language)}</span>
-              <input bind:checked={targetForm.enabled} type="checkbox" />
+              <input bind:checked={targetForm.enabled} type="checkbox" disabled={saving || working} />
             </label>
             {#if targetForm.type === "webdav"}
               <label>
                 <span>{t("webdavUrl", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.webdav_url} type="url" placeholder="https://dav.example.com/path" />
+                <input bind:value={targetForm.webdav_url} type="url" placeholder="https://dav.example.com/path" required disabled={saving || working} />
               </label>
               <label>
                 <span>{t("webdavUsername", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.webdav_user} type="text" autocomplete="username" />
+                <input bind:value={targetForm.webdav_user} type="text" autocomplete="username" disabled={saving || working} />
               </label>
-              <label>
-                <span>{t("webdavPassword", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.webdav_password} type="password" autocomplete="current-password" />
-              </label>
+              <PasswordField bind:value={targetForm.webdav_password} label={t("webdavPassword", $preferencesStore.language)} autocomplete="current-password" disabled={saving || working} showPasswordLabel={t("showPassword", $preferencesStore.language)} hidePasswordLabel={t("hidePassword", $preferencesStore.language)} />
             {:else}
               <label>
                 <span>{t("s3Endpoint", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.s3_endpoint} type="text" placeholder="https://s3.example.com" />
+                <input bind:value={targetForm.s3_endpoint} type="text" placeholder="https://s3.example.com" disabled={saving || working} />
               </label>
               <label>
                 <span>{t("s3Region", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.s3_region} type="text" placeholder="us-east-1" />
+                <input bind:value={targetForm.s3_region} type="text" placeholder="us-east-1" disabled={saving || working} />
               </label>
               <label>
                 <span>{t("s3Bucket", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.s3_bucket} type="text" />
+                <input bind:value={targetForm.s3_bucket} type="text" disabled={saving || working} />
               </label>
-              <label>
-                <span>{t("s3AccessKey", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.s3_access_key} type="password" autocomplete="off" />
-              </label>
-              <label>
-                <span>{t("s3SecretKey", $preferencesStore.language)}</span>
-                <input bind:value={targetForm.s3_secret_key} type="password" autocomplete="off" />
-              </label>
+              <PasswordField bind:value={targetForm.s3_access_key} label={t("s3AccessKey", $preferencesStore.language)} autocomplete="off" disabled={saving || working} showPasswordLabel={t("showPassword", $preferencesStore.language)} hidePasswordLabel={t("hidePassword", $preferencesStore.language)} />
+              <PasswordField bind:value={targetForm.s3_secret_key} label={t("s3SecretKey", $preferencesStore.language)} autocomplete="off" disabled={saving || working} showPasswordLabel={t("showPassword", $preferencesStore.language)} hidePasswordLabel={t("hidePassword", $preferencesStore.language)} />
             {/if}
           </div>
           {#if targetTestText}
-            <p class={targetTestOK === false ? "settings-error" : "settings-empty"}>
+            <p class={targetTestOK === false ? "settings-error" : "settings-empty"} role={targetTestOK === false ? "alert" : "status"}>
               {targetTestText}
             </p>
           {/if}
+          {#if targetSaveError}<p class="settings-error" role="alert">{targetSaveError}</p>{/if}
           <div class="settings-actions">
-            <button type="button" disabled={working} on:click={testTargetForm}>
-              {t("testConnection", $preferencesStore.language)}
+            <button type="button" disabled={working || saving} on:click={testTargetForm}>
+              {t(working ? "loading" : "testConnection", $preferencesStore.language)}
             </button>
-            <button type="button" on:click={() => (targetFormOpen = false)}>
+            <button type="button" disabled={working || saving} on:click={closeTargetForm}>
               {t("cancel", $preferencesStore.language)}
             </button>
-            <button type="button" class="primary" disabled={saving} on:click={saveTarget}>
-              {t("saveConfig", $preferencesStore.language)}
+            <button type="submit" class="primary" disabled={saving || working}>
+              {t(saving ? "saving" : "saveConfig", $preferencesStore.language)}
             </button>
           </div>
-        </div>
+        </form>
       {/if}
     </section>
 
     <section class="settings-section">
       <div class="settings-section__header">
         <h3>{t("backupTasks", $preferencesStore.language)}</h3>
-        <button type="button" disabled={targets.length === 0} on:click={startCreateTask}>
+        <button type="button" disabled={working || saving || targets.length === 0} on:click={startCreateTask}>
           {t("addBackupTask", $preferencesStore.language)}
         </button>
       </div>
@@ -763,13 +844,13 @@
                 </span>
               </div>
               <div class="settings-row-actions">
-                <button type="button" disabled={working || task.target_ids.length === 0} on:click={() => runTask(task)}>
+                <button type="button" disabled={working || saving || task.target_ids.length === 0} on:click={() => runTask(task)}>
                   {t("backupNow", $preferencesStore.language)}
                 </button>
-                <button type="button" on:click={() => startEditTask(task)}>
+                <button type="button" disabled={working || saving} on:click={() => startEditTask(task)}>
                   {t("edit", $preferencesStore.language)}
                 </button>
-                <button type="button" class="danger" disabled={working} on:click={() => removeTask(task)}>
+                <button type="button" class="danger" disabled={working || saving} on:click={() => removeTask(task)}>
                   {t("delete", $preferencesStore.language)}
                 </button>
               </div>
@@ -779,7 +860,7 @@
       {/if}
 
       {#if taskFormOpen}
-        <div class="backup-editor">
+        <form class="backup-editor" aria-busy={saving} on:submit|preventDefault={() => void saveTask()}>
           <h3>
             {editingTaskID === null
               ? t("addBackupTask", $preferencesStore.language)
@@ -788,11 +869,11 @@
           <div class="settings-form settings-form--grid">
             <label>
               <span>{t("backupTaskName", $preferencesStore.language)}</span>
-              <input bind:value={taskForm.name} type="text" />
+              <input id="backup-task-name" bind:value={taskForm.name} type="text" required disabled={saving} />
             </label>
             <label>
               <span>{t("backupSchedule", $preferencesStore.language)}</span>
-              <select bind:value={taskForm.schedule}>
+              <select bind:value={taskForm.schedule} disabled={saving}>
                 <option value="manual">{t("backupManual", $preferencesStore.language)}</option>
                 <option value="daily">{t("backupDaily", $preferencesStore.language)}</option>
                 <option value="weekly">{t("backupWeekly", $preferencesStore.language)}</option>
@@ -801,25 +882,26 @@
             </label>
             <label class="settings-switch-row">
               <span>{t("enabled", $preferencesStore.language)}</span>
-              <input bind:checked={taskForm.enabled} type="checkbox" />
+              <input bind:checked={taskForm.enabled} type="checkbox" disabled={saving} />
             </label>
             <label>
               <span>{t("backupRetentionDays", $preferencesStore.language)}</span>
               <small>{t("backupRetentionHelp", $preferencesStore.language)}</small>
-              <input bind:value={taskForm.retention_days} min="0" type="number" />
+              <input bind:value={taskForm.retention_days} min="0" step="1" inputmode="numeric" type="number" disabled={saving} />
             </label>
             <label>
               <span>{t("backupMaxCount", $preferencesStore.language)}</span>
               <small>{t("backupMaxCountHelp", $preferencesStore.language)}</small>
-              <input bind:value={taskForm.max_count} min="0" type="number" />
+              <input bind:value={taskForm.max_count} min="0" step="1" inputmode="numeric" type="number" disabled={saving} />
             </label>
           </div>
-          <div class="backup-target-picker" aria-label={t("selectedTargets", $preferencesStore.language)}>
+          <div class="backup-target-picker" role="group" aria-label={t("selectedTargets", $preferencesStore.language)}>
             <strong>{t("selectedTargets", $preferencesStore.language)} · {selectedTargetCount}</strong>
             {#each targets as target (target.id)}
               <label>
                 <input
                   type="checkbox"
+                  disabled={saving}
                   checked={taskForm.target_ids.includes(target.id)}
                   on:change={(event) => toggleTaskTarget(target.id, event.currentTarget.checked)}
                 />
@@ -828,19 +910,19 @@
             {/each}
           </div>
           <div class="settings-actions">
-            <button type="button" on:click={() => (taskFormOpen = false)}>
+            <button type="button" disabled={saving || working} on:click={closeTaskForm}>
               {t("cancel", $preferencesStore.language)}
             </button>
             <button
-              type="button"
+              type="submit"
               class="primary"
-              disabled={saving || selectedTargetCount === 0}
-              on:click={saveTask}
+              disabled={saving || working || selectedTargetCount === 0}
             >
-              {t("saveSettings", $preferencesStore.language)}
+              {t(saving ? "saving" : "saveSettings", $preferencesStore.language)}
             </button>
           </div>
-        </div>
+          {#if taskSaveError}<p class="settings-error" role="alert">{taskSaveError}</p>{/if}
+        </form>
       {/if}
     </section>
   {/if}

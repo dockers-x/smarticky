@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { dialog } from "../../actions/dialog";
   import { toBlob, toPng } from "html-to-image";
-  import { onMount, tick } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
+  import { waitForShareImages } from "../../editor/shareImages";
   import { waitForDiagramSettle } from "../../markdown/diagrams/wait";
   import type { DiagramRuntimeState, DiagramTheme } from "../../markdown/diagrams/types";
   import { renderMarkdown, stripMarkdown } from "../../markdown/render";
@@ -164,48 +166,27 @@
     exportDiagramState = state;
   }
 
-  function delay(ms: number): Promise<void> {
-    return new Promise((resolve) => window.setTimeout(resolve, ms));
-  }
+  const exportController = new AbortController();
+  let disposed = false;
 
-  async function waitForImages(root: HTMLElement): Promise<void> {
-    const deadline = Date.now() + 5000;
-    while (
-      Date.now() < deadline &&
-      root.querySelector("img[data-auth-image-loading='true']")
-    ) {
-      await delay(80);
-    }
-
-    const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
-    await Promise.all(
-      images.map(async (image) => {
-        if (image.complete) return;
-        await new Promise<void>((resolve) => {
-          const done = () => {
-            image.removeEventListener("load", done);
-            image.removeEventListener("error", done);
-            resolve();
-          };
-          image.addEventListener("load", done, { once: true });
-          image.addEventListener("error", done, { once: true });
-        });
-      }),
-    );
-  }
+  onDestroy(() => {
+    disposed = true;
+    exportController.abort();
+  });
 
   async function exportOptions() {
     await tick();
     await waitForDiagramSettle(() => exportDiagramState);
     await tick();
     if (!exportTarget) throw new Error("Share image target unavailable");
-    await waitForImages(exportTarget);
+    await waitForShareImages(exportTarget, exportController.signal);
 
     const width = exportTarget.scrollWidth;
     const height = exportTarget.scrollHeight;
     return {
       backgroundColor: activeTheme.background,
       cacheBust: true,
+      fetchRequestInit: { signal: exportController.signal },
       height,
       pixelRatio: canvasScaleFor(width, height),
       width,
@@ -220,13 +201,14 @@
       const options = await exportOptions();
       if (!exportTarget) throw new Error("Share image target unavailable");
       const href = await toPng(exportTarget, options);
+      if (disposed) return;
       const link = document.createElement("a");
       link.download = fileName();
       link.href = href;
       link.click();
       notify(t("generatedImage", $preferencesStore.language), "success");
     } catch {
-      notify(t("generateImageFailed", $preferencesStore.language), "error");
+      if (!disposed) notify(t("generateImageFailed", $preferencesStore.language), "error");
     } finally {
       imageBusy = false;
     }
@@ -244,11 +226,12 @@
       const options = await exportOptions();
       if (!exportTarget) throw new Error("Share image target unavailable");
       const blob = await toBlob(exportTarget, options);
+      if (disposed) return;
       if (!blob) throw new Error("Canvas export failed");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-      notify(t("copiedImage", $preferencesStore.language), "success");
+      if (!disposed) notify(t("copiedImage", $preferencesStore.language), "success");
     } catch {
-      notify(t("copyImageFailed", $preferencesStore.language), "error");
+      if (!disposed) notify(t("copyImageFailed", $preferencesStore.language), "error");
     } finally {
       imageBusy = false;
     }
@@ -259,18 +242,14 @@
   });
 </script>
 
-<div
-  class="share-dialog-backdrop"
-  role="presentation"
-  on:click={(event) => {
-    if (event.currentTarget === event.target) onClose();
-  }}
->
+<div class="share-dialog-backdrop">
   <div
+    use:dialog={{ onDismiss: onClose }}
     class="share-dialog"
     role="dialog"
     aria-modal="true"
     aria-label={t("shareDialogLabel", $preferencesStore.language)}
+    aria-busy={imageBusy}
   >
     <header class="share-dialog__header">
       <div>
@@ -365,6 +344,11 @@
             {t("downloadPng", $preferencesStore.language)}
           </button>
         </div>
+        {#if imageBusy}
+          <p class="share-dialog__status" role="status">
+            {$preferencesStore.language === "zh" ? "正在生成图片，请稍候…" : "Preparing your image…"}
+          </p>
+        {/if}
       </aside>
     </div>
   </div>

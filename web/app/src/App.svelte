@@ -41,12 +41,37 @@
     preferencesStore.hydrate();
     authStore.hydrate();
 
+    const viewport = window.visualViewport;
+    const updateViewportHeight = () => {
+      if (viewport && viewport.scale !== 1) return;
+      document.documentElement.style.setProperty(
+        "--app-height",
+        `${Math.round(viewport?.height ?? window.innerHeight)}px`,
+      );
+    };
+    const handleKeyboard = () => {
+      document.documentElement.dataset.inputMethod = "keyboard";
+    };
+    const handlePointer = () => {
+      document.documentElement.dataset.inputMethod = "pointer";
+    };
+    updateViewportHeight();
+    viewport?.addEventListener("resize", updateViewportHeight);
+    window.addEventListener("resize", updateViewportHeight);
+    window.addEventListener("keydown", handleKeyboard, true);
+    window.addEventListener("pointerdown", handlePointer, true);
+
     const onHashChange = () => {
       void handleLibraryCallback();
     };
     window.addEventListener("hashchange", onHashChange);
     return () => {
       window.removeEventListener("hashchange", onHashChange);
+      viewport?.removeEventListener("resize", updateViewportHeight);
+      window.removeEventListener("resize", updateViewportHeight);
+      window.removeEventListener("keydown", handleKeyboard, true);
+      window.removeEventListener("pointerdown", handlePointer, true);
+      document.documentElement.style.removeProperty("--app-height");
     };
   });
 

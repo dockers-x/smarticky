@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
+  import { X } from "@lucide/svelte";
+  import { dialog } from "../../actions/dialog";
   import EditorPane from "../editor/EditorPane.svelte";
   import ExcalidrawWhiteboardDialog from "../editor/ExcalidrawWhiteboardDialog.svelte";
   import ToolsPanel from "../settings/ToolsPanel.svelte";
@@ -25,6 +27,7 @@
   let resizingList = false;
   let resizeStartX = 0;
   let resizeStartWidth = 328;
+  let previousSelectedID: string | undefined;
 
   const noteListWidthStorageKey = "smarticky-note-list-width";
   const defaultNoteListWidth = 328;
@@ -47,6 +50,13 @@
     Math.max(preferredNoteListWidth, minimumNoteListWidth),
     maxNoteListWidth,
   );
+  $: if ($notesStore.selected?.id !== previousSelectedID) {
+    const closedNoteID = previousSelectedID;
+    previousSelectedID = $notesStore.selected?.id;
+    if (!previousSelectedID && closedNoteID && viewportWidth <= 960) {
+      void restoreNoteFocus(closedNoteID);
+    }
+  }
 
   onMount(() => {
     void Promise.all([
@@ -156,21 +166,54 @@
     notesStore.closeBrowsers();
   }
 
-  function handleWorkspaceKeydown(event: KeyboardEvent): void {
-    if (event.key !== "Escape") return;
-    if (!$notesStore.folderBrowserOpen && !$notesStore.tagBrowserOpen) return;
-    closeBrowsers();
+  async function restoreNoteFocus(noteID: string): Promise<void> {
+    await tick();
+    if (
+      $notesStore.selected ||
+      $notesStore.workspaceView !== "notes" ||
+      document.querySelector('[role="dialog"][aria-modal="true"]')
+    ) return;
+    const card = Array.from(document.querySelectorAll<HTMLElement>("[data-note-id]"))
+      .find((element) => element.dataset.noteId === noteID);
+    card?.querySelector<HTMLButtonElement>(".note-card__body")?.focus({ preventScroll: true });
+  }
+
+  async function focusSearch(): Promise<void> {
+    if ($notesStore.workspaceView !== "notes") await notesStore.setWorkspaceView("notes");
+    if (viewportWidth <= 960) notesStore.clearSelection();
+    await tick();
+    const input = document.querySelector<HTMLInputElement>("#note-search");
+    input?.focus();
+    input?.select();
+  }
+
+  function handleSearchShortcut(event: KeyboardEvent): void {
+    if (
+      event.key !== "/" || event.defaultPrevented || event.isComposing ||
+      event.ctrlKey || event.metaKey || event.altKey ||
+      document.querySelector('[role="dialog"][aria-modal="true"]')
+    ) return;
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest(
+      'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]',
+    )) return;
+    event.preventDefault();
+    void focusSearch();
   }
 </script>
 
-<svelte:window on:keydown={handleWorkspaceKeydown} />
+<svelte:window on:keydown={handleSearchShortcut} />
 
 <main
   class:index-open={$notesStore.workspaceView === "index"}
   class:resizing-list={resizingList}
   class="workspace"
   aria-label="Smarticky workspace"
-  style={`--note-list-width: ${noteListWidth}px`}
+  style:--note-list-width={`${noteListWidth}px`}
+  style:grid-template-columns={viewportWidth <= 960 ? "minmax(0, 1fr)" : undefined}
+  style:grid-template-rows={viewportWidth <= 960
+    ? $notesStore.selected ? "minmax(0, 1fr)" : "auto minmax(0, 1fr)"
+    : undefined}
 >
   <h1 class="visually-hidden">Smarticky</h1>
   <Sidebar
@@ -178,6 +221,7 @@
     onOpenSettings={() => (settingsOpen = true)}
     onOpenFolderBrowser={() => openFolderBrowser("browse")}
     onOpenTagBrowser={openTagBrowser}
+    onSearch={() => void focusSearch()}
   />
   <MobileNav
     {settingsOpen}
@@ -211,19 +255,26 @@
   {/if}
   <EditorPane note={$notesStore.selected} />
   {#if $notesStore.folderBrowserOpen || $notesStore.tagBrowserOpen}
-    <button
+    <div
       class="workspace-browser-backdrop"
-      type="button"
-      aria-label={t("closeBrowserPane", $preferencesStore.language)}
-      on:click={closeBrowsers}
-    ></button>
+      role="presentation"
+    >
     <div
       class="workspace-browser-overlay"
       role="dialog"
+      aria-modal="true"
+      tabindex="-1"
       aria-label={$notesStore.folderBrowserOpen
         ? t("notebookGroups", $preferencesStore.language)
         : t("tags", $preferencesStore.language)}
+      use:dialog={{ onDismiss: closeBrowsers, initialFocus: 'input[type="search"]' }}
     >
+      <div class="workspace-browser-actions">
+        <button type="button" on:click={closeBrowsers}>
+          <X size={17} strokeWidth={1.8} aria-hidden="true" />
+          <span>{t("closeBrowserPane", $preferencesStore.language)}</span>
+        </button>
+      </div>
       {#if $notesStore.folderBrowserOpen}
         <FolderBrowserPane
           mode={folderBrowserMode}
@@ -233,6 +284,7 @@
       {:else if $notesStore.tagBrowserOpen}
         <TagBrowserPane />
       {/if}
+    </div>
     </div>
   {/if}
   {#if $whiteboardStore.openID}
@@ -245,3 +297,75 @@
     <ToolsPanel user={$authStore.user} onClose={() => (settingsOpen = false)} />
   {/if}
 </main>
+
+<style>
+  .workspace-browser-backdrop {
+    background: var(--color-backdrop);
+  }
+
+  .workspace-browser-overlay {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100% - 76px);
+    height: min(560px, calc(var(--app-height, 100dvh) - 76px));
+  }
+
+  .workspace-browser-overlay :global(.folder-browser-pane),
+  .workspace-browser-overlay :global(.tag-browser-pane) {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+
+  .workspace-browser-actions {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  .workspace-browser-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-secondary);
+    padding: 0 10px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+  }
+
+  @media (max-width: 960px) {
+    .workspace :global(.note-list-pane),
+    .workspace :global(.index-view) {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .workspace :global(.editor-pane.has-note) {
+      grid-column: 1;
+      grid-row: 1;
+      border-bottom: 0;
+    }
+
+    .workspace :global(.editor-pane:not(.has-note)) {
+      display: none;
+    }
+
+    .workspace-browser-overlay,
+    .workspace:has(:global(.sidebar.compact)) .workspace-browser-overlay {
+      top: max(12px, env(safe-area-inset-top));
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      left: max(12px, env(safe-area-inset-left));
+      height: auto;
+      max-height: calc(var(--app-height, 100dvh) - 24px);
+    }
+
+    .workspace-browser-actions button {
+      min-height: 44px;
+    }
+  }
+</style>
