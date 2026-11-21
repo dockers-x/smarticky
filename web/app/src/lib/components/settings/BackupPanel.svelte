@@ -525,7 +525,7 @@
       restoreInput = "";
       restoreRestartRequired = needsRestart;
       if (!needsRestart) {
-        await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
+        await notesStore.loadNotesAndCalendar();
       }
     } catch (failure) {
       restoreError = failure instanceof Error ? failure.message : t("restoreFailed", $preferencesStore.language);

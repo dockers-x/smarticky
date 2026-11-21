@@ -3,9 +3,11 @@
   import type { Note } from "../../api/types";
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
-  import { notePreview } from "./notePreview";
+  import { noteDates } from "./noteDates";
+  import { notePreview, matchExcerpt } from "./notePreview";
 
   export let note: Note;
+  export let search = "";
   export let active = false;
   export let selected = false;
   export let selectionMode = false;
@@ -19,7 +21,9 @@
   $: preview = notePreview(note, {
     empty: t("contentEmpty", $preferencesStore.language),
     locked: t("noteLocked", $preferencesStore.language),
-  });
+  }, search);
+  $: titleMatch = matchExcerpt(noteTitle, search);
+  $: previewMatch = matchExcerpt(preview, note.content_redacted ? "" : search);
   $: noteTitle = note.title || t("untitled", $preferencesStore.language);
   $: selectionLabel = `${$preferencesStore.language === "zh" ? "选择笔记" : "Select note"}: ${noteTitle}`;
   $: starLabel = note.is_starred
@@ -27,49 +31,7 @@
     : t("star", $preferencesStore.language);
   $: visibleTags = note.tags?.slice(0, 2) ?? [];
   $: hiddenTagCount = Math.max((note.tags?.length ?? 0) - visibleTags.length, 0);
-  $: noteDate = formatNoteDate(
-    note.updated_at,
-    $preferencesStore.language,
-    $preferencesStore.timeZone,
-  );
-
-  function dateKey(date: Date, timeZone: string): string {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(date);
-    const value = (type: string) =>
-      parts.find((part) => part.type === type)?.value ?? "";
-    return `${value("year")}-${value("month")}-${value("day")}`;
-  }
-
-  function formatNoteDate(
-    value: string,
-    language: "zh" | "en",
-    timeZone: string,
-  ): string {
-    const date = new Date(value);
-    const noteKey = dateKey(date, timeZone);
-    const todayKey = dateKey(new Date(), timeZone);
-    const locale = language === "zh" ? "zh-CN" : "en-US";
-
-    if (noteKey === todayKey) {
-      return new Intl.DateTimeFormat(locale, {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone,
-      }).format(date);
-    }
-
-    return new Intl.DateTimeFormat(locale, {
-      month: language === "zh" ? "numeric" : "short",
-      day: "numeric",
-      year: noteKey.slice(0, 4) === todayKey.slice(0, 4) ? undefined : "numeric",
-      timeZone,
-    }).format(date);
-  }
+  $: noteDate = noteDates($preferencesStore.language, $preferencesStore.timeZone).short(new Date(note.updated_at));
 
   function startDrag(event: DragEvent): void {
     const ids = selected && dragNoteIDs.length > 0 ? dragNoteIDs : [note.id];
@@ -104,14 +66,6 @@
   on:dragstart={startDrag}
 >
   <div class="note-card__top">
-    <label class="note-card__check" title={selectionLabel}>
-      <input
-        type="checkbox"
-        aria-label={selectionLabel}
-        checked={selected}
-        on:change={() => onToggleSelected(note.id)}
-      />
-    </label>
     <button
       class="note-card__body"
       type="button"
@@ -121,11 +75,22 @@
       aria-pressed={selectionMode ? selected : active}
       on:click={() => selectionMode ? onToggleSelected(note.id) : notesStore.select(note)}
     >
-      <span class="note-card__title" title={noteTitle}>{noteTitle}</span>
-      <span class="note-card__preview" id={`note-preview-${note.id}`}>{preview}</span>
+      <span class="note-card__title" title={noteTitle}>{titleMatch.before}{#if titleMatch.match}<mark>{titleMatch.match}</mark>{/if}{titleMatch.after}</span>
+      <span class="note-card__preview" id={`note-preview-${note.id}`}>{previewMatch.before}{#if previewMatch.match}<mark>{previewMatch.match}</mark>{/if}{previewMatch.after}</span>
     </button>
+    <label class="note-card__check" title={selectionLabel}>
+      <input
+        type="checkbox"
+        aria-label={selectionLabel}
+        checked={selected}
+        on:change={() => onToggleSelected(note.id)}
+      />
+    </label>
   </div>
   <div class="note-card__meta">
+    <time datetime={note.updated_at}>
+      {noteDate}
+    </time>
     {#if visibleTags.length}
       <span class="note-card__tags" aria-label={t("tags", $preferencesStore.language)}>
         {#each visibleTags as tag (tag.id)}
@@ -136,9 +101,6 @@
         {/if}
       </span>
     {/if}
-    <time datetime={note.updated_at}>
-      {noteDate}
-    </time>
     <div class="note-card__actions">
       <button
         class="note-card__star"
@@ -180,7 +142,7 @@
   }
 
   .note-card__top {
-    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 32px;
     gap: 8px;
   }
 
@@ -222,14 +184,16 @@
 
   .note-card__meta {
     min-width: 0;
+    justify-content: flex-start;
     gap: 6px;
-    padding-left: 40px;
-    font-size: 11px;
+    padding-left: 0;
+    font-size: 12px;
   }
 
   .note-card__meta time {
     flex: 0 0 auto;
-    margin-inline-start: auto;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
     white-space: nowrap;
   }
 
@@ -246,6 +210,7 @@
   }
 
   .note-card__actions {
+    margin-inline-start: auto;
     position: static;
     flex: 0 0 auto;
     gap: 2px;
@@ -270,8 +235,8 @@
 
   @media (min-width: 961px) and (pointer: fine) {
     .note-card {
-      gap: 2px;
-      padding: 8px;
+      gap: 4px;
+      padding: 10px 12px 6px;
     }
 
     .note-card__body {
@@ -295,7 +260,7 @@
 
   @media (max-width: 960px), (pointer: coarse) {
     .note-card__top {
-      grid-template-columns: 40px minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) 44px;
     }
 
     .note-card__check {

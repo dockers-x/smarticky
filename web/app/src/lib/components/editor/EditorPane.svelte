@@ -16,6 +16,7 @@
     Network,
     PencilRuler,
     Plus,
+    Puzzle,
     RotateCcw,
     RotateCw,
     Shield,
@@ -65,11 +66,15 @@
     type EditorSaveStatus,
   } from "./draftSave";
   import NoteConnectionPushDialog from "./NoteConnectionPushDialog.svelte";
+  import NoteToolsDialog from "./NoteToolsDialog.svelte";
   import NoteProtectionDialog from "./NoteProtectionDialog.svelte";
   import PasswordField from "../common/PasswordField.svelte";
   import ShareImageDialog from "./ShareImageDialog.svelte";
 
   export let note: Note | null = null;
+  export let creatingNote: boolean;
+  export let createNote: () => Promise<void>;
+  export let onFinish: (id: string) => void;
 
   type DraftSession = {
     noteID: string;
@@ -101,6 +106,8 @@
   let imageBusy = false;
   let sourceMode = false;
   let focusMode = false;
+  let focusBodyFor = "";
+  let toolDialogOpen = false;
   let detailsOpen = false;
   let shareOpen = false;
   let connectionPushOpen = false;
@@ -224,6 +231,9 @@
       });
     }
     activeNoteID = nextNote?.id ?? "";
+    focusMode = Boolean(nextNote && nextNote.id === $notesStore.newNoteID);
+    focusBodyFor = focusMode ? activeNoteID : "";
+    toolDialogOpen = false;
     draftSession = nextNote
       ? retainedDrafts.get(nextNote.id) ?? createDraftSession(nextNote)
       : null;
@@ -300,6 +310,10 @@
 
   function bindMarkdownEditor(editor: MarkdownEditorHandle | null): void {
     markdownEditor = editor;
+    if (editor && editor.noteID === focusBodyFor) {
+      focusBodyFor = "";
+      if (!document.querySelector('[role="dialog"][aria-modal="true"]')) editor.focus();
+    }
   }
 
   function captureCurrentEditor(): void {
@@ -389,8 +403,9 @@
         notify(t("saveError", $preferencesStore.language), "error");
         return;
       }
-      if (draftSession !== session) return;
+      if (!session || draftSession !== session) return;
       notesStore.clearSelection();
+      onFinish(session.noteID);
     } finally {
       finishing = false;
     }
@@ -754,7 +769,13 @@
   }
 
   function handleEditorKeydown(event: KeyboardEvent): void {
-    if (!note || shareOpen || protectionOpen || connectionPushOpen) return;
+    if (event.key === "Tab") focusBodyFor = "";
+    if (!note || event.defaultPrevented || event.isComposing || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    if (event.key === "Escape" && focusMode && !actionMenuOpen && !diagramMenuOpen && !tagMenuOpen && !folderMenuOpen) {
+      event.preventDefault();
+      void finishEditing();
+      return;
+    }
     if (!(event.metaKey || event.ctrlKey) || event.shiftKey) return;
     if (event.key.toLowerCase() === "s") {
       event.preventDefault();
@@ -766,6 +787,19 @@
 
     event.preventDefault();
     toggleSourceMode();
+  }
+
+  function enterBody(event: KeyboardEvent): void {
+    if (event.key !== "Enter" || event.isComposing || event.shiftKey || contentLocked) return;
+    event.preventDefault();
+    if (sourceMode) sourceTextarea?.focus();
+    else if (markdownEditor?.noteID === activeNoteID) markdownEditor.focus();
+    else focusBodyFor = activeNoteID;
+  }
+
+  async function openNoteTools(): Promise<void> {
+    const id = activeNoteID;
+    if (await flushDraft() && activeNoteID === id) toolDialogOpen = true;
   }
 
   function handleBeforeUnload(event: BeforeUnloadEvent): void {
@@ -781,8 +815,7 @@
     try {
       await notesStore.moveToFolder([noteID], folderID);
       await Promise.all([
-        notesStore.load(),
-        notesStore.loadCalendarNotes(),
+        notesStore.loadNotesAndCalendar(),
         foldersStore.load(),
       ]);
       const refreshed = await notesStore.getByID(noteID);
@@ -818,7 +851,7 @@
       if (!(await flushDraft())) return;
       await notesStore.updateNote(noteID, { is_deleted: !restoring });
       if (activeNoteID === noteID) notesStore.clearSelection();
-      await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
+      await notesStore.loadNotesAndCalendar();
       notify(
         restoring
           ? t("restoredNote", $preferencesStore.language)
@@ -952,7 +985,7 @@
   async function refreshSelectedNote(): Promise<void> {
     if (!note) return;
     const noteID = note.id;
-    await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
+    await notesStore.loadNotesAndCalendar();
     const refreshed = await notesStore.getByID(noteID);
     if (activeNoteID === noteID) notesStore.replaceSelected(refreshed);
   }
@@ -1033,7 +1066,7 @@
   });
 </script>
 
-<svelte:window on:keydown={handleEditorKeydown} on:beforeunload={handleBeforeUnload} />
+<svelte:window on:pointerdown={() => (focusBodyFor = "")} on:keydown={handleEditorKeydown} on:beforeunload={handleBeforeUnload} />
 
 <section
   class:focus-mode={focusMode}
@@ -1046,13 +1079,15 @@
     <header class="editor-header">
       <div class="editor-header__context">
         <button
+          class:focus-back={focusMode}
           class="editor-mobile-back"
           type="button"
-          aria-label={t("back", $preferencesStore.language)}
+          aria-label={t("backToNotes", $preferencesStore.language)}
           disabled={finishing}
           on:click={() => void finishEditing()}
         >
           <ChevronLeft aria-hidden="true" size={20} strokeWidth={1.8} />
+          {#if focusMode}<span>{t("backToNotes", $preferencesStore.language)}</span>{/if}
         </button>
         <div class="editor-save-feedback" role="status" aria-live="polite" aria-atomic="true">
           {#if saveStatus === "error"}
@@ -1269,6 +1304,7 @@
                 aria-checked={detailsOpen}
                 on:click={() =>
                   void runMenuAction(() => {
+                    focusMode = false;
                     detailsOpen = !detailsOpen;
                   })}
               >
@@ -1292,6 +1328,12 @@
                   : t("enterFocus", $preferencesStore.language)}
               </button>
               <hr class="editor-menu-divider" />
+              <button class="editor-action-button" type="button" role="menuitem"
+                disabled={note.protection_mode !== "none"}
+                on:click={() => void runMenuAction(openNoteTools)}>
+                <Puzzle size={16} strokeWidth={1.8} aria-hidden="true" />
+                {t("noteTools", $preferencesStore.language)}
+              </button>
               <button
                 class="editor-action-button"
                 type="button"
@@ -1556,6 +1598,8 @@
           aria-label={t("noteTitle", $preferencesStore.language)}
           rows="1"
           autocomplete="off"
+          on:focus={() => (focusBodyFor = "")}
+          on:keydown={enterBody}
           on:input={(event) => scheduleTitleSave(event.currentTarget.value)}
         ></textarea>
         {#if isPasswordLocked}
@@ -1634,6 +1678,9 @@
         }} />
       {/if}
     </div>
+    {#if toolDialogOpen}
+      <NoteToolsDialog noteID={note.id} onClose={() => (toolDialogOpen = false)} />
+    {/if}
     {#if shareOpen}
       <ShareImageDialog
         title={draftTitle}
@@ -1661,15 +1708,50 @@
     {/if}
   {:else}
     <div class="editor-empty">
-      <div class="editor-empty__mark" aria-hidden="true">
-        <FilePenLine size={28} strokeWidth={1.5} />
-      </div>
-      <p class="editor-empty-text">{t("selectOrCreate", $preferencesStore.language)}</p>
+      {#if $notesStore.workspaceView === "notes" && $notesStore.filter !== "trash"}
+        <button type="button" class="editor-empty-create" on:click={createNote} disabled={creatingNote}>
+          <FilePenLine size={18} strokeWidth={1.7} aria-hidden="true" />
+          {t("newNote", $preferencesStore.language)}
+        </button>
+      {/if}
+      <p class="editor-empty-text">{t("selectNoteToRead", $preferencesStore.language)}</p>
     </div>
   {/if}
 </section>
 
 <style>
+  .focus-mode {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .focus-mode .editor-meta-bar { display: none; }
+  .focus-mode .editor-mobile-back.focus-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+    min-height: 36px;
+    padding-inline: 6px 10px;
+    border-radius: var(--radius-control);
+    color: var(--color-text-secondary);
+  }
+  .focus-back span { font-size: 0.8125rem; white-space: nowrap; }
+  @media (min-width: 961px) {
+    .focus-mode .editor-main {
+      justify-items: center;
+      background: var(--color-page);
+    }
+    .focus-mode .editor-surface {
+      width: min(100%, 55rem);
+      padding: clamp(2.5rem, 8vh, 5.5rem) clamp(2.5rem, 7vw, 6rem) 20vh;
+      box-shadow: 0 0 0 1px var(--color-divider), var(--shadow-paper);
+    }
+  }
+  @media (max-width: 600px) {
+    .focus-mode .editor-mobile-back.focus-back { min-width: 44px; min-height: 44px; padding: 0; }
+    .focus-back span { display: none; }
+  }
+
   .editor-header {
     gap: 0.5rem;
   }

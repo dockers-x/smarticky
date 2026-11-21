@@ -410,8 +410,7 @@
       importMessage = `${outcome}: ${result.imported_count}/${result.total_count}`;
       notify(outcome, result.failed_count > 0 ? "info" : "success");
       await Promise.all([
-        notesStore.load(),
-        notesStore.loadCalendarNotes(),
+        notesStore.loadNotesAndCalendar(),
         foldersStore.load(),
         loadState(),
       ]);

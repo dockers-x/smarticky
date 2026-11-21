@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
 )
 
@@ -20,6 +21,8 @@ func (Note) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
 			Default(uuid.New),
+		field.Int("user_id").StorageKey("user_notes").Optional().Nillable().StructTag(`json:"-"`),
+		field.UUID("folder_id", uuid.UUID{}).StorageKey("folder_notes").Optional().Nillable().StructTag(`json:"-"`),
 		field.String("title").
 			Default("Untitled"),
 		field.Text("content").
@@ -61,9 +64,11 @@ func (Note) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
 			Ref("notes").
+			Field("user_id").
 			Unique(),
 		edge.From("folder", Folder.Type).
 			Ref("notes").
+			Field("folder_id").
 			Unique(),
 		edge.To("attachments", Attachment.Type),
 		edge.To("whiteboards", Whiteboard.Type),
@@ -74,5 +79,12 @@ func (Note) Edges() []ent.Edge {
 		edge.To("connection_maps", NoteConnectionItemMap.Type),
 		edge.To("connection_jobs", NoteConnectionJob.Type),
 		edge.To("tags", Tag.Type), // Many-to-many relationship with tags
+	}
+}
+
+func (Note) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("user_id", "is_deleted", "updated_at"),
+		index.Fields("user_id", "is_deleted", "folder_id"),
 	}
 }

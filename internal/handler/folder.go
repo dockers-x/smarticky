@@ -91,7 +91,7 @@ type MoveNotesRequest struct {
 }
 
 func (h *Handler) ListFolders(c echo.Context) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	userID := c.Get("user_id").(int)
 
 	folders, err := h.client.Folder.Query().
@@ -102,13 +102,33 @@ func (h *Handler) ListFolders(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
+	var counts []struct {
+		FolderID uuid.UUID `json:"folder_notes"`
+		Count    int
+	}
+	if err := h.client.Note.Query().Where(note.UserIDEQ(userID), note.IsDeleted(false), note.FolderIDNotNil()).
+		GroupBy(note.FieldFolderID).Aggregate(ent.Count()).Scan(ctx, &counts); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	noteCounts := make(map[uuid.UUID]int, len(counts))
+	for _, row := range counts {
+		noteCounts[row.FolderID] = row.Count
+	}
+	parents := make(map[uuid.UUID]*uuid.UUID, len(folders))
+	childCounts := make(map[uuid.UUID]int)
+	for _, f := range folders {
+		parents[f.ID] = f.ParentID
+		if f.ParentID != nil {
+			childCounts[*f.ParentID]++
+		}
+	}
 	response := make([]FolderResponse, 0, len(folders))
 	for _, f := range folders {
-		item, err := h.folderToResponse(ctx, userID, f)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		depth := 1
+		for parent := f.ParentID; parent != nil && depth <= maxConfigurableFolderDepth+1; parent = parents[*parent] {
+			depth++
 		}
-		response = append(response, item)
+		response = append(response, folderResponse(f, noteCounts[f.ID], childCounts[f.ID], depth))
 	}
 
 	return c.JSON(http.StatusOK, response)
@@ -336,14 +356,9 @@ func (h *Handler) folderSubtreeForUser(ctx context.Context, userID int, root *en
 	}
 	childrenByParent := make(map[uuid.UUID][]*ent.Folder)
 	for _, row := range rows {
-		parent, err := row.QueryParent().Only(ctx)
-		if ent.IsNotFound(err) {
-			continue
+		if row.ParentID != nil {
+			childrenByParent[*row.ParentID] = append(childrenByParent[*row.ParentID], row)
 		}
-		if err != nil {
-			return nil, err
-		}
-		childrenByParent[parent.ID] = append(childrenByParent[parent.ID], row)
 	}
 
 	out := make([]*ent.Folder, 0, len(rows))
@@ -454,10 +469,6 @@ func (h *Handler) MoveNotes(c echo.Context) error {
 }
 
 func (h *Handler) folderToResponse(ctx context.Context, userID int, f *ent.Folder) (FolderResponse, error) {
-	parentID, err := h.folderParentID(ctx, f)
-	if err != nil {
-		return FolderResponse{}, err
-	}
 	noteCount, err := f.QueryNotes().Where(note.IsDeleted(false)).Count(ctx)
 	if err != nil {
 		return FolderResponse{}, err
@@ -471,10 +482,14 @@ func (h *Handler) folderToResponse(ctx context.Context, userID int, f *ent.Folde
 		return FolderResponse{}, err
 	}
 
+	return folderResponse(f, noteCount, childCount, depth), nil
+}
+
+func folderResponse(f *ent.Folder, noteCount, childCount, depth int) FolderResponse {
 	return FolderResponse{
 		ID:         f.ID,
 		Name:       f.Name,
-		ParentID:   parentID,
+		ParentID:   f.ParentID,
 		SortOrder:  f.SortOrder,
 		IsStarred:  f.IsStarred,
 		NoteCount:  noteCount,
@@ -482,7 +497,7 @@ func (h *Handler) folderToResponse(ctx context.Context, userID int, f *ent.Folde
 		Depth:      depth,
 		CreatedAt:  f.CreatedAt,
 		UpdatedAt:  f.UpdatedAt,
-	}, nil
+	}
 }
 
 func (h *Handler) folderParentID(ctx context.Context, f *ent.Folder) (*uuid.UUID, error) {

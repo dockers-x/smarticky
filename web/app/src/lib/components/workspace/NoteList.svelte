@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount } from "svelte";
   import {
     CalendarDays,
     CheckSquare,
@@ -18,6 +18,7 @@
   import { notesStore } from "../../stores/notes";
   import { preferencesStore, t } from "../../stores/preferences";
   import { tagsStore } from "../../stores/tags";
+  import { noteDates } from "./noteDates";
   import EmptyState from "./EmptyState.svelte";
   import NoteCalendar from "./NoteCalendar.svelte";
   import NoteCard from "./NoteCard.svelte";
@@ -29,7 +30,9 @@
 
   let filterPanelOpen = false;
   let calendarOpen = false;
-  let creatingNote = false;
+  export let creatingNote: boolean;
+  export let createNote: () => Promise<void>;
+  let listPane: HTMLElement;
   let searchInput: HTMLInputElement;
   let loadedResultScope = "";
   export let selectedNoteIDs: string[] = [];
@@ -89,51 +92,45 @@
     }
   }
 
-  function dateKey(date: Date, timeZone: string): string {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(date);
-    const value = (type: string) =>
-      parts.find((part) => part.type === type)?.value ?? "";
-    return `${value("year")}-${value("month")}-${value("day")}`;
-  }
-
-  function groupLabel(date: Date, language: "zh" | "en", timeZone: string): string {
-    const today = new Date();
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const noteKey = dateKey(date, timeZone);
-    if (noteKey === dateKey(today, timeZone)) return t("today", language);
-    if (noteKey === dateKey(yesterday, timeZone)) return t("yesterday", language);
-
-    const noteYear = noteKey.slice(0, 4);
-    const todayYear = dateKey(today, timeZone).slice(0, 4);
-
-    return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
-      month: "long",
-      day: "numeric",
-      year: noteYear === todayYear ? undefined : "numeric",
-      timeZone,
-    }).format(date);
-  }
-
-  $: groupedNotes = $notesStore.notes.reduce<NoteGroup[]>((groups, note) => {
-    const label = groupLabel(
-      new Date(note.updated_at),
-      $preferencesStore.language,
-      $preferencesStore.timeZone,
-    );
-    const group = groups.find((item) => item.label === label);
-    if (group) {
+  function groupByDate(notes: Note[], language: "zh" | "en", timeZone: string): NoteGroup[] {
+    const dates = noteDates(language, timeZone);
+    const groups = new Map<string, NoteGroup>();
+    for (const note of notes) {
+      const date = new Date(note.updated_at);
+      const day = dates.key(date);
+      let group = groups.get(day);
+      if (!group) {
+        group = { label: dates.groupLabel(day, date), notes: [] };
+        groups.set(day, group);
+      }
       group.notes.push(note);
-    } else {
-      groups.push({ label, notes: [note] });
     }
-    return groups;
-  }, []);
+    return [...groups.values()];
+  }
+
+  $: groupedNotes = groupByDate($notesStore.notes, $preferencesStore.language, $preferencesStore.timeZone);
+
+  function navigateResults(event: KeyboardEvent): void {
+    if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !listPane?.contains(target)) return;
+    const fromSearch = target === searchInput;
+    if (!fromSearch && !target.matches(".note-card__body")) return;
+    if (event.key === "Escape" && fromSearch && $notesStore.search) {
+      event.preventDefault();
+      clearSearch();
+      return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && !(fromSearch && event.key === "Enter")) return;
+    if (!showNotes || $notesStore.loading) return;
+    const buttons = Array.from(listPane.querySelectorAll<HTMLButtonElement>(".note-card__body"));
+    if (!buttons.length) return;
+    event.preventDefault();
+    if (event.key === "Enter") { buttons[0].click(); return; }
+    const index = fromSearch ? -1 : buttons.indexOf(target as HTMLButtonElement);
+    if (event.key === "ArrowUp" && index <= 0) { searchInput.focus(); return; }
+    buttons[Math.min(buttons.length - 1, index + (event.key === "ArrowDown" ? 1 : -1))].focus();
+  }
 
   function buildFolderPath(
     folder: FolderType,
@@ -193,35 +190,6 @@
     await notesStore.setFolder(folderID);
   }
 
-  async function createNote(): Promise<void> {
-    if (creatingNote) return;
-    creatingNote = true;
-    const focusOrigin = document.activeElement;
-    try {
-      await notesStore.create();
-      const createdNoteID = $notesStore.selected?.id;
-      await foldersStore.load();
-      await tick();
-      if (!createdNoteID || $notesStore.selected?.id !== createdNoteID) return;
-      const activeElement = document.activeElement;
-      if (
-        document.querySelector('[role="dialog"][aria-modal="true"]') ||
-        (activeElement !== focusOrigin && activeElement !== document.body)
-      ) {
-        return;
-      }
-      const titleInput = document.querySelector<HTMLTextAreaElement>(
-        ".editor-title-input",
-      );
-      titleInput?.focus();
-      titleInput?.select();
-    } catch {
-      notify(t("noteCreateFailed", $preferencesStore.language), "error");
-    } finally {
-      creatingNote = false;
-    }
-  }
-
   function openMovePane(): void {
     if (selectedNoteIDs.length === 0) return;
     onOpenFolderBrowser("move");
@@ -256,8 +224,7 @@
       }
       clearSelection();
       await Promise.all([
-        notesStore.load(),
-        notesStore.loadCalendarNotes(),
+        notesStore.loadNotesAndCalendar(),
         foldersStore.load(),
       ]);
     } catch {
@@ -273,7 +240,7 @@
   async function toggleNoteStar(note: Note): Promise<void> {
     try {
       await notesStore.updateNote(note.id, { is_starred: !note.is_starred });
-      await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
+      await notesStore.loadNotesAndCalendar();
     } catch {
       notify(t("updateStarFailed", $preferencesStore.language), "error");
     }
@@ -311,8 +278,7 @@
       await notesStore.updateNote(note.id, { is_deleted: true });
       selectedNoteIDs = selectedNoteIDs.filter((id) => id !== note.id);
       await Promise.all([
-        notesStore.load(),
-        notesStore.loadCalendarNotes(),
+        notesStore.loadNotesAndCalendar(),
         foldersStore.load(),
       ]);
       notify(t("trashedNote", $preferencesStore.language), "success");
@@ -341,7 +307,10 @@
   }
 </script>
 
+<svelte:window on:keydown={navigateResults} />
+
 <section
+  bind:this={listPane}
   class:editor-open={Boolean($notesStore.selected)}
   class="note-list-pane"
   aria-label={t("noteList", $preferencesStore.language)}
@@ -421,6 +390,8 @@
         >
           <X size={15} strokeWidth={1.8} aria-hidden="true" />
         </button>
+      {:else}
+        <kbd class="search-shortcut" aria-hidden="true">/</kbd>
       {/if}
     </div>
     <div class="note-list-toolbar__actions">
@@ -631,6 +602,7 @@
           {#each group.notes as note (note.id)}
             <NoteCard
               {note}
+              search={$notesStore.search.trim()}
               active={$notesStore.selected?.id === note.id}
               selected={selectedNoteIDs.includes(note.id)}
               selectionMode={selectedCount > 0}
@@ -655,12 +627,15 @@
   }
 
   .note-list-titlebar__title-line {
-    display: grid;
-    gap: 3px;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 3px 8px;
   }
 
   .note-list-titlebar__title-line > span {
-    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
     color: var(--color-text-sub);
   }
 

@@ -26,13 +26,15 @@ export interface ActiveCalendarFilter {
 
 const daysInWeek = 7;
 
+let keyFormatter: Intl.DateTimeFormat | undefined;
+let keyTimeZone: string | undefined;
+
 export function dateKey(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
+  if (!keyFormatter || keyTimeZone !== timeZone) {
+    keyFormatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    keyTimeZone = timeZone;
+  }
+  const parts = keyFormatter.formatToParts(date);
   const value = (type: string) =>
     parts.find((part) => part.type === type)?.value ?? "";
   return `${value("year")}-${value("month")}-${value("day")}`;

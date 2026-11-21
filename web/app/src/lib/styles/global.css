@@ -211,7 +211,7 @@ body.is-resizing-panels * {
   background: var(--color-chrome-raised);
   backdrop-filter: blur(16px) saturate(140%);
   padding: 12px;
-  box-shadow: 0 18px 42px rgb(var(--color-shadow) / 16%);
+  box-shadow: var(--shadow-menu);
   transform-origin: left top;
   transition:
     opacity 180ms var(--ease-out),
@@ -646,7 +646,7 @@ body.is-resizing-panels * {
 }
 
 .tools-panel__header {
-  min-height: 72px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -663,9 +663,7 @@ body.is-resizing-panels * {
 
 .tools-panel__header h2 {
   margin: 0;
-  font-size: 19px;
-  line-height: 1.25;
-  font-weight: 500;
+  font: 600 1.25rem/1.25 var(--font-reader);
 }
 
 .tools-panel__header p {
@@ -789,8 +787,10 @@ body.is-resizing-panels * {
 
 .settings-view {
   display: grid;
-  gap: 22px;
-  padding: 26px;
+  gap: var(--space-4);
+  width: min(100%, 48rem);
+  margin-inline: auto;
+  padding: clamp(16px, 3vw, 32px);
 }
 
 .settings-section {
@@ -1077,7 +1077,10 @@ body.is-resizing-panels * {
 }
 
 .settings-empty {
-  color: var(--color-text-muted);
+  padding: 12px 16px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-sub);
 }
 
 .settings-error {
@@ -1932,7 +1935,7 @@ body.is-resizing-panels * {
   border-radius: var(--radius-card);
   background: var(--color-card);
   padding: 6px;
-  box-shadow: 0 10px 28px rgb(var(--color-shadow) / 14%);
+  box-shadow: var(--shadow-menu);
 }
 
 .folder-browser-menu button {
@@ -2917,12 +2920,12 @@ body.is-resizing-panels * {
   top: 0;
   z-index: 3;
   margin: 0 -3px;
-  padding: 7px 10px 5px;
+  padding: 10px 14px 6px;
   background: color-mix(in srgb, var(--color-page) 80%, var(--color-floor));
   color: var(--color-text-sub);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .note-card {
@@ -2949,8 +2952,8 @@ body.is-resizing-panels * {
 .note-card.active,
 .note-card.selected {
   border-color: color-mix(in srgb, var(--color-brand) 18%, transparent);
-  background: color-mix(in srgb, var(--color-brand) 9%, var(--color-card));
-  box-shadow: inset 3px 0 0 var(--color-brand);
+  background: var(--color-card);
+  box-shadow: inset 3px 0 0 var(--color-brand), var(--shadow-paper);
 }
 
 .note-card.selected {
@@ -3413,7 +3416,7 @@ body.is-resizing-panels * {
   align-items: center;
   gap: 10px;
   background: color-mix(in srgb, var(--color-card) 94%, transparent);
-  box-shadow: 0 8px 18px rgb(var(--color-shadow) / 10%);
+  box-shadow: var(--shadow-menu);
 }
 
 .index-message--overlay span {
@@ -4445,7 +4448,7 @@ body.is-resizing-panels * {
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-sheet);
   background: var(--color-card);
-  box-shadow: 0 18px 48px rgb(var(--color-shadow) / 18%);
+  box-shadow: var(--shadow-panel);
 }
 
 .note-protection-dialog__header {
@@ -4929,7 +4932,7 @@ body.is-resizing-panels * {
   transform: translateX(calc(100% + 24px));
   pointer-events: auto;
   background: color-mix(in srgb, var(--color-card) 96%, var(--color-surface-secondary));
-  box-shadow: 0 10px 28px rgb(var(--color-shadow) / 12%);
+  box-shadow: var(--shadow-menu);
   overscroll-behavior: contain;
   font-size: 12px;
 }
@@ -5176,15 +5179,23 @@ body.is-resizing-panels * {
   text-align: center;
 }
 
-.editor-empty__mark {
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--color-divider);
-  border-radius: 17px;
-  background: color-mix(in srgb, var(--color-card) 78%, transparent);
-  color: color-mix(in srgb, var(--color-text-muted) 72%, transparent);
+.editor-empty-create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--color-divider-em);
+  border-radius: var(--radius-control);
+  background: var(--color-card);
+  box-shadow: var(--shadow-control);
+  color: var(--color-text);
+  font: 600 0.875rem var(--font-ui);
+}
+
+.markdown-editor-host .milkdown .crepe-placeholder::before {
+  color: var(--color-placeholder);
 }
 
 .editor-empty-text {
@@ -6154,10 +6165,11 @@ body.is-resizing-panels * {
   clip-path: inset(50%);
 }
 
-.workspace:has(.editor-pane.focus-mode) {
+.workspace:has(.editor-pane.has-note.focus-mode) {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.workspace:has(.editor-pane.focus-mode) .index-view,
 .workspace:has(.editor-pane.focus-mode) .sidebar,
 .workspace:has(.editor-pane.focus-mode) .note-list-pane,
 .workspace:has(.editor-pane.focus-mode) .workspace-note-list-resizer {
@@ -7067,6 +7079,43 @@ body.is-resizing-panels * {
   }
 }
 
+
+.note-card mark {
+  border-radius: 2px;
+  background: var(--color-selection);
+  color: var(--color-text);
+}
+
+.search-shortcut {
+  padding-inline: 5px;
+  border: 1px solid var(--color-divider);
+  border-radius: 4px;
+  color: var(--color-text-sub);
+  font: 12px/18px var(--font-mono);
+}
+
+@media (pointer: coarse), (max-width: 960px) {
+  .search-shortcut { display: none; }
+}
+
+.browser-search:focus-within, .index-search:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.folder-browser-row__count, .tag-browser-row small, .index-rail-item small,
+.note-calendar, .tools-panel__version {
+  font-variant-numeric: tabular-nums;
+}
+
+.folder-browser-row.drop-target, .folder-browser-header.drop-target {
+  outline: 2px dashed var(--color-focus);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-card:has(.note-card__body:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+}
 :root[data-input-method="keyboard"] {
   --duration-press: 0ms;
   --duration-popover: 0ms;
@@ -7100,6 +7149,7 @@ body.is-resizing-panels * {
   }
 
   .editor-meta-bar {
+    position: sticky;
     top: calc(52px + env(safe-area-inset-top));
     padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
   }
@@ -7193,6 +7243,6 @@ body.is-resizing-panels * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    transition: none !important;
   }
 }

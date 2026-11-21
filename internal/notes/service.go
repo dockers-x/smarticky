@@ -9,7 +9,7 @@ import (
 	"smarticky/ent"
 	"smarticky/ent/note"
 	"smarticky/ent/tag"
-	"smarticky/ent/user"
+
 	searchsvc "smarticky/internal/search"
 
 	"github.com/google/uuid"
@@ -91,7 +91,7 @@ func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]Not
 	}
 
 	query := s.client.Note.Query().
-		Where(note.HasUserWith(user.IDEQ(userID)))
+		Where(note.UserIDEQ(userID))
 
 	if !opts.IncludeTrash {
 		query.Where(note.IsDeleted(false))
@@ -117,7 +117,7 @@ func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]Not
 			Order(ent.Desc(note.FieldUpdatedAt))
 	}
 
-	rows, err := query.All(ctx)
+	rows, err := query.WithTags(sortedTags).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -128,11 +128,7 @@ func (s *Service) List(ctx context.Context, userID int, opts ListOptions) ([]Not
 
 	result := make([]NoteView, 0, len(rows))
 	for _, row := range rows {
-		view, err := s.noteToView(ctx, row, opts.RedactLocked)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, view)
+		result = append(result, noteToView(row, opts.RedactLocked))
 	}
 	return result, nil
 }
@@ -165,12 +161,13 @@ func paginateNotes(rows []*ent.Note, offset, limit int) []*ent.Note {
 
 func (s *Service) Get(ctx context.Context, userID int, id uuid.UUID, redactLocked bool) (NoteView, error) {
 	row, err := s.client.Note.Query().
-		Where(note.IDEQ(id), note.HasUserWith(user.IDEQ(userID))).
+		Where(note.IDEQ(id), note.UserIDEQ(userID)).
+		WithTags(sortedTags).
 		Only(ctx)
 	if err != nil {
 		return NoteView{}, err
 	}
-	return s.noteToView(ctx, row, redactLocked)
+	return noteToView(row, redactLocked), nil
 }
 
 func (s *Service) Create(ctx context.Context, userID int, input CreateInput) (NoteView, error) {
@@ -187,7 +184,12 @@ func (s *Service) Create(ctx context.Context, userID int, input CreateInput) (No
 		content = string([]rune(content)[:MaxContentLen])
 	}
 
-	row, err := s.client.Note.Create().
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return NoteView{}, err
+	}
+	defer tx.Rollback()
+	row, err := tx.Note.Create().
 		SetTitle(title).
 		SetContent(content).
 		SetColor(strings.TrimSpace(input.Color)).
@@ -196,21 +198,23 @@ func (s *Service) Create(ctx context.Context, userID int, input CreateInput) (No
 	if err != nil {
 		return NoteView{}, err
 	}
+	if err := SyncChangedLinks(ctx, tx, userID, row, title); err != nil {
+		return NoteView{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return NoteView{}, err
+	}
+	row.Unwrap()
 	if s.search != nil {
 		_ = s.search.IndexNote(ctx, row)
 	}
-	if err := s.SyncUserLinks(ctx, userID); err != nil {
-		return NoteView{}, err
-	}
-	return s.noteToView(ctx, row, false)
+	return noteToView(row, false), nil
 }
 
-func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bool) (NoteView, error) {
-	tagRows, err := row.QueryTags().Order(ent.Asc(tag.FieldName)).All(ctx)
-	if err != nil {
-		return NoteView{}, err
-	}
+func sortedTags(q *ent.TagQuery) { q.Select(tag.FieldName).Order(ent.Asc(tag.FieldName)) }
 
+func noteToView(row *ent.Note, redactLocked bool) NoteView {
+	tagRows := row.Edges.Tags
 	tags := make([]string, 0, len(tagRows))
 	for _, tagRow := range tagRows {
 		tags = append(tags, tagRow.Name)
@@ -222,10 +226,6 @@ func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bo
 		content = ""
 		redacted = true
 	}
-	folderID, err := noteFolderID(ctx, row)
-	if err != nil {
-		return NoteView{}, err
-	}
 
 	return NoteView{
 		ID:              row.ID,
@@ -236,23 +236,11 @@ func (s *Service) noteToView(ctx context.Context, row *ent.Note, redactLocked bo
 		IsStarred:       row.IsStarred,
 		IsDeleted:       row.IsDeleted,
 		ContentRedacted: redacted,
-		FolderID:        folderID,
+		FolderID:        row.FolderID,
 		Tags:            tags,
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
-	}, nil
-}
-
-func noteFolderID(ctx context.Context, row *ent.Note) (*uuid.UUID, error) {
-	folderRow, err := row.QueryFolder().Only(ctx)
-	if ent.IsNotFound(err) {
-		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	id := folderRow.ID
-	return &id, nil
 }
 
 func clampLimit(limit int) int {

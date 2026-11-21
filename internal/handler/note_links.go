@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -68,7 +67,7 @@ func (h *Handler) GetNoteLinks(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
 	}
 	userID := c.Get("user_id").(int)
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	if _, err := h.client.Note.Query().
 		Where(note.IDEQ(id), note.HasUserWith(user.IDEQ(userID))).
@@ -81,8 +80,8 @@ func (h *Handler) GetNoteLinks(c echo.Context) error {
 
 	outgoingRows, err := h.client.NoteLink.Query().
 		Where(notelink.UserIDEQ(userID), notelink.SourceNoteIDEQ(id)).
-		WithSourceNote().
-		WithTargetNote().
+		WithSourceNote(selectNoteMetadata).
+		WithTargetNote(selectNoteMetadata).
 		Order(notelink.ByTargetRef()).
 		All(ctx)
 	if err != nil {
@@ -90,8 +89,8 @@ func (h *Handler) GetNoteLinks(c echo.Context) error {
 	}
 	backlinkRows, err := h.client.NoteLink.Query().
 		Where(notelink.UserIDEQ(userID), notelink.TargetNoteIDEQ(id)).
-		WithSourceNote().
-		WithTargetNote().
+		WithSourceNote(selectNoteMetadata).
+		WithTargetNote(selectNoteMetadata).
 		Order(notelink.ByTargetRef()).
 		All(ctx)
 	if err != nil {
@@ -104,10 +103,7 @@ func (h *Handler) GetNoteLinks(c echo.Context) error {
 		Unresolved: []NoteLinkResponse{},
 	}
 	for _, row := range outgoingRows {
-		item, err := h.noteLinkToResponse(ctx, row)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		}
+		item := noteLinkToResponse(row)
 		if row.TargetNoteID == nil {
 			response.Unresolved = append(response.Unresolved, item)
 		} else {
@@ -115,10 +111,7 @@ func (h *Handler) GetNoteLinks(c echo.Context) error {
 		}
 	}
 	for _, row := range backlinkRows {
-		item, err := h.noteLinkToResponse(ctx, row)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		}
+		item := noteLinkToResponse(row)
 		response.Backlinks = append(response.Backlinks, item)
 	}
 
@@ -128,12 +121,12 @@ func (h *Handler) GetNoteLinks(c echo.Context) error {
 func (h *Handler) ListNoteLinkGraph(c echo.Context) error {
 	userID := c.Get("user_id").(int)
 	includeTrash := strings.EqualFold(c.QueryParam("include_trash"), "true")
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	rows, err := h.client.NoteLink.Query().
 		Where(notelink.UserIDEQ(userID), notelink.TargetNoteIDNotNil()).
-		WithSourceNote().
-		WithTargetNote().
+		WithSourceNote(selectNoteMetadata).
+		WithTargetNote(selectNoteMetadata).
 		Order(notelink.ByUpdatedAt()).
 		All(ctx)
 	if err != nil {
@@ -152,14 +145,8 @@ func (h *Handler) ListNoteLinkGraph(c echo.Context) error {
 			continue
 		}
 
-		sourceMeta, err := h.noteMetadata(ctx, source)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		}
-		targetMeta, err := h.noteMetadata(ctx, target)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		}
+		sourceMeta := noteMetadata(source)
+		targetMeta := noteMetadata(target)
 		nodesByID[source.ID] = sourceMeta
 		nodesByID[target.ID] = targetMeta
 		edges = append(edges, NoteLinkGraphEdge{
@@ -179,21 +166,15 @@ func (h *Handler) ListNoteLinkGraph(c echo.Context) error {
 	return c.JSON(http.StatusOK, NoteLinkGraphResponse{Nodes: nodes, Edges: edges})
 }
 
-func (h *Handler) noteLinkToResponse(ctx context.Context, row *ent.NoteLink) (NoteLinkResponse, error) {
+func noteLinkToResponse(row *ent.NoteLink) NoteLinkResponse {
 	var sourceMeta *NoteMetadataResponse
 	if row.Edges.SourceNote != nil {
-		meta, err := h.noteMetadata(ctx, row.Edges.SourceNote)
-		if err != nil {
-			return NoteLinkResponse{}, err
-		}
+		meta := noteMetadata(row.Edges.SourceNote)
 		sourceMeta = &meta
 	}
 	var targetMeta *NoteMetadataResponse
 	if row.Edges.TargetNote != nil {
-		meta, err := h.noteMetadata(ctx, row.Edges.TargetNote)
-		if err != nil {
-			return NoteLinkResponse{}, err
-		}
+		meta := noteMetadata(row.Edges.TargetNote)
 		targetMeta = &meta
 	}
 
@@ -209,14 +190,10 @@ func (h *Handler) noteLinkToResponse(ctx context.Context, row *ent.NoteLink) (No
 		TargetNote:      targetMeta,
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
-	}, nil
+	}
 }
 
-func (h *Handler) noteMetadata(ctx context.Context, row *ent.Note) (NoteMetadataResponse, error) {
-	folderID, err := noteFolderID(ctx, row)
-	if err != nil {
-		return NoteMetadataResponse{}, err
-	}
+func noteMetadata(row *ent.Note) NoteMetadataResponse {
 	return NoteMetadataResponse{
 		ID:              row.ID,
 		Title:           row.Title,
@@ -225,8 +202,12 @@ func (h *Handler) noteMetadata(ctx context.Context, row *ent.Note) (NoteMetadata
 		ContentRedacted: row.ProtectionMode != note.ProtectionModeNone,
 		IsStarred:       row.IsStarred,
 		IsDeleted:       row.IsDeleted,
-		FolderID:        folderID,
+		FolderID:        row.FolderID,
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
-	}, nil
+	}
+}
+
+func selectNoteMetadata(q *ent.NoteQuery) {
+	q.Select(note.FieldID, note.FieldTitle, note.FieldColor, note.FieldProtectionMode, note.FieldIsStarred, note.FieldIsDeleted, note.FieldFolderID, note.FieldCreatedAt, note.FieldUpdatedAt)
 }

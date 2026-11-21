@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,10 +17,11 @@ import (
 	"smarticky/ent/folder"
 	"smarticky/ent/note"
 	"smarticky/ent/noteconnectionitemmap"
-	"smarticky/ent/noteconnectionjob"
+	"smarticky/ent/predicate"
 	"smarticky/ent/tag"
 	"smarticky/ent/user"
 	"smarticky/ent/whiteboard"
+	notesvc "smarticky/internal/notes"
 	searchsvc "smarticky/internal/search"
 
 	"github.com/google/uuid"
@@ -101,12 +102,7 @@ type NoteResponse struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
-func noteToResponse(ctx context.Context, n *ent.Note, revealContent bool) (NoteResponse, error) {
-	folderID, err := noteFolderID(ctx, n)
-	if err != nil {
-		return NoteResponse{}, err
-	}
-
+func noteToResponse(n *ent.Note, revealContent bool) NoteResponse {
 	content := n.Content
 	redacted := false
 	if !revealContent {
@@ -134,22 +130,10 @@ func noteToResponse(ctx context.Context, n *ent.Note, revealContent bool) (NoteR
 		EncryptionNonce:  n.EncryptionNonce,
 		IsStarred:        n.IsStarred,
 		IsDeleted:        n.IsDeleted,
-		FolderID:         folderID,
+		FolderID:         n.FolderID,
 		CreatedAt:        n.CreatedAt,
 		UpdatedAt:        n.UpdatedAt,
-	}, nil
-}
-
-func noteFolderID(ctx context.Context, n *ent.Note) (*uuid.UUID, error) {
-	f, err := n.QueryFolder().Only(ctx)
-	if ent.IsNotFound(err) {
-		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	id := f.ID
-	return &id, nil
 }
 
 type CreateNoteRequest struct {
@@ -190,7 +174,7 @@ func parseNoteTimeParam(value string, endOfDay bool, location *time.Location) (t
 		return time.Time{}, err
 	}
 	if endOfDay {
-		return parsed.Add(24*time.Hour - time.Nanosecond).UTC(), nil
+		return parsed.AddDate(0, 0, 1).Add(-time.Nanosecond).UTC(), nil
 	}
 	return parsed.UTC(), nil
 }
@@ -217,7 +201,7 @@ func applyNoteTimeFilter(c echo.Context, location *time.Location, param string, 
 }
 
 func (h *Handler) ListNotes(c echo.Context) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	userID := c.Get("user_id").(int)
 	location, err := noteQueryLocation(c)
 	if err != nil {
@@ -230,11 +214,11 @@ func (h *Handler) ListNotes(c echo.Context) error {
 	}
 
 	query := h.client.Note.Query()
-	var searchIDs []uuid.UUID
+	var orderedIDs []uuid.UUID
 	useIndexSearch := false
 
 	// 只返回当前用户的笔记
-	query.Where(note.HasUserWith(user.IDEQ(userID)))
+	query.Where(note.UserIDEQ(userID))
 
 	// Filters
 	if c.QueryParam("starred") == "true" {
@@ -322,9 +306,8 @@ func (h *Handler) ListNotes(c echo.Context) error {
 			if len(ids) == 0 {
 				return c.JSON(http.StatusOK, []NoteWithTagsResponse{})
 			}
-			searchIDs = ids
+			orderedIDs = ids
 			useIndexSearch = true
-			query.Where(note.IDIn(ids...))
 		}
 	}
 	if searchText != "" && !useIndexSearch {
@@ -340,52 +323,31 @@ func (h *Handler) ListNotes(c echo.Context) error {
 	}
 
 	if !useIndexSearch {
-		// Order by updated_at desc
-		query.Order(ent.Desc(note.FieldUpdatedAt))
-	}
-
-	notes, err := query.All(ctx)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-	if useIndexSearch {
-		orderHandlerNotesBySearch(notes, searchIDs)
-	}
-
-	response := make([]NoteWithTagsResponse, len(notes))
-	for i, n := range notes {
-		// Get tags for this note
-		tags, err := n.QueryTags().All(ctx)
+		orderedIDs, err = query.Clone().Order(ent.Desc(note.FieldUpdatedAt), note.ByID()).IDs(ctx)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
+	}
 
-		noteResponse, err := noteToResponse(ctx, n, false)
+	// Bound both the note and eager tag IN lists on large libraries. Keep the
+	// order from the updated-at index or search engine across batch boundaries.
+	response := make([]NoteWithTagsResponse, 0, len(orderedIDs))
+	for ids := range slices.Chunk(orderedIDs, 512) {
+		rows, err := query.Clone().Where(note.IDIn(ids...)).WithTags().All(ctx)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
-		response[i] = NoteWithTagsResponse{
-			NoteResponse: noteResponse,
-			Tags:         tags,
+		byID := make(map[uuid.UUID]*ent.Note, len(rows))
+		for _, row := range rows {
+			byID[row.ID] = row
+		}
+		for _, id := range ids {
+			if row := byID[id]; row != nil {
+				response = append(response, NoteWithTagsResponse{NoteResponse: noteToResponse(row, false), Tags: row.Edges.Tags})
+			}
 		}
 	}
-
 	return c.JSON(http.StatusOK, response)
-}
-
-func orderHandlerNotesBySearch(rows []*ent.Note, ids []uuid.UUID) {
-	rank := searchsvc.IDRank(ids)
-	sort.SliceStable(rows, func(i, j int) bool {
-		left, ok := rank[rows[i].ID]
-		if !ok {
-			left = len(rank)
-		}
-		right, ok := rank[rows[j].ID]
-		if !ok {
-			right = len(rank)
-		}
-		return left < right
-	})
 }
 
 func (h *Handler) indexNoteBestEffort(ctx context.Context, n *ent.Note) {
@@ -424,14 +386,19 @@ func (h *Handler) CreateNote(c echo.Context) error {
 	// 获取当前用户ID
 	userID := c.Get("user_id").(int)
 
-	ctx := context.Background()
-	create := h.client.Note.Create().
+	ctx := c.Request().Context()
+	tx, err := h.client.Tx(ctx)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	defer tx.Rollback()
+	create := tx.Note.Create().
 		SetTitle(req.Title).
 		SetContent(req.Content).
 		SetColor(req.Color).
 		SetUserID(userID)
 	if req.FolderID.Set && req.FolderID.Value != nil {
-		if _, err := h.folderForUser(ctx, userID, *req.FolderID.Value); err != nil {
+		if _, err := tx.Folder.Query().Where(folder.ID(*req.FolderID.Value), folder.HasUserWith(user.IDEQ(userID))).Only(ctx); err != nil {
 			if ent.IsNotFound(err) {
 				return c.JSON(http.StatusNotFound, map[string]string{"error": "folder not found"})
 			}
@@ -445,15 +412,16 @@ func (h *Handler) CreateNote(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	h.indexNoteBestEffort(ctx, n)
-	if err := h.notes.SyncUserLinks(ctx, userID); err != nil {
+	if err := notesvc.SyncChangedLinks(ctx, tx, userID, n, n.Title); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	response, err := noteToResponse(ctx, n, false)
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+	n.Unwrap()
+	h.indexNoteBestEffort(ctx, n)
+	response := noteToResponse(n, false)
 	return c.JSON(http.StatusCreated, response)
 }
 
@@ -466,7 +434,7 @@ func (h *Handler) GetNote(c echo.Context) error {
 
 	userID := c.Get("user_id").(int)
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	// 查询note，并验证是否属于当前用户
 	n, err := h.client.Note.Query().
 		Where(
@@ -494,10 +462,7 @@ func (h *Handler) GetNote(c echo.Context) error {
 		Tags []*ent.Tag `json:"tags"`
 	}
 
-	noteResponse, err := noteToResponse(ctx, n, false)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
+	noteResponse := noteToResponse(n, false)
 	response := NoteWithTagsResponse{
 		NoteResponse: noteResponse,
 		Tags:         tags,
@@ -520,10 +485,32 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
-	// 先验证笔记是否存在且属于当前用户
-	n, err := h.client.Note.Query().
+	var hashedPassword string
+	if req.ProtectionMode != nil && *req.ProtectionMode == "password" {
+		exists, err := h.client.Note.Query().Where(note.IDEQ(id), note.UserIDEQ(userID)).Exist(ctx)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		if !exists {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
+		}
+		if req.ProtectionPassword == nil || strings.TrimSpace(*req.ProtectionPassword) == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "protection_password is required"})
+		}
+		hashedPassword, err = hashPassword(*req.ProtectionPassword)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
+		}
+	}
+
+	tx, err := h.client.Tx(ctx)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	defer tx.Rollback()
+	n, err := tx.Note.Query().
 		Where(
 			note.ID(id),
 			note.HasUserWith(user.IDEQ(userID)),
@@ -569,13 +556,6 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 			update.ClearEncryptionSalt()
 			update.ClearEncryptionNonce()
 		case "password":
-			if req.ProtectionPassword == nil || strings.TrimSpace(*req.ProtectionPassword) == "" {
-				return c.JSON(http.StatusBadRequest, map[string]string{"error": "protection_password is required"})
-			}
-			hashedPassword, err := hashPassword(*req.ProtectionPassword)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
-			}
 			update.SetProtectionMode(note.ProtectionModePassword)
 			update.SetProtectionPasswordHash(hashedPassword)
 			update.ClearEncryptedContent()
@@ -613,7 +593,7 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		if req.FolderID.Value == nil {
 			update.ClearFolder()
 		} else {
-			if _, err := h.folderForUser(ctx, userID, *req.FolderID.Value); err != nil {
+			if _, err := tx.Folder.Query().Where(folder.ID(*req.FolderID.Value), folder.HasUserWith(user.IDEQ(userID))).Only(ctx); err != nil {
 				if ent.IsNotFound(err) {
 					return c.JSON(http.StatusNotFound, map[string]string{"error": "folder not found"})
 				}
@@ -623,167 +603,107 @@ func (h *Handler) UpdateNote(c echo.Context) error {
 		}
 	}
 
+	oldTitle := n.Title
 	n, err = update.Save(ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	h.indexNoteBestEffort(ctx, n)
 	if req.Title != nil || req.Content != nil || req.ProtectionMode != nil {
-		if err := h.notes.SyncUserLinks(ctx, userID); err != nil {
+		var titles []string
+		if n.Title != oldTitle {
+			titles = []string{oldTitle, n.Title}
+		}
+		if err := notesvc.SyncChangedLinks(ctx, tx, userID, n, titles...); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 	}
-
-	response, err := noteToResponse(ctx, n, false)
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+	n.Unwrap()
+	h.indexNoteBestEffort(ctx, n)
+	response := noteToResponse(n, false)
 	return c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) DeleteNote(c echo.Context) error {
-	// Permanent delete
-	idStr := c.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
 	}
-
-	userID := c.Get("user_id").(int)
-
-	ctx := context.Background()
-	if err := h.deleteNoteDependentsForPermanentDelete(ctx, userID, id); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	// 删除时验证笔记是否属于当前用户
-	count, err := h.client.Note.Delete().
-		Where(
-			note.ID(id),
-			note.HasUserWith(user.IDEQ(userID)),
-		).
-		Exec(ctx)
-
+	count, err := h.deleteNotes(c.Request().Context(), c.Get("user_id").(int), note.IDEQ(id))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-
 	if count == 0 {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "note not found"})
 	}
-	h.deleteNoteFromIndexBestEffort(id)
-
 	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *Handler) EmptyTrash(c echo.Context) error {
-	userID := c.Get("user_id").(int)
-	ctx := context.Background()
-	ids, err := h.client.Note.Query().
-		Where(
-			note.IsDeleted(true),
-			note.HasUserWith(user.IDEQ(userID)),
-		).
-		IDs(ctx)
+	count, err := h.deleteNotes(c.Request().Context(), c.Get("user_id").(int), note.IsDeleted(true))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	if err := h.deleteNoteDependentsForPermanentDelete(ctx, userID, ids...); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	count, err := h.client.Note.Delete().
-		Where(
-			note.IsDeleted(true),
-			note.HasUserWith(user.IDEQ(userID)),
-		).
-		Exec(ctx)
-
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-	h.rebuildSearchIndexBestEffort(context.Background())
-
 	return c.JSON(http.StatusOK, map[string]int{"deleted_count": count})
 }
 
-func (h *Handler) deleteNoteDependentsForPermanentDelete(ctx context.Context, userID int, ids ...uuid.UUID) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	uniqueIDs := uniqueUUIDs(ids)
-	if err := h.notes.DeleteLinksForNotes(ctx, userID, uniqueIDs...); err != nil {
-		return err
-	}
-	if err := h.deleteNoteAttachments(ctx, userID, uniqueIDs...); err != nil {
-		return err
-	}
-	if _, err := h.client.Whiteboard.Delete().
-		Where(
-			whiteboard.HasNoteWith(
-				note.IDIn(uniqueIDs...),
-				note.HasUserWith(user.IDEQ(userID)),
-			),
-		).
-		Exec(ctx); err != nil {
-		return err
-	}
-	return h.detachNoteConnectionRecords(ctx, userID, uniqueIDs...)
-}
-
-func (h *Handler) deleteNoteAttachments(ctx context.Context, userID int, ids ...uuid.UUID) error {
-	attachments, err := h.client.Attachment.Query().
-		Where(
-			attachment.HasNoteWith(
-				note.IDIn(ids...),
-				note.HasUserWith(user.IDEQ(userID)),
-			),
-		).
-		All(ctx)
+func (h *Handler) deleteNotes(ctx context.Context, userID int, filter predicate.Note) (int, error) {
+	tx, err := h.client.Tx(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if len(attachments) == 0 {
-		return nil
+	defer tx.Rollback()
+	rows, err := tx.Note.Query().Where(note.UserIDEQ(userID), filter).Select(note.FieldID, note.FieldTitle).All(ctx)
+	if err != nil {
+		return 0, err
 	}
 
-	attachmentIDs := make([]int, 0, len(attachments))
-	for _, att := range attachments {
-		attachmentIDs = append(attachmentIDs, att.ID)
-		if err := h.fs.Remove(att.FilePath); err != nil {
-			zap.L().Warn("Failed to delete attachment file while deleting note", zap.String("path", att.FilePath), zap.Error(err))
+	var paths []string
+	for batch := range slices.Chunk(rows, 256) {
+		ids := make([]uuid.UUID, 0, len(batch))
+		titles := make([]string, 0, len(batch))
+		for _, row := range batch {
+			ids = append(ids, row.ID)
+			titles = append(titles, row.Title)
+		}
+		files := attachment.HasNoteWith(note.IDIn(ids...))
+		batchPaths, err := tx.Attachment.Query().Where(files).Select(attachment.FieldFilePath).Strings(ctx)
+		if err != nil {
+			return 0, err
+		}
+		paths = append(paths, batchPaths...)
+		if _, err := tx.Attachment.Delete().Where(files).Exec(ctx); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Whiteboard.Delete().Where(whiteboard.HasNoteWith(note.IDIn(ids...))).Exec(ctx); err != nil {
+			return 0, err
+		}
+		if _, err := tx.NoteConnectionItemMap.Delete().Where(noteconnectionitemmap.NoteIDIn(ids...)).Exec(ctx); err != nil {
+			return 0, err
+		}
+		// The schema cascades outgoing links and clears the foreign keys on
+		// incoming links and connection jobs. Re-resolve surviving references.
+		if _, err := tx.Note.Delete().Where(note.UserIDEQ(userID), note.IDIn(ids...)).Exec(ctx); err != nil {
+			return 0, err
+		}
+		if err := notesvc.SyncChangedLinks(ctx, tx, userID, nil, titles...); err != nil {
+			return 0, err
 		}
 	}
-	_, err = h.client.Attachment.Delete().
-		Where(attachment.IDIn(attachmentIDs...)).
-		Exec(ctx)
-	return err
-}
-
-func (h *Handler) detachNoteConnectionRecords(ctx context.Context, userID int, ids ...uuid.UUID) error {
-	if len(ids) == 0 {
-		return nil
+	if err := tx.Commit(); err != nil {
+		return 0, err
 	}
-	uniqueIDs := uniqueUUIDs(ids)
-	if _, err := h.client.NoteConnectionItemMap.Delete().
-		Where(
-			noteconnectionitemmap.HasNoteWith(
-				note.IDIn(uniqueIDs...),
-				note.HasUserWith(user.IDEQ(userID)),
-			),
-		).
-		Exec(ctx); err != nil {
-		return err
+	for _, path := range paths {
+		if err := h.fs.Remove(path); err != nil {
+			zap.L().Warn("Failed to remove deleted note attachment", zap.String("path", path), zap.Error(err))
+		}
 	}
-	return h.client.NoteConnectionJob.Update().
-		Where(
-			noteconnectionjob.HasNoteWith(
-				note.IDIn(uniqueIDs...),
-				note.HasUserWith(user.IDEQ(userID)),
-			),
-		).
-		ClearNoteID().
-		Exec(ctx)
+	for _, row := range rows {
+		h.deleteNoteFromIndexBestEffort(row.ID)
+	}
+	return len(rows), nil
 }
 
 // VerifyNotePassword verifies if the provided password matches the note's password
@@ -803,7 +723,7 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	userID := c.Get("user_id").(int)
 	n, err := h.client.Note.Query().
 		Where(
@@ -833,10 +753,7 @@ func (h *Handler) VerifyNotePassword(c echo.Context) error {
 	}
 
 	// Return success with note content
-	response, err := noteToResponse(ctx, n, true)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
+	response := noteToResponse(n, true)
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
 		"note":    response,

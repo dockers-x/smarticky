@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notePreview } from "./notePreview";
+import { matchExcerpt, notePreview } from "./notePreview";
 
 const labels = { empty: "No content", locked: "Note locked" };
 
@@ -29,6 +29,14 @@ describe("note previews", () => {
     const note = { content: "Readable content ".repeat(40), content_redacted: false };
     expect(notePreview(note, labels)).toHaveLength(96);
     expect(note.content).toBe("Readable content ".repeat(40));
+  });
+
+  it("shows a late match in the excerpt and treats search punctuation literally", () => {
+    const note = { content: "早先的记录。".repeat(40) + "立即核对 C++ (v2).", content_redacted: false };
+    const preview = notePreview(note, labels, "c++ (v2).");
+    expect(preview).toMatch(/^…/);
+    expect(matchExcerpt(preview, "c++ (v2).").match).toBe("C++ (v2).");
+    expect(notePreview({ ...note, content_redacted: true }, labels, "C++")).toBe(labels.locked);
   });
 
   it("keeps CJK text readable and omits code-only content", () => {

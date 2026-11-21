@@ -177,23 +177,23 @@ func init() {
 	folderFields := schema.Folder{}.Fields()
 	_ = folderFields
 	// folderDescName is the schema descriptor for name field.
-	folderDescName := folderFields[1].Descriptor()
+	folderDescName := folderFields[2].Descriptor()
 	// folder.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	folder.NameValidator = folderDescName.Validators[0].(func(string) error)
 	// folderDescSortOrder is the schema descriptor for sort_order field.
-	folderDescSortOrder := folderFields[2].Descriptor()
+	folderDescSortOrder := folderFields[3].Descriptor()
 	// folder.DefaultSortOrder holds the default value on creation for the sort_order field.
 	folder.DefaultSortOrder = folderDescSortOrder.Default.(int)
 	// folderDescIsStarred is the schema descriptor for is_starred field.
-	folderDescIsStarred := folderFields[3].Descriptor()
+	folderDescIsStarred := folderFields[4].Descriptor()
 	// folder.DefaultIsStarred holds the default value on creation for the is_starred field.
 	folder.DefaultIsStarred = folderDescIsStarred.Default.(bool)
 	// folderDescCreatedAt is the schema descriptor for created_at field.
-	folderDescCreatedAt := folderFields[4].Descriptor()
+	folderDescCreatedAt := folderFields[5].Descriptor()
 	// folder.DefaultCreatedAt holds the default value on creation for the created_at field.
 	folder.DefaultCreatedAt = folderDescCreatedAt.Default.(func() time.Time)
 	// folderDescUpdatedAt is the schema descriptor for updated_at field.
-	folderDescUpdatedAt := folderFields[5].Descriptor()
+	folderDescUpdatedAt := folderFields[6].Descriptor()
 	// folder.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	folder.DefaultUpdatedAt = folderDescUpdatedAt.Default.(func() time.Time)
 	// folder.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -335,27 +335,27 @@ func init() {
 	noteFields := schema.Note{}.Fields()
 	_ = noteFields
 	// noteDescTitle is the schema descriptor for title field.
-	noteDescTitle := noteFields[1].Descriptor()
+	noteDescTitle := noteFields[3].Descriptor()
 	// note.DefaultTitle holds the default value on creation for the title field.
 	note.DefaultTitle = noteDescTitle.Default.(string)
 	// noteDescColor is the schema descriptor for color field.
-	noteDescColor := noteFields[3].Descriptor()
+	noteDescColor := noteFields[5].Descriptor()
 	// note.DefaultColor holds the default value on creation for the color field.
 	note.DefaultColor = noteDescColor.Default.(string)
 	// noteDescIsStarred is the schema descriptor for is_starred field.
-	noteDescIsStarred := noteFields[11].Descriptor()
+	noteDescIsStarred := noteFields[13].Descriptor()
 	// note.DefaultIsStarred holds the default value on creation for the is_starred field.
 	note.DefaultIsStarred = noteDescIsStarred.Default.(bool)
 	// noteDescIsDeleted is the schema descriptor for is_deleted field.
-	noteDescIsDeleted := noteFields[12].Descriptor()
+	noteDescIsDeleted := noteFields[14].Descriptor()
 	// note.DefaultIsDeleted holds the default value on creation for the is_deleted field.
 	note.DefaultIsDeleted = noteDescIsDeleted.Default.(bool)
 	// noteDescCreatedAt is the schema descriptor for created_at field.
-	noteDescCreatedAt := noteFields[13].Descriptor()
+	noteDescCreatedAt := noteFields[15].Descriptor()
 	// note.DefaultCreatedAt holds the default value on creation for the created_at field.
 	note.DefaultCreatedAt = noteDescCreatedAt.Default.(func() time.Time)
 	// noteDescUpdatedAt is the schema descriptor for updated_at field.
-	noteDescUpdatedAt := noteFields[14].Descriptor()
+	noteDescUpdatedAt := noteFields[16].Descriptor()
 	// note.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	note.DefaultUpdatedAt = noteDescUpdatedAt.Default.(func() time.Time)
 	// note.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

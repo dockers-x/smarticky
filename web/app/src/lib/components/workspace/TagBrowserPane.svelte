@@ -94,7 +94,8 @@
       </div>
     {:else if groupedTags.length === 0}
       <div class="tag-browser-empty">
-        <p>{t("noTags", $preferencesStore.language)}</p>
+        <p>{$preferencesStore.language === "zh" ? "没有匹配的标签" : "No matching tags"}</p>
+        <button class="clear-tag-search" type="button" on:click={() => (query = "")}>{$preferencesStore.language === "zh" ? "清除搜索" : "Clear search"}</button>
       </div>
     {:else}
       {#each groupedTags as group (group.label)}
@@ -119,3 +120,8 @@
     {/if}
   </div>
 </section>
+
+
+<style>
+  .clear-tag-search { margin-top: 6px; padding: 0 8px; min-height: 44px; border: 0; border-radius: var(--radius-control); background: var(--color-surface-secondary); color: var(--color-text); }
+</style>

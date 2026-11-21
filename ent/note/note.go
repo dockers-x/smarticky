@@ -16,6 +16,10 @@ const (
 	Label = "note"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldUserID holds the string denoting the user_id field in the database.
+	FieldUserID = "user_notes"
+	// FieldFolderID holds the string denoting the folder_id field in the database.
+	FieldFolderID = "folder_notes"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
 	// FieldContent holds the string denoting the content field in the database.
@@ -130,6 +134,8 @@ const (
 // Columns holds all SQL columns for note fields.
 var Columns = []string{
 	FieldID,
+	FieldUserID,
+	FieldFolderID,
 	FieldTitle,
 	FieldContent,
 	FieldColor,
@@ -146,13 +152,6 @@ var Columns = []string{
 	FieldUpdatedAt,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the "notes"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"folder_notes",
-	"user_notes",
-}
-
 var (
 	// TagsPrimaryKey and TagsColumn2 are the table columns denoting the
 	// primary key for the tags relation (M2M).
@@ -163,11 +162,6 @@ var (
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -226,6 +220,16 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByUserID orders the results by the user_id field.
+func ByUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUserID, opts...).ToFunc()
+}
+
+// ByFolderID orders the results by the folder_id field.
+func ByFolderID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFolderID, opts...).ToFunc()
 }
 
 // ByTitle orders the results by the title field.

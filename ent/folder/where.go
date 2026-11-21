@@ -56,6 +56,11 @@ func IDLTE(id uuid.UUID) predicate.Folder {
 	return predicate.Folder(sql.FieldLTE(FieldID, id))
 }
 
+// ParentID applies equality check predicate on the "parent_id" field. It's identical to ParentIDEQ.
+func ParentID(v uuid.UUID) predicate.Folder {
+	return predicate.Folder(sql.FieldEQ(FieldParentID, v))
+}
+
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
 func Name(v string) predicate.Folder {
 	return predicate.Folder(sql.FieldEQ(FieldName, v))
@@ -79,6 +84,36 @@ func CreatedAt(v time.Time) predicate.Folder {
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.Folder {
 	return predicate.Folder(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// ParentIDEQ applies the EQ predicate on the "parent_id" field.
+func ParentIDEQ(v uuid.UUID) predicate.Folder {
+	return predicate.Folder(sql.FieldEQ(FieldParentID, v))
+}
+
+// ParentIDNEQ applies the NEQ predicate on the "parent_id" field.
+func ParentIDNEQ(v uuid.UUID) predicate.Folder {
+	return predicate.Folder(sql.FieldNEQ(FieldParentID, v))
+}
+
+// ParentIDIn applies the In predicate on the "parent_id" field.
+func ParentIDIn(vs ...uuid.UUID) predicate.Folder {
+	return predicate.Folder(sql.FieldIn(FieldParentID, vs...))
+}
+
+// ParentIDNotIn applies the NotIn predicate on the "parent_id" field.
+func ParentIDNotIn(vs ...uuid.UUID) predicate.Folder {
+	return predicate.Folder(sql.FieldNotIn(FieldParentID, vs...))
+}
+
+// ParentIDIsNil applies the IsNil predicate on the "parent_id" field.
+func ParentIDIsNil() predicate.Folder {
+	return predicate.Folder(sql.FieldIsNull(FieldParentID))
+}
+
+// ParentIDNotNil applies the NotNil predicate on the "parent_id" field.
+func ParentIDNotNil() predicate.Folder {
+	return predicate.Folder(sql.FieldNotNull(FieldParentID))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.

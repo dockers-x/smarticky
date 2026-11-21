@@ -217,7 +217,7 @@
       })
       .addFeature(placeholder, {
         mode: "doc",
-        text: t("contentEmpty", $preferencesStore.language),
+        text: t("startWriting", $preferencesStore.language),
       })
       .addFeature(toolbar)
       .addFeature(codeMirror, {
@@ -259,7 +259,11 @@
       if (disposed) return;
       updateEditorAccessibility();
       refreshCodeGroupDecorations();
-      bindEditor(handle);
+      // The host is hidden while initializing. Focus can only move into the
+      // contenteditable after Svelte has applied the ready state to the DOM.
+      initializing = false;
+      await tick();
+      if (!disposed) bindEditor(handle);
     } catch {
       if (!disposed) {
         initializationError = $preferencesStore.language === "zh"

@@ -56,6 +56,16 @@ func IDLTE(id uuid.UUID) predicate.Note {
 	return predicate.Note(sql.FieldLTE(FieldID, id))
 }
 
+// UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
+func UserID(v int) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldUserID, v))
+}
+
+// FolderID applies equality check predicate on the "folder_id" field. It's identical to FolderIDEQ.
+func FolderID(v uuid.UUID) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldFolderID, v))
+}
+
 // Title applies equality check predicate on the "title" field. It's identical to TitleEQ.
 func Title(v string) predicate.Note {
 	return predicate.Note(sql.FieldEQ(FieldTitle, v))
@@ -119,6 +129,66 @@ func CreatedAt(v time.Time) predicate.Note {
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.Note {
 	return predicate.Note(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UserIDEQ applies the EQ predicate on the "user_id" field.
+func UserIDEQ(v int) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldUserID, v))
+}
+
+// UserIDNEQ applies the NEQ predicate on the "user_id" field.
+func UserIDNEQ(v int) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldUserID, v))
+}
+
+// UserIDIn applies the In predicate on the "user_id" field.
+func UserIDIn(vs ...int) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldUserID, vs...))
+}
+
+// UserIDNotIn applies the NotIn predicate on the "user_id" field.
+func UserIDNotIn(vs ...int) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldUserID, vs...))
+}
+
+// UserIDIsNil applies the IsNil predicate on the "user_id" field.
+func UserIDIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldUserID))
+}
+
+// UserIDNotNil applies the NotNil predicate on the "user_id" field.
+func UserIDNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldUserID))
+}
+
+// FolderIDEQ applies the EQ predicate on the "folder_id" field.
+func FolderIDEQ(v uuid.UUID) predicate.Note {
+	return predicate.Note(sql.FieldEQ(FieldFolderID, v))
+}
+
+// FolderIDNEQ applies the NEQ predicate on the "folder_id" field.
+func FolderIDNEQ(v uuid.UUID) predicate.Note {
+	return predicate.Note(sql.FieldNEQ(FieldFolderID, v))
+}
+
+// FolderIDIn applies the In predicate on the "folder_id" field.
+func FolderIDIn(vs ...uuid.UUID) predicate.Note {
+	return predicate.Note(sql.FieldIn(FieldFolderID, vs...))
+}
+
+// FolderIDNotIn applies the NotIn predicate on the "folder_id" field.
+func FolderIDNotIn(vs ...uuid.UUID) predicate.Note {
+	return predicate.Note(sql.FieldNotIn(FieldFolderID, vs...))
+}
+
+// FolderIDIsNil applies the IsNil predicate on the "folder_id" field.
+func FolderIDIsNil() predicate.Note {
+	return predicate.Note(sql.FieldIsNull(FieldFolderID))
+}
+
+// FolderIDNotNil applies the NotNil predicate on the "folder_id" field.
+func FolderIDNotNil() predicate.Note {
+	return predicate.Note(sql.FieldNotNull(FieldFolderID))
 }
 
 // TitleEQ applies the EQ predicate on the "title" field.

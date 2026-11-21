@@ -20,6 +20,10 @@ type Note struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID *int `json:"-"`
+	// FolderID holds the value of the "folder_id" field.
+	FolderID *uuid.UUID `json:"-"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
 	// Content holds the value of the "content" field.
@@ -51,8 +55,6 @@ type Note struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the NoteQuery when eager-loading is set.
 	Edges        NoteEdges `json:"edges"`
-	folder_notes *uuid.UUID
-	user_notes   *int
 	selectValues sql.SelectValues
 }
 
@@ -171,18 +173,18 @@ func (*Note) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case note.FieldFolderID:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case note.FieldIsStarred, note.FieldIsDeleted:
 			values[i] = new(sql.NullBool)
+		case note.FieldUserID:
+			values[i] = new(sql.NullInt64)
 		case note.FieldTitle, note.FieldContent, note.FieldColor, note.FieldProtectionMode, note.FieldProtectionPasswordHash, note.FieldEncryptedContent, note.FieldEncryptionAlg, note.FieldEncryptionKdf, note.FieldEncryptionSalt, note.FieldEncryptionNonce:
 			values[i] = new(sql.NullString)
 		case note.FieldCreatedAt, note.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case note.FieldID:
 			values[i] = new(uuid.UUID)
-		case note.ForeignKeys[0]: // folder_notes
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
-		case note.ForeignKeys[1]: // user_notes
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -203,6 +205,20 @@ func (_m *Note) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				_m.ID = *value
+			}
+		case note.FieldUserID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = new(int)
+				*_m.UserID = int(value.Int64)
+			}
+		case note.FieldFolderID:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field folder_id", values[i])
+			} else if value.Valid {
+				_m.FolderID = new(uuid.UUID)
+				*_m.FolderID = *value.S.(*uuid.UUID)
 			}
 		case note.FieldTitle:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -288,20 +304,6 @@ func (_m *Note) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
 			}
-		case note.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field folder_notes", values[i])
-			} else if value.Valid {
-				_m.folder_notes = new(uuid.UUID)
-				*_m.folder_notes = *value.S.(*uuid.UUID)
-			}
-		case note.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field user_notes", value)
-			} else if value.Valid {
-				_m.user_notes = new(int)
-				*_m.user_notes = int(value.Int64)
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -383,6 +385,16 @@ func (_m *Note) String() string {
 	var builder strings.Builder
 	builder.WriteString("Note(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	if v := _m.UserID; v != nil {
+		builder.WriteString("user_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.FolderID; v != nil {
+		builder.WriteString("folder_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("title=")
 	builder.WriteString(_m.Title)
 	builder.WriteString(", ")

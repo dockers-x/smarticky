@@ -29,6 +29,34 @@ type NoteCreate struct {
 	hooks    []Hook
 }
 
+// SetUserID sets the "user_id" field.
+func (_c *NoteCreate) SetUserID(v int) *NoteCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableUserID(v *int) *NoteCreate {
+	if v != nil {
+		_c.SetUserID(*v)
+	}
+	return _c
+}
+
+// SetFolderID sets the "folder_id" field.
+func (_c *NoteCreate) SetFolderID(v uuid.UUID) *NoteCreate {
+	_c.mutation.SetFolderID(v)
+	return _c
+}
+
+// SetNillableFolderID sets the "folder_id" field if the given value is not nil.
+func (_c *NoteCreate) SetNillableFolderID(v *uuid.UUID) *NoteCreate {
+	if v != nil {
+		_c.SetFolderID(*v)
+	}
+	return _c
+}
+
 // SetTitle sets the "title" field.
 func (_c *NoteCreate) SetTitle(v string) *NoteCreate {
 	_c.mutation.SetTitle(v)
@@ -239,37 +267,9 @@ func (_c *NoteCreate) SetNillableID(v *uuid.UUID) *NoteCreate {
 	return _c
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_c *NoteCreate) SetUserID(id int) *NoteCreate {
-	_c.mutation.SetUserID(id)
-	return _c
-}
-
-// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
-func (_c *NoteCreate) SetNillableUserID(id *int) *NoteCreate {
-	if id != nil {
-		_c = _c.SetUserID(*id)
-	}
-	return _c
-}
-
 // SetUser sets the "user" edge to the User entity.
 func (_c *NoteCreate) SetUser(v *User) *NoteCreate {
 	return _c.SetUserID(v.ID)
-}
-
-// SetFolderID sets the "folder" edge to the Folder entity by ID.
-func (_c *NoteCreate) SetFolderID(id uuid.UUID) *NoteCreate {
-	_c.mutation.SetFolderID(id)
-	return _c
-}
-
-// SetNillableFolderID sets the "folder" edge to the Folder entity by ID if the given value is not nil.
-func (_c *NoteCreate) SetNillableFolderID(id *uuid.UUID) *NoteCreate {
-	if id != nil {
-		_c = _c.SetFolderID(*id)
-	}
-	return _c
 }
 
 // SetFolder sets the "folder" edge to the Folder entity.
@@ -581,7 +581,7 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.user_notes = &nodes[0]
+		_node.UserID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.FolderIDs(); len(nodes) > 0 {
@@ -598,7 +598,7 @@ func (_c *NoteCreate) createSpec() (*Note, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.folder_notes = &nodes[0]
+		_node.FolderID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.AttachmentsIDs(); len(nodes) > 0 {

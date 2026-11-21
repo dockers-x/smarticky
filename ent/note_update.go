@@ -37,6 +37,46 @@ func (_u *NoteUpdate) Where(ps ...predicate.Note) *NoteUpdate {
 	return _u
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *NoteUpdate) SetUserID(v int) *NoteUpdate {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableUserID(v *int) *NoteUpdate {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (_u *NoteUpdate) ClearUserID() *NoteUpdate {
+	_u.mutation.ClearUserID()
+	return _u
+}
+
+// SetFolderID sets the "folder_id" field.
+func (_u *NoteUpdate) SetFolderID(v uuid.UUID) *NoteUpdate {
+	_u.mutation.SetFolderID(v)
+	return _u
+}
+
+// SetNillableFolderID sets the "folder_id" field if the given value is not nil.
+func (_u *NoteUpdate) SetNillableFolderID(v *uuid.UUID) *NoteUpdate {
+	if v != nil {
+		_u.SetFolderID(*v)
+	}
+	return _u
+}
+
+// ClearFolderID clears the value of the "folder_id" field.
+func (_u *NoteUpdate) ClearFolderID() *NoteUpdate {
+	_u.mutation.ClearFolderID()
+	return _u
+}
+
 // SetTitle sets the "title" field.
 func (_u *NoteUpdate) SetTitle(v string) *NoteUpdate {
 	_u.mutation.SetTitle(v)
@@ -273,37 +313,9 @@ func (_u *NoteUpdate) SetUpdatedAt(v time.Time) *NoteUpdate {
 	return _u
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_u *NoteUpdate) SetUserID(id int) *NoteUpdate {
-	_u.mutation.SetUserID(id)
-	return _u
-}
-
-// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
-func (_u *NoteUpdate) SetNillableUserID(id *int) *NoteUpdate {
-	if id != nil {
-		_u = _u.SetUserID(*id)
-	}
-	return _u
-}
-
 // SetUser sets the "user" edge to the User entity.
 func (_u *NoteUpdate) SetUser(v *User) *NoteUpdate {
 	return _u.SetUserID(v.ID)
-}
-
-// SetFolderID sets the "folder" edge to the Folder entity by ID.
-func (_u *NoteUpdate) SetFolderID(id uuid.UUID) *NoteUpdate {
-	_u.mutation.SetFolderID(id)
-	return _u
-}
-
-// SetNillableFolderID sets the "folder" edge to the Folder entity by ID if the given value is not nil.
-func (_u *NoteUpdate) SetNillableFolderID(id *uuid.UUID) *NoteUpdate {
-	if id != nil {
-		_u = _u.SetFolderID(*id)
-	}
-	return _u
 }
 
 // SetFolder sets the "folder" edge to the Folder entity.
@@ -1097,6 +1109,46 @@ type NoteUpdateOne struct {
 	mutation *NoteMutation
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *NoteUpdateOne) SetUserID(v int) *NoteUpdateOne {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableUserID(v *int) *NoteUpdateOne {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (_u *NoteUpdateOne) ClearUserID() *NoteUpdateOne {
+	_u.mutation.ClearUserID()
+	return _u
+}
+
+// SetFolderID sets the "folder_id" field.
+func (_u *NoteUpdateOne) SetFolderID(v uuid.UUID) *NoteUpdateOne {
+	_u.mutation.SetFolderID(v)
+	return _u
+}
+
+// SetNillableFolderID sets the "folder_id" field if the given value is not nil.
+func (_u *NoteUpdateOne) SetNillableFolderID(v *uuid.UUID) *NoteUpdateOne {
+	if v != nil {
+		_u.SetFolderID(*v)
+	}
+	return _u
+}
+
+// ClearFolderID clears the value of the "folder_id" field.
+func (_u *NoteUpdateOne) ClearFolderID() *NoteUpdateOne {
+	_u.mutation.ClearFolderID()
+	return _u
+}
+
 // SetTitle sets the "title" field.
 func (_u *NoteUpdateOne) SetTitle(v string) *NoteUpdateOne {
 	_u.mutation.SetTitle(v)
@@ -1333,37 +1385,9 @@ func (_u *NoteUpdateOne) SetUpdatedAt(v time.Time) *NoteUpdateOne {
 	return _u
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_u *NoteUpdateOne) SetUserID(id int) *NoteUpdateOne {
-	_u.mutation.SetUserID(id)
-	return _u
-}
-
-// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
-func (_u *NoteUpdateOne) SetNillableUserID(id *int) *NoteUpdateOne {
-	if id != nil {
-		_u = _u.SetUserID(*id)
-	}
-	return _u
-}
-
 // SetUser sets the "user" edge to the User entity.
 func (_u *NoteUpdateOne) SetUser(v *User) *NoteUpdateOne {
 	return _u.SetUserID(v.ID)
-}
-
-// SetFolderID sets the "folder" edge to the Folder entity by ID.
-func (_u *NoteUpdateOne) SetFolderID(id uuid.UUID) *NoteUpdateOne {
-	_u.mutation.SetFolderID(id)
-	return _u
-}
-
-// SetNillableFolderID sets the "folder" edge to the Folder entity by ID if the given value is not nil.
-func (_u *NoteUpdateOne) SetNillableFolderID(id *uuid.UUID) *NoteUpdateOne {
-	if id != nil {
-		_u = _u.SetFolderID(*id)
-	}
-	return _u
 }
 
 // SetFolder sets the "folder" edge to the Folder entity.

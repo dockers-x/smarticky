@@ -5,6 +5,7 @@
   import EditorPane from "../editor/EditorPane.svelte";
   import ExcalidrawWhiteboardDialog from "../editor/ExcalidrawWhiteboardDialog.svelte";
   import ToolsPanel from "../settings/ToolsPanel.svelte";
+  import { notify } from "../../stores/dialogs";
   import { authStore } from "../../stores/auth";
   import { foldersStore } from "../../stores/folders";
   import { notesStore } from "../../stores/notes";
@@ -17,6 +18,7 @@
   import Sidebar from "./Sidebar.svelte";
   import TagBrowserPane from "./TagBrowserPane.svelte";
 
+  let creatingNote = false;
   let settingsOpen = false;
   let folderBrowserMode: "browse" | "move" | "create" = "browse";
   let selectedNoteIDs: string[] = [];
@@ -27,7 +29,6 @@
   let resizingList = false;
   let resizeStartX = 0;
   let resizeStartWidth = 328;
-  let previousSelectedID: string | undefined;
 
   const noteListWidthStorageKey = "smarticky-note-list-width";
   const defaultNoteListWidth = 328;
@@ -50,18 +51,10 @@
     Math.max(preferredNoteListWidth, minimumNoteListWidth),
     maxNoteListWidth,
   );
-  $: if ($notesStore.selected?.id !== previousSelectedID) {
-    const closedNoteID = previousSelectedID;
-    previousSelectedID = $notesStore.selected?.id;
-    if (!previousSelectedID && closedNoteID && viewportWidth <= 960) {
-      void restoreNoteFocus(closedNoteID);
-    }
-  }
 
   onMount(() => {
     void Promise.all([
-      notesStore.load(),
-      notesStore.loadCalendarNotes(),
+      notesStore.loadNotesAndCalendar(),
       foldersStore.load(),
     ]);
 
@@ -81,6 +74,19 @@
       document.body.classList.remove("is-resizing-panels");
     };
   });
+
+  async function createNote(): Promise<void> {
+    if (creatingNote) return;
+    creatingNote = true;
+    try {
+      await notesStore.create();
+      await foldersStore.load();
+    } catch {
+      notify(t("noteCreateFailed", $preferencesStore.language), "error");
+    } finally {
+      creatingNote = false;
+    }
+  }
 
   function saveNoteListWidth(): void {
     localStorage.setItem(noteListWidthStorageKey, String(Math.round(preferredNoteListWidth)));
@@ -175,7 +181,9 @@
     ) return;
     const card = Array.from(document.querySelectorAll<HTMLElement>("[data-note-id]"))
       .find((element) => element.dataset.noteId === noteID);
-    card?.querySelector<HTMLButtonElement>(".note-card__body")?.focus({ preventScroll: true });
+    const target = card?.querySelector<HTMLButtonElement>(".note-card__body") ??
+      document.querySelector<HTMLButtonElement>(".note-list-titlebar__new");
+    target?.focus({ preventScroll: true });
   }
 
   async function focusSearch(): Promise<void> {
@@ -232,7 +240,7 @@
   {#if $notesStore.workspaceView === "index"}
     <IndexView />
   {:else}
-    <NoteList bind:selectedNoteIDs onOpenFolderBrowser={openFolderBrowser} />
+    <NoteList {creatingNote} {createNote} bind:selectedNoteIDs onOpenFolderBrowser={openFolderBrowser} />
     <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
     <div
       class="workspace-note-list-resizer"
@@ -253,7 +261,7 @@
       on:lostpointercapture={() => finishNoteListResize()}
     ></div>
   {/if}
-  <EditorPane note={$notesStore.selected} />
+  <EditorPane {creatingNote} {createNote} note={$notesStore.selected} onFinish={restoreNoteFocus} />
   {#if $notesStore.folderBrowserOpen || $notesStore.tagBrowserOpen}
     <div
       class="workspace-browser-backdrop"

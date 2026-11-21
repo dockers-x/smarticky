@@ -98,7 +98,7 @@
 >
   <div class="sidebar__brand-row">
     <div class="sidebar__brand">
-      <span class="sidebar__brand-short" aria-hidden="true">S</span>
+      <img class="sidebar__brand-icon" src="/static/img/logo.png" alt="" width="24" height="24" />
       <span class="sidebar__label">Smarticky</span>
     </div>
     <button
@@ -120,6 +120,7 @@
     </button>
   </div>
 
+  {#if $preferencesStore.sidebarCompact || $notesStore.workspaceView === "index"}
   <button
     class="sidebar__search"
     type="button"
@@ -132,6 +133,7 @@
     <span class="sidebar__label">{t("searchNotes", $preferencesStore.language)}</span>
     {#if !$preferencesStore.sidebarCompact}<kbd aria-hidden="true">/</kbd>{/if}
   </button>
+  {/if}
 
   <nav class="sidebar__nav" aria-label={$preferencesStore.language === "zh" ? "资料库" : "Library"}>
     {#each filters as filter (filter.id)}
@@ -358,6 +360,9 @@
 </aside>
 
 <style>
+  .sidebar__brand-icon { flex: none; object-fit: contain; border-radius: 5px; }
+  .sidebar__brand { display: inline-flex; align-items: center; gap: 8px; }
+
   .sidebar {
     overflow-y: auto;
     overscroll-behavior: contain;

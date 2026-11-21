@@ -336,6 +336,18 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "note_user_notes_is_deleted_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{NotesColumns[16], NotesColumns[12], NotesColumns[14]},
+			},
+			{
+				Name:    "note_user_notes_is_deleted_folder_notes",
+				Unique:  false,
+				Columns: []*schema.Column{NotesColumns[16], NotesColumns[12], NotesColumns[15]},
+			},
+		},
 	}
 	// NoteConnectionAccountsColumns holds the columns for the "note_connection_accounts" table.
 	NoteConnectionAccountsColumns = []*schema.Column{

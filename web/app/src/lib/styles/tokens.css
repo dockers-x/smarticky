@@ -25,8 +25,8 @@
   --sm-text-h: #171511;
   --sm-text-body: #3f3a34;
   --sm-text-sub: #6a6258;
-  --sm-text-hint: #8b8277;
-  --sm-text-dis: #b5ab9d;
+  --sm-text-hint: #70685f;
+  --sm-text-dis: #776e63;
   --sm-code-bg: #f0ece4;
   --sm-code-text: #36312d;
   --sm-code-key: #b34319;
@@ -71,6 +71,8 @@
   --radius-card: 12px;
   --radius-control: 9px;
   --radius-sheet: 18px;
+  --shadow-paper: 0 3px 12px rgb(var(--color-shadow) / 5%), 0 1px 2px rgb(var(--color-shadow) / 6%);
+  --shadow-menu: 0 12px 32px rgb(var(--color-shadow) / 13%), 0 2px 5px rgb(var(--color-shadow) / 8%);
   --shadow-panel: 0 24px 80px rgb(var(--color-shadow) / 16%), 0 2px 8px rgb(var(--color-shadow) / 5%);
   --shadow-hover: 0 8px 24px rgb(var(--color-shadow) / 8%);
   --shadow-control: 0 1px 2px rgb(var(--color-shadow) / 7%), inset 0 1px 0 rgb(255 255 255 / 12%);
@@ -109,7 +111,7 @@
   --sm-text-body: #d2cbc0;
   --sm-text-sub: #aaa196;
   --sm-text-hint: #8e867c;
-  --sm-text-dis: #6d655c;
+  --sm-text-dis: #a69a8b;
   --sm-code-bg: #2a2721;
   --sm-code-text: #d2cbc0;
   --sm-code-key: #ee8652;

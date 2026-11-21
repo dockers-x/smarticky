@@ -207,3 +207,63 @@ func TestListNoteLinkGraphFiltersTrashByDefault(t *testing.T) {
 		}
 	}
 }
+
+func TestWikiLinksTrackTargetLifecycleWithoutRewritingOtherSources(t *testing.T) {
+	ctx := t.Context()
+	client := enttest.Open(t, "sqlite3", "file:TestLinkLifecycle?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	defer client.Close()
+	user := client.User.Create().SetUsername("writer").SetPasswordHash("hash").SaveX(ctx)
+	h := NewHandler(client, nil)
+	e := echo.New()
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error { c.Set("user_id", user.ID); return next(c) }
+	})
+	e.POST("/notes", h.CreateNote)
+	e.PUT("/notes/:id", h.UpdateNote)
+	e.DELETE("/notes/:id", h.DeleteNote)
+	request := func(method, path, body string) NoteResponse {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		var n NoteResponse
+		if rec.Code < 200 || rec.Code >= 300 {
+			t.Fatalf("%s %s: %d %s", method, path, rec.Code, rec.Body.String())
+		}
+		if rec.Code != http.StatusNoContent {
+			if err := json.Unmarshal(rec.Body.Bytes(), &n); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return n
+	}
+	source := request("POST", "/notes", `{"title":"Source","content":"[[Target]]"}`)
+	unrelated := request("POST", "/notes", `{"title":"Elsewhere","content":"[[Different]]"}`)
+	otherLink := client.NoteLink.Query().Where(notelink.SourceNoteIDEQ(unrelated.ID)).OnlyX(ctx)
+	assertTarget := func(id string) {
+		t.Helper()
+		row := client.NoteLink.Query().Where(notelink.SourceNoteIDEQ(source.ID)).OnlyX(ctx)
+		if id == "" && row.TargetNoteID == nil {
+			return
+		}
+		if row.TargetNoteID == nil || row.TargetNoteID.String() != id {
+			t.Fatalf("target = %v, want %s", row.TargetNoteID, id)
+		}
+	}
+	assertTarget("")
+	first := request("POST", "/notes", `{"title":"Target"}`)
+	assertTarget(first.ID.String())
+	second := request("POST", "/notes", `{"title":"Target"}`)
+	assertTarget("")
+	request("PUT", "/notes/"+second.ID.String(), `{"title":"Renamed"}`)
+	assertTarget(first.ID.String())
+	request("DELETE", "/notes/"+first.ID.String(), "")
+	assertTarget("")
+	request("PUT", "/notes/"+second.ID.String(), `{"title":"Target"}`)
+	assertTarget(second.ID.String())
+	request("PUT", "/notes/"+second.ID.String(), `{"content":"just writing"}`)
+	if got := client.NoteLink.Query().Where(notelink.SourceNoteIDEQ(unrelated.ID)).OnlyX(ctx).ID; got != otherLink.ID {
+		t.Fatal("unrelated note links were rewritten")
+	}
+}

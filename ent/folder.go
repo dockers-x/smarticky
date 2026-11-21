@@ -19,6 +19,8 @@ type Folder struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
+	// ParentID holds the value of the "parent_id" field.
+	ParentID *uuid.UUID `json:"-"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// SortOrder holds the value of the "sort_order" field.
@@ -31,10 +33,9 @@ type Folder struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the FolderQuery when eager-loading is set.
-	Edges           FolderEdges `json:"edges"`
-	folder_children *uuid.UUID
-	user_folders    *int
-	selectValues    sql.SelectValues
+	Edges        FolderEdges `json:"edges"`
+	user_folders *int
+	selectValues sql.SelectValues
 }
 
 // FolderEdges holds the relations/edges for other nodes in the graph.
@@ -97,6 +98,8 @@ func (*Folder) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case folder.FieldParentID:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case folder.FieldIsStarred:
 			values[i] = new(sql.NullBool)
 		case folder.FieldSortOrder:
@@ -107,9 +110,7 @@ func (*Folder) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullTime)
 		case folder.FieldID:
 			values[i] = new(uuid.UUID)
-		case folder.ForeignKeys[0]: // folder_children
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
-		case folder.ForeignKeys[1]: // user_folders
+		case folder.ForeignKeys[0]: // user_folders
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -131,6 +132,13 @@ func (_m *Folder) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				_m.ID = *value
+			}
+		case folder.FieldParentID:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field parent_id", values[i])
+			} else if value.Valid {
+				_m.ParentID = new(uuid.UUID)
+				*_m.ParentID = *value.S.(*uuid.UUID)
 			}
 		case folder.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -163,13 +171,6 @@ func (_m *Folder) assignValues(columns []string, values []any) error {
 				_m.UpdatedAt = value.Time
 			}
 		case folder.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field folder_children", values[i])
-			} else if value.Valid {
-				_m.folder_children = new(uuid.UUID)
-				*_m.folder_children = *value.S.(*uuid.UUID)
-			}
-		case folder.ForeignKeys[1]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field user_folders", value)
 			} else if value.Valid {
@@ -232,6 +233,11 @@ func (_m *Folder) String() string {
 	var builder strings.Builder
 	builder.WriteString("Folder(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	if v := _m.ParentID; v != nil {
+		builder.WriteString("parent_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
 	builder.WriteString(", ")

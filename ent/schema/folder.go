@@ -19,6 +19,7 @@ func (Folder) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
 			Default(uuid.New),
+		field.UUID("parent_id", uuid.UUID{}).StorageKey("folder_children").Optional().Nillable().StructTag(`json:"-"`),
 		field.String("name").
 			NotEmpty(),
 		field.Int("sort_order").
@@ -43,6 +44,7 @@ func (Folder) Edges() []ent.Edge {
 			Required(),
 		edge.To("children", Folder.Type).
 			From("parent").
+			Field("parent_id").
 			Unique(),
 		edge.To("notes", Note.Type),
 	}

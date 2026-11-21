@@ -99,14 +99,14 @@
             padding: 36px;
             max-width: 480px;
             width: 100%;
-            box-shadow: 0 16px 48px rgb(34 30 24 / 8%), 0 2px 6px rgb(34 30 24 / 4%);
+            box-shadow: 0 20px 54px rgb(34 30 24 / 9%), 0 2px 6px rgb(34 30 24 / 6%);
             overflow-wrap: anywhere;
         }
 
         .setup-card .about-logo {
             width: 48px;
             height: 48px;
-            margin: 0 auto 20px;
+            margin: 0;
             animation: none;
         }
 
@@ -115,15 +115,19 @@
         }
 
         .setup-header {
-            text-align: center;
-            margin-bottom: 32px;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 16px;
+            text-align: start;
+            margin-bottom: 28px;
         }
 
         .setup-header h1 {
             color: var(--color-text);
-            font: 500 clamp(1.65rem, 4vw, 2rem)/1.2 var(--font-reader);
+            font: 600 clamp(1.4rem, 4vw, 1.8rem)/1.25 var(--font-reader);
             letter-spacing: -0.025em;
-            margin: 0 0 10px;
+            margin: 0 0 4px;
         }
 
         :lang(zh) .setup-header h1 {
@@ -315,7 +319,7 @@
             .setup-card .about-logo {
                 width: 40px;
                 height: 40px;
-                margin-bottom: 16px;
+                margin-bottom: 0;
             }
 
             .setup-header {
@@ -351,12 +355,12 @@
 <body>
     <main class="setup-container">
         <section class="setup-card" aria-labelledby="setup-title" aria-describedby="setup-subtitle">
-            <div class="about-logo">
-                <img src="/static/img/logo.png" alt="Smarticky Logo">
-            </div>
             <div class="setup-header">
+                <div class="about-logo"><img src="/static/img/logo.png" alt="" width="48" height="48"></div>
+                <div>
                 <h1 id="setup-title">Welcome to Smarticky</h1>
                 <p id="setup-subtitle">Create your admin account to get started</p>
+                </div>
             </div>
 
             <div class="error-message" id="error-message" role="alert" aria-atomic="true" hidden></div>

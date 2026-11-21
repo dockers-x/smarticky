@@ -41,7 +41,6 @@ type NoteQuery struct {
 	withConnectionMaps *NoteConnectionItemMapQuery
 	withConnectionJobs *NoteConnectionJobQuery
 	withTags           *TagQuery
-	withFKs            bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -588,12 +587,12 @@ func (_q *NoteQuery) WithTags(opts ...func(*TagQuery)) *NoteQuery {
 // Example:
 //
 //	var v []struct {
-//		Title string `json:"title,omitempty"`
+//		UserID int `json:"-"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Note.Query().
-//		GroupBy(note.FieldTitle).
+//		GroupBy(note.FieldUserID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *NoteQuery) GroupBy(field string, fields ...string) *NoteGroupBy {
@@ -611,11 +610,11 @@ func (_q *NoteQuery) GroupBy(field string, fields ...string) *NoteGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Title string `json:"title,omitempty"`
+//		UserID int `json:"-"`
 //	}
 //
 //	client.Note.Query().
-//		Select(note.FieldTitle).
+//		Select(note.FieldUserID).
 //		Scan(ctx, &v)
 func (_q *NoteQuery) Select(fields ...string) *NoteSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -659,7 +658,6 @@ func (_q *NoteQuery) prepareQuery(ctx context.Context) error {
 func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, error) {
 	var (
 		nodes       = []*Note{}
-		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [9]bool{
 			_q.withUser != nil,
@@ -673,12 +671,6 @@ func (_q *NoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Note, e
 			_q.withTags != nil,
 		}
 	)
-	if _q.withUser != nil || _q.withFolder != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, note.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Note).scanValues(nil, columns)
 	}
@@ -765,10 +757,10 @@ func (_q *NoteQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*No
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Note)
 	for i := range nodes {
-		if nodes[i].user_notes == nil {
+		if nodes[i].UserID == nil {
 			continue
 		}
-		fk := *nodes[i].user_notes
+		fk := *nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -785,7 +777,7 @@ func (_q *NoteQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*No
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "user_notes" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "user_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -797,10 +789,10 @@ func (_q *NoteQuery) loadFolder(ctx context.Context, query *FolderQuery, nodes [
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Note)
 	for i := range nodes {
-		if nodes[i].folder_notes == nil {
+		if nodes[i].FolderID == nil {
 			continue
 		}
-		fk := *nodes[i].folder_notes
+		fk := *nodes[i].FolderID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -817,7 +809,7 @@ func (_q *NoteQuery) loadFolder(ctx context.Context, query *FolderQuery, nodes [
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "folder_notes" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "folder_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -1099,6 +1091,12 @@ func (_q *NoteQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != note.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withUser != nil {
+			_spec.Node.AddColumnOnce(note.FieldUserID)
+		}
+		if _q.withFolder != nil {
+			_spec.Node.AddColumnOnce(note.FieldFolderID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

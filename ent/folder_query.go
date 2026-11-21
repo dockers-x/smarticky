@@ -407,12 +407,12 @@ func (_q *FolderQuery) WithNotes(opts ...func(*NoteQuery)) *FolderQuery {
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		ParentID uuid.UUID `json:"-"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Folder.Query().
-//		GroupBy(folder.FieldName).
+//		GroupBy(folder.FieldParentID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *FolderQuery) GroupBy(field string, fields ...string) *FolderGroupBy {
@@ -430,11 +430,11 @@ func (_q *FolderQuery) GroupBy(field string, fields ...string) *FolderGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		ParentID uuid.UUID `json:"-"`
 //	}
 //
 //	client.Folder.Query().
-//		Select(folder.FieldName).
+//		Select(folder.FieldParentID).
 //		Scan(ctx, &v)
 func (_q *FolderQuery) Select(fields ...string) *FolderSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -487,7 +487,7 @@ func (_q *FolderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Folde
 			_q.withNotes != nil,
 		}
 	)
-	if _q.withUser != nil || _q.withParent != nil {
+	if _q.withUser != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -576,10 +576,10 @@ func (_q *FolderQuery) loadParent(ctx context.Context, query *FolderQuery, nodes
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Folder)
 	for i := range nodes {
-		if nodes[i].folder_children == nil {
+		if nodes[i].ParentID == nil {
 			continue
 		}
-		fk := *nodes[i].folder_children
+		fk := *nodes[i].ParentID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -596,7 +596,7 @@ func (_q *FolderQuery) loadParent(ctx context.Context, query *FolderQuery, nodes
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "folder_children" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "parent_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -615,6 +615,9 @@ func (_q *FolderQuery) loadChildren(ctx context.Context, query *FolderQuery, nod
 		}
 	}
 	query.withFKs = true
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(folder.FieldParentID)
+	}
 	query.Where(predicate.Folder(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(folder.ChildrenColumn), fks...))
 	}))
@@ -623,13 +626,13 @@ func (_q *FolderQuery) loadChildren(ctx context.Context, query *FolderQuery, nod
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.folder_children
+		fk := n.ParentID
 		if fk == nil {
-			return fmt.Errorf(`foreign-key "folder_children" is nil for node %v`, n.ID)
+			return fmt.Errorf(`foreign-key "parent_id" is nil for node %v`, n.ID)
 		}
 		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "folder_children" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "parent_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -645,7 +648,9 @@ func (_q *FolderQuery) loadNotes(ctx context.Context, query *NoteQuery, nodes []
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(note.FieldFolderID)
+	}
 	query.Where(predicate.Note(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(folder.NotesColumn), fks...))
 	}))
@@ -654,13 +659,13 @@ func (_q *FolderQuery) loadNotes(ctx context.Context, query *NoteQuery, nodes []
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.folder_notes
+		fk := n.FolderID
 		if fk == nil {
-			return fmt.Errorf(`foreign-key "folder_notes" is nil for node %v`, n.ID)
+			return fmt.Errorf(`foreign-key "folder_id" is nil for node %v`, n.ID)
 		}
 		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "folder_notes" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "folder_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -691,6 +696,9 @@ func (_q *FolderQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != folder.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withParent != nil {
+			_spec.Node.AddColumnOnce(folder.FieldParentID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

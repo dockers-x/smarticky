@@ -15,6 +15,8 @@ const (
 	Label = "folder"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldParentID holds the string denoting the parent_id field in the database.
+	FieldParentID = "folder_children"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldSortOrder holds the string denoting the sort_order field in the database.
@@ -62,6 +64,7 @@ const (
 // Columns holds all SQL columns for folder fields.
 var Columns = []string{
 	FieldID,
+	FieldParentID,
 	FieldName,
 	FieldSortOrder,
 	FieldIsStarred,
@@ -72,7 +75,6 @@ var Columns = []string{
 // ForeignKeys holds the SQL foreign-keys that are owned by the "folders"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
-	"folder_children",
 	"user_folders",
 }
 
@@ -114,6 +116,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByParentID orders the results by the parent_id field.
+func ByParentID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldParentID, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

@@ -67,7 +67,6 @@
     visibleMonth =
       activeFilter?.date.slice(0, 7) ??
       monthKey(new Date(), $preferencesStore.timeZone);
-    void notesStore.loadCalendarNotes();
   });
 
   function previousMonth(): void {

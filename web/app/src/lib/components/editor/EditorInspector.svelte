@@ -86,7 +86,7 @@
     const noteID = note.id;
     try {
       await tagsStore.addToNote(noteID, trimmed);
-      await Promise.all([notesStore.load(), notesStore.loadCalendarNotes()]);
+      await notesStore.loadNotesAndCalendar();
       if (activeNoteID === noteID) tagName = "";
     } catch (err) {
       if (activeNoteID === noteID) error = err instanceof Error ? err.message : t("addTagFailed", $preferencesStore.language);

@@ -23,6 +23,20 @@ type FolderCreate struct {
 	hooks    []Hook
 }
 
+// SetParentID sets the "parent_id" field.
+func (_c *FolderCreate) SetParentID(v uuid.UUID) *FolderCreate {
+	_c.mutation.SetParentID(v)
+	return _c
+}
+
+// SetNillableParentID sets the "parent_id" field if the given value is not nil.
+func (_c *FolderCreate) SetNillableParentID(v *uuid.UUID) *FolderCreate {
+	if v != nil {
+		_c.SetParentID(*v)
+	}
+	return _c
+}
+
 // SetName sets the "name" field.
 func (_c *FolderCreate) SetName(v string) *FolderCreate {
 	_c.mutation.SetName(v)
@@ -108,20 +122,6 @@ func (_c *FolderCreate) SetUserID(id int) *FolderCreate {
 // SetUser sets the "user" edge to the User entity.
 func (_c *FolderCreate) SetUser(v *User) *FolderCreate {
 	return _c.SetUserID(v.ID)
-}
-
-// SetParentID sets the "parent" edge to the Folder entity by ID.
-func (_c *FolderCreate) SetParentID(id uuid.UUID) *FolderCreate {
-	_c.mutation.SetParentID(id)
-	return _c
-}
-
-// SetNillableParentID sets the "parent" edge to the Folder entity by ID if the given value is not nil.
-func (_c *FolderCreate) SetNillableParentID(id *uuid.UUID) *FolderCreate {
-	if id != nil {
-		_c = _c.SetParentID(*id)
-	}
-	return _c
 }
 
 // SetParent sets the "parent" edge to the Folder entity.
@@ -327,7 +327,7 @@ func (_c *FolderCreate) createSpec() (*Folder, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.folder_children = &nodes[0]
+		_node.ParentID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ChildrenIDs(); len(nodes) > 0 {

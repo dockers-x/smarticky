@@ -31,6 +31,26 @@ func (_u *FolderUpdate) Where(ps ...predicate.Folder) *FolderUpdate {
 	return _u
 }
 
+// SetParentID sets the "parent_id" field.
+func (_u *FolderUpdate) SetParentID(v uuid.UUID) *FolderUpdate {
+	_u.mutation.SetParentID(v)
+	return _u
+}
+
+// SetNillableParentID sets the "parent_id" field if the given value is not nil.
+func (_u *FolderUpdate) SetNillableParentID(v *uuid.UUID) *FolderUpdate {
+	if v != nil {
+		_u.SetParentID(*v)
+	}
+	return _u
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (_u *FolderUpdate) ClearParentID() *FolderUpdate {
+	_u.mutation.ClearParentID()
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *FolderUpdate) SetName(v string) *FolderUpdate {
 	_u.mutation.SetName(v)
@@ -95,20 +115,6 @@ func (_u *FolderUpdate) SetUserID(id int) *FolderUpdate {
 // SetUser sets the "user" edge to the User entity.
 func (_u *FolderUpdate) SetUser(v *User) *FolderUpdate {
 	return _u.SetUserID(v.ID)
-}
-
-// SetParentID sets the "parent" edge to the Folder entity by ID.
-func (_u *FolderUpdate) SetParentID(id uuid.UUID) *FolderUpdate {
-	_u.mutation.SetParentID(id)
-	return _u
-}
-
-// SetNillableParentID sets the "parent" edge to the Folder entity by ID if the given value is not nil.
-func (_u *FolderUpdate) SetNillableParentID(id *uuid.UUID) *FolderUpdate {
-	if id != nil {
-		_u = _u.SetParentID(*id)
-	}
-	return _u
 }
 
 // SetParent sets the "parent" edge to the Folder entity.
@@ -449,6 +455,26 @@ type FolderUpdateOne struct {
 	mutation *FolderMutation
 }
 
+// SetParentID sets the "parent_id" field.
+func (_u *FolderUpdateOne) SetParentID(v uuid.UUID) *FolderUpdateOne {
+	_u.mutation.SetParentID(v)
+	return _u
+}
+
+// SetNillableParentID sets the "parent_id" field if the given value is not nil.
+func (_u *FolderUpdateOne) SetNillableParentID(v *uuid.UUID) *FolderUpdateOne {
+	if v != nil {
+		_u.SetParentID(*v)
+	}
+	return _u
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (_u *FolderUpdateOne) ClearParentID() *FolderUpdateOne {
+	_u.mutation.ClearParentID()
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *FolderUpdateOne) SetName(v string) *FolderUpdateOne {
 	_u.mutation.SetName(v)
@@ -513,20 +539,6 @@ func (_u *FolderUpdateOne) SetUserID(id int) *FolderUpdateOne {
 // SetUser sets the "user" edge to the User entity.
 func (_u *FolderUpdateOne) SetUser(v *User) *FolderUpdateOne {
 	return _u.SetUserID(v.ID)
-}
-
-// SetParentID sets the "parent" edge to the Folder entity by ID.
-func (_u *FolderUpdateOne) SetParentID(id uuid.UUID) *FolderUpdateOne {
-	_u.mutation.SetParentID(id)
-	return _u
-}
-
-// SetNillableParentID sets the "parent" edge to the Folder entity by ID if the given value is not nil.
-func (_u *FolderUpdateOne) SetNillableParentID(id *uuid.UUID) *FolderUpdateOne {
-	if id != nil {
-		_u = _u.SetParentID(*id)
-	}
-	return _u
 }
 
 // SetParent sets the "parent" edge to the Folder entity.

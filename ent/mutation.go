@@ -5532,6 +5532,55 @@ func (m *FolderMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 }
 
+// SetParentID sets the "parent_id" field.
+func (m *FolderMutation) SetParentID(u uuid.UUID) {
+	m.parent = &u
+}
+
+// ParentID returns the value of the "parent_id" field in the mutation.
+func (m *FolderMutation) ParentID() (r uuid.UUID, exists bool) {
+	v := m.parent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldParentID returns the old "parent_id" field's value of the Folder entity.
+// If the Folder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FolderMutation) OldParentID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldParentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldParentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldParentID: %w", err)
+	}
+	return oldValue.ParentID, nil
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (m *FolderMutation) ClearParentID() {
+	m.parent = nil
+	m.clearedFields[folder.FieldParentID] = struct{}{}
+}
+
+// ParentIDCleared returns if the "parent_id" field was cleared in this mutation.
+func (m *FolderMutation) ParentIDCleared() bool {
+	_, ok := m.clearedFields[folder.FieldParentID]
+	return ok
+}
+
+// ResetParentID resets all changes to the "parent_id" field.
+func (m *FolderMutation) ResetParentID() {
+	m.parent = nil
+	delete(m.clearedFields, folder.FieldParentID)
+}
+
 // SetName sets the "name" field.
 func (m *FolderMutation) SetName(s string) {
 	m.name = &s
@@ -5771,27 +5820,15 @@ func (m *FolderMutation) ResetUser() {
 	m.cleareduser = false
 }
 
-// SetParentID sets the "parent" edge to the Folder entity by id.
-func (m *FolderMutation) SetParentID(id uuid.UUID) {
-	m.parent = &id
-}
-
 // ClearParent clears the "parent" edge to the Folder entity.
 func (m *FolderMutation) ClearParent() {
 	m.clearedparent = true
+	m.clearedFields[folder.FieldParentID] = struct{}{}
 }
 
 // ParentCleared reports if the "parent" edge to the Folder entity was cleared.
 func (m *FolderMutation) ParentCleared() bool {
-	return m.clearedparent
-}
-
-// ParentID returns the "parent" edge ID in the mutation.
-func (m *FolderMutation) ParentID() (id uuid.UUID, exists bool) {
-	if m.parent != nil {
-		return *m.parent, true
-	}
-	return
+	return m.ParentIDCleared() || m.clearedparent
 }
 
 // ParentIDs returns the "parent" edge IDs in the mutation.
@@ -5952,7 +5989,10 @@ func (m *FolderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *FolderMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
+	if m.parent != nil {
+		fields = append(fields, folder.FieldParentID)
+	}
 	if m.name != nil {
 		fields = append(fields, folder.FieldName)
 	}
@@ -5976,6 +6016,8 @@ func (m *FolderMutation) Fields() []string {
 // schema.
 func (m *FolderMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case folder.FieldParentID:
+		return m.ParentID()
 	case folder.FieldName:
 		return m.Name()
 	case folder.FieldSortOrder:
@@ -5995,6 +6037,8 @@ func (m *FolderMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *FolderMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case folder.FieldParentID:
+		return m.OldParentID(ctx)
 	case folder.FieldName:
 		return m.OldName(ctx)
 	case folder.FieldSortOrder:
@@ -6014,6 +6058,13 @@ func (m *FolderMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *FolderMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case folder.FieldParentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetParentID(v)
+		return nil
 	case folder.FieldName:
 		v, ok := value.(string)
 		if !ok {
@@ -6093,7 +6144,11 @@ func (m *FolderMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *FolderMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(folder.FieldParentID) {
+		fields = append(fields, folder.FieldParentID)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -6106,6 +6161,11 @@ func (m *FolderMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *FolderMutation) ClearField(name string) error {
+	switch name {
+	case folder.FieldParentID:
+		m.ClearParentID()
+		return nil
+	}
 	return fmt.Errorf("unknown Folder nullable field %s", name)
 }
 
@@ -6113,6 +6173,9 @@ func (m *FolderMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *FolderMutation) ResetField(name string) error {
 	switch name {
+	case folder.FieldParentID:
+		m.ResetParentID()
+		return nil
 	case folder.FieldName:
 		m.ResetName()
 		return nil
@@ -10366,6 +10429,104 @@ func (m *NoteMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 }
 
+// SetUserID sets the "user_id" field.
+func (m *NoteMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *NoteMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldUserID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (m *NoteMutation) ClearUserID() {
+	m.user = nil
+	m.clearedFields[note.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *NoteMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[note.FieldUserID]
+	return ok
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *NoteMutation) ResetUserID() {
+	m.user = nil
+	delete(m.clearedFields, note.FieldUserID)
+}
+
+// SetFolderID sets the "folder_id" field.
+func (m *NoteMutation) SetFolderID(u uuid.UUID) {
+	m.folder = &u
+}
+
+// FolderID returns the value of the "folder_id" field in the mutation.
+func (m *NoteMutation) FolderID() (r uuid.UUID, exists bool) {
+	v := m.folder
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFolderID returns the old "folder_id" field's value of the Note entity.
+// If the Note object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NoteMutation) OldFolderID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFolderID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFolderID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFolderID: %w", err)
+	}
+	return oldValue.FolderID, nil
+}
+
+// ClearFolderID clears the value of the "folder_id" field.
+func (m *NoteMutation) ClearFolderID() {
+	m.folder = nil
+	m.clearedFields[note.FieldFolderID] = struct{}{}
+}
+
+// FolderIDCleared returns if the "folder_id" field was cleared in this mutation.
+func (m *NoteMutation) FolderIDCleared() bool {
+	_, ok := m.clearedFields[note.FieldFolderID]
+	return ok
+}
+
+// ResetFolderID resets all changes to the "folder_id" field.
+func (m *NoteMutation) ResetFolderID() {
+	m.folder = nil
+	delete(m.clearedFields, note.FieldFolderID)
+}
+
 // SetTitle sets the "title" field.
 func (m *NoteMutation) SetTitle(s string) {
 	m.title = &s
@@ -10974,27 +11135,15 @@ func (m *NoteMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
-// SetUserID sets the "user" edge to the User entity by id.
-func (m *NoteMutation) SetUserID(id int) {
-	m.user = &id
-}
-
 // ClearUser clears the "user" edge to the User entity.
 func (m *NoteMutation) ClearUser() {
 	m.cleareduser = true
+	m.clearedFields[note.FieldUserID] = struct{}{}
 }
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *NoteMutation) UserCleared() bool {
-	return m.cleareduser
-}
-
-// UserID returns the "user" edge ID in the mutation.
-func (m *NoteMutation) UserID() (id int, exists bool) {
-	if m.user != nil {
-		return *m.user, true
-	}
-	return
+	return m.UserIDCleared() || m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -11013,27 +11162,15 @@ func (m *NoteMutation) ResetUser() {
 	m.cleareduser = false
 }
 
-// SetFolderID sets the "folder" edge to the Folder entity by id.
-func (m *NoteMutation) SetFolderID(id uuid.UUID) {
-	m.folder = &id
-}
-
 // ClearFolder clears the "folder" edge to the Folder entity.
 func (m *NoteMutation) ClearFolder() {
 	m.clearedfolder = true
+	m.clearedFields[note.FieldFolderID] = struct{}{}
 }
 
 // FolderCleared reports if the "folder" edge to the Folder entity was cleared.
 func (m *NoteMutation) FolderCleared() bool {
-	return m.clearedfolder
-}
-
-// FolderID returns the "folder" edge ID in the mutation.
-func (m *NoteMutation) FolderID() (id uuid.UUID, exists bool) {
-	if m.folder != nil {
-		return *m.folder, true
-	}
-	return
+	return m.FolderIDCleared() || m.clearedfolder
 }
 
 // FolderIDs returns the "folder" edge IDs in the mutation.
@@ -11464,7 +11601,13 @@ func (m *NoteMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NoteMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 16)
+	if m.user != nil {
+		fields = append(fields, note.FieldUserID)
+	}
+	if m.folder != nil {
+		fields = append(fields, note.FieldFolderID)
+	}
 	if m.title != nil {
 		fields = append(fields, note.FieldTitle)
 	}
@@ -11515,6 +11658,10 @@ func (m *NoteMutation) Fields() []string {
 // schema.
 func (m *NoteMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case note.FieldUserID:
+		return m.UserID()
+	case note.FieldFolderID:
+		return m.FolderID()
 	case note.FieldTitle:
 		return m.Title()
 	case note.FieldContent:
@@ -11552,6 +11699,10 @@ func (m *NoteMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *NoteMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case note.FieldUserID:
+		return m.OldUserID(ctx)
+	case note.FieldFolderID:
+		return m.OldFolderID(ctx)
 	case note.FieldTitle:
 		return m.OldTitle(ctx)
 	case note.FieldContent:
@@ -11589,6 +11740,20 @@ func (m *NoteMutation) OldField(ctx context.Context, name string) (ent.Value, er
 // type.
 func (m *NoteMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case note.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case note.FieldFolderID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFolderID(v)
+		return nil
 	case note.FieldTitle:
 		v, ok := value.(string)
 		if !ok {
@@ -11694,13 +11859,16 @@ func (m *NoteMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *NoteMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *NoteMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -11717,6 +11885,12 @@ func (m *NoteMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *NoteMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(note.FieldUserID) {
+		fields = append(fields, note.FieldUserID)
+	}
+	if m.FieldCleared(note.FieldFolderID) {
+		fields = append(fields, note.FieldFolderID)
+	}
 	if m.FieldCleared(note.FieldContent) {
 		fields = append(fields, note.FieldContent)
 	}
@@ -11755,6 +11929,12 @@ func (m *NoteMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *NoteMutation) ClearField(name string) error {
 	switch name {
+	case note.FieldUserID:
+		m.ClearUserID()
+		return nil
+	case note.FieldFolderID:
+		m.ClearFolderID()
+		return nil
 	case note.FieldContent:
 		m.ClearContent()
 		return nil
@@ -11787,6 +11967,12 @@ func (m *NoteMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *NoteMutation) ResetField(name string) error {
 	switch name {
+	case note.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case note.FieldFolderID:
+		m.ResetFolderID()
+		return nil
 	case note.FieldTitle:
 		m.ResetTitle()
 		return nil

@@ -4,6 +4,7 @@ go 1.25.4
 
 require (
 	entgo.io/ent v0.14.5
+	github.com/MoeForge/moejs v0.1.1
 	github.com/aws/aws-sdk-go-v2 v1.40.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.2
@@ -29,6 +30,7 @@ require (
 
 require (
 	ariga.io/atlas v0.38.0 // indirect
+	github.com/MoeForge/moego v0.1.0-alpha.3 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.14.5 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect

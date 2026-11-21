@@ -51,6 +51,7 @@ interface NotesState {
   notes: Note[];
   calendarNotes: Note[];
   selected: Note | null;
+  newNoteID: string | null;
   workspaceView: WorkspaceView;
   filter: NoteFilter;
   folderID: string | null;
@@ -139,6 +140,7 @@ export function createNotesStore() {
     notes: [],
     calendarNotes: [],
     selected: null,
+    newNoteID: null,
     workspaceView: "notes",
     filter: "all",
     folderID: null,
@@ -188,16 +190,18 @@ export function createNotesStore() {
     return updated;
   }
 
-  async function load() {
+  function fetchNotes(query: string): Promise<Note[]> {
+    return apiFetch<Note[]>(`/notes${query ? `?${query}` : ""}`);
+  }
+
+  async function load(request?: Promise<Note[]>) {
     const sequence = ++loadSequence;
     update((state) => ({ ...state, loading: true, error: "" }));
     const state = get({ subscribe });
     const query = queryFor(state);
 
     try {
-      const notes = await apiFetch<Note[]>(
-        `/notes${query ? `?${query}` : ""}`,
-      );
+      const notes = await (request ?? fetchNotes(query));
       if (sequence !== loadSequence) return;
 
       update((current) => ({
@@ -222,16 +226,14 @@ export function createNotesStore() {
     }
   }
 
-  async function loadCalendarNotes() {
+  async function loadCalendarNotes(request?: Promise<Note[]>) {
     const sequence = ++calendarLoadSequence;
     update((state) => ({ ...state, calendarLoading: true, calendarError: "" }));
     const state = get({ subscribe });
     const query = queryFor(state, { includeDateFilters: false });
 
     try {
-      const notes = await apiFetch<Note[]>(
-        `/notes${query ? `?${query}` : ""}`,
-      );
+      const notes = await (request ?? fetchNotes(query));
       if (sequence !== calendarLoadSequence) return;
 
       update((current) => ({
@@ -253,13 +255,19 @@ export function createNotesStore() {
   }
 
   async function loadNotesAndCalendar() {
-    await Promise.all([load(), loadCalendarNotes()]);
+    const state = get({ subscribe });
+    const listQuery = queryFor(state);
+    const calendarQuery = queryFor(state, { includeDateFilters: false });
+    const list = fetchNotes(listQuery);
+    const calendar = calendarQuery === listQuery ? list : fetchNotes(calendarQuery);
+    await Promise.all([load(list), loadCalendarNotes(calendar)]);
   }
 
   return {
     subscribe,
     load,
     loadCalendarNotes,
+    loadNotesAndCalendar,
     async create(folderID?: string | null) {
       const state = get({ subscribe });
       const context = resolveNewNoteContext(
@@ -286,14 +294,15 @@ export function createNotesStore() {
         search: "",
         searchFilters: { ...emptySearchFilters },
         selected: note,
+        newNoteID: note.id,
       }));
       await loadNotesAndCalendar();
     },
     select(note: Note) {
-      update((state) => ({ ...state, selected: note }));
+      update((state) => ({ ...state, selected: note, newNoteID: null }));
     },
     clearSelection() {
-      update((state) => ({ ...state, selected: null }));
+      update((state) => ({ ...state, selected: null, newNoteID: null }));
     },
     async setFilter(filter: NoteFilter) {
       update((state) => ({
@@ -304,6 +313,7 @@ export function createNotesStore() {
         folderBrowserOpen: false,
         tagBrowserOpen: false,
         selected: null,
+        newNoteID: null,
       }));
       await loadNotesAndCalendar();
     },
@@ -316,6 +326,7 @@ export function createNotesStore() {
         folderBrowserOpen: false,
         tagBrowserOpen: false,
         selected: null,
+        newNoteID: null,
       }));
       await loadNotesAndCalendar();
     },
@@ -352,6 +363,7 @@ export function createNotesStore() {
         folderBrowserOpen: false,
         tagBrowserOpen: false,
         selected: null,
+        newNoteID: null,
         search: "",
         searchFilters: {
           ...emptySearchFilters,
@@ -395,6 +407,7 @@ export function createNotesStore() {
         folderBrowserOpen: false,
         tagBrowserOpen: false,
         selected: null,
+        newNoteID: null,
         searchFilters: {
           ...state.searchFilters,
           createdFrom: basis === "created" ? date : "",

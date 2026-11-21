@@ -97,41 +97,54 @@ func (s *Service) Close() error {
 }
 
 func (s *Service) Rebuild(ctx context.Context, client *ent.Client) error {
-	rows, err := client.Note.Query().All(ctx)
-	if err != nil {
-		return err
-	}
-
-	var old bleve.Index
-	if !s.inMemory {
-		s.mu.Lock()
-		old = s.index
-		s.index = nil
-		s.mu.Unlock()
-		if old != nil {
-			_ = old.Close()
-			old = nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.index != nil {
+		if err := s.index.Close(); err != nil {
+			return err
 		}
+		s.index = nil
 	}
-
 	idx, err := s.newEmptyIndex()
 	if err != nil {
 		return err
 	}
 
-	s.mu.Lock()
-	old = s.index
-	s.index = idx
-	s.mu.Unlock()
-	if old != nil {
-		_ = old.Close()
-	}
-
-	for _, row := range rows {
-		if err := s.IndexNote(ctx, row); err != nil {
+	const batchSize = 128
+	var lastID uuid.UUID
+	for {
+		q := client.Note.Query().Where(note.UserIDNotNil()).Order(note.ByID()).Limit(batchSize).
+			Select(note.FieldID, note.FieldUserID, note.FieldFolderID, note.FieldTitle, note.FieldContent,
+				note.FieldProtectionMode, note.FieldIsDeleted, note.FieldCreatedAt, note.FieldUpdatedAt).
+			WithTags(func(q *ent.TagQuery) { q.Select(tag.FieldName).Order(ent.Asc(tag.FieldName)) })
+		if lastID != uuid.Nil {
+			q.Where(note.IDGT(lastID))
+		}
+		rows, err := q.All(ctx)
+		if err != nil {
+			_ = idx.Close()
 			return err
 		}
+		batch := idx.NewBatch()
+		for _, row := range rows {
+			doc := noteDocument(row, row.Edges.Tags)
+			if err := batch.Index(doc.ID, doc); err != nil {
+				_ = idx.Close()
+				return err
+			}
+		}
+		if len(rows) > 0 {
+			if err := idx.Batch(batch); err != nil {
+				_ = idx.Close()
+				return err
+			}
+		}
+		if len(rows) < batchSize {
+			break
+		}
+		lastID = rows[len(rows)-1].ID
 	}
+	s.index = idx
 	return nil
 }
 
@@ -145,8 +158,8 @@ func (s *Service) IndexNote(ctx context.Context, row *ent.Note) error {
 
 func (s *Service) IndexDocument(doc Document) error {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	idx := s.index
-	s.mu.RUnlock()
 	if idx == nil {
 		return errClosed
 	}
@@ -155,8 +168,8 @@ func (s *Service) IndexDocument(doc Document) error {
 
 func (s *Service) DeleteNote(id uuid.UUID) error {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	idx := s.index
-	s.mu.RUnlock()
 	if idx == nil {
 		return errClosed
 	}
@@ -177,8 +190,8 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]uuid.UUID, 
 	req.Fields = []string{"id"}
 
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	idx := s.index
-	s.mu.RUnlock()
 	if idx == nil {
 		return nil, errClosed
 	}
@@ -241,30 +254,25 @@ func textFieldMapping() *mapping.FieldMapping {
 }
 
 func documentFromNote(ctx context.Context, row *ent.Note) (Document, error) {
-	owner, err := row.QueryUser().Only(ctx)
+	if row.UserID == nil {
+		return Document{}, errors.New("note has no owner")
+	}
+	tagRows, err := row.QueryTags().Order(ent.Asc(tag.FieldName)).Select(tag.FieldName).All(ctx)
 	if err != nil {
 		return Document{}, err
 	}
+	return noteDocument(row, tagRows), nil
+}
 
-	tagRows, err := row.QueryTags().Order(ent.Asc(tag.FieldName)).All(ctx)
-	if err != nil {
-		return Document{}, err
-	}
+func noteDocument(row *ent.Note, tagRows []*ent.Tag) Document {
 	tags := make([]string, 0, len(tagRows))
 	for _, tagRow := range tagRows {
 		tags = append(tags, tagRow.Name)
 	}
 
 	folderID := ""
-	folderRow, err := row.QueryFolder().Only(ctx)
-	if ent.IsNotFound(err) {
-		err = nil
-	}
-	if err != nil {
-		return Document{}, err
-	}
-	if folderRow != nil {
-		folderID = folderRow.ID.String()
+	if row.FolderID != nil {
+		folderID = row.FolderID.String()
 	}
 
 	content := row.Content
@@ -274,7 +282,7 @@ func documentFromNote(ctx context.Context, row *ent.Note) (Document, error) {
 
 	return Document{
 		ID:             row.ID.String(),
-		UserID:         owner.ID,
+		UserID:         *row.UserID,
 		Title:          row.Title,
 		Content:        content,
 		Tags:           tags,
@@ -283,7 +291,7 @@ func documentFromNote(ctx context.Context, row *ent.Note) (Document, error) {
 		IsDeleted:      row.IsDeleted,
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
-	}, nil
+	}
 }
 
 func searchQuery(opts SearchOptions) query.Query {

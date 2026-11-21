@@ -80,13 +80,16 @@ describe("notesStore.create", () => {
 
     const store = createNotesStore();
     const createPromise = store.create();
-    await vi.waitFor(() => expect(apiFetchMock).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(apiFetchMock).toHaveBeenCalledTimes(2));
 
+    expect(get(store).newNoteID).toBe(created.id);
+    expect(get(store).selected?.id).toBe(created.id);
     await store.setFilter("starred");
     finishInitialLoads([]);
     await createPromise;
 
     expect(get(store).filter).toBe("starred");
     expect(get(store).selected).toBeNull();
+    expect(get(store).newNoteID).toBeNull();
   });
 });

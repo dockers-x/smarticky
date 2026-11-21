@@ -4,22 +4,25 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"smarticky/ent"
-	"smarticky/ent/migrate"
 	"smarticky/internal/handler"
 	"smarticky/internal/logger"
 	mcpserver "smarticky/internal/mcp"
 	authmw "smarticky/internal/middleware"
+	"smarticky/internal/notetools"
 	searchsvc "smarticky/internal/search"
 	"smarticky/internal/storage"
 	"smarticky/internal/version"
 	"smarticky/web"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib-x/entsqlite"
@@ -43,14 +46,6 @@ func getDataDir() string {
 	return dataDir
 }
 
-func getDatabasePath() string {
-	dataDir := getDataDir()
-	dbPath := filepath.Join(dataDir, "smarticky.db")
-
-	// Return SQLite connection string with optimizations
-	return fmt.Sprintf("file:%s?cache=shared&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)", dbPath)
-}
-
 func main() {
 	// 1. Initialize data directory
 	dataDir := getDataDir()
@@ -67,18 +62,23 @@ func main() {
 	)
 
 	// 3. Initialize Ent client with configurable data directory
-	dbPath := getDatabasePath()
+	dbPath := filepath.Join(dataDir, "smarticky.db")
 	zap.L().Info("Using database", zap.String("path", dbPath))
 
-	client, err := ent.Open("sqlite3", dbPath)
+	uriPath := (&url.URL{Path: filepath.ToSlash(dbPath)}).EscapedPath()
+	dsn := "file:" + uriPath + "?_pragma=busy_timeout(10000)&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_txlock=immediate"
+	driver, err := entsql.Open(dialect.SQLite, dsn)
 	if err != nil {
 		zap.L().Fatal("Failed to open database connection", zap.Error(err))
 	}
+	driver.DB().SetMaxOpenConns(4)
+	driver.DB().SetMaxIdleConns(4)
+	client := ent.NewClient(ent.Driver(driver))
 	defer client.Close()
 
 	// Run the auto migration tool
-	if err := client.Schema.Create(context.Background(), migrate.WithDropColumn(true)); err != nil {
-		zap.L().Warn("Schema migration failed, trying to continue", zap.Error(err))
+	if err := client.Schema.Create(context.Background()); err != nil {
+		zap.L().Fatal("Schema migration failed", zap.Error(err))
 	}
 
 	searchService, err := searchsvc.Open(filepath.Join(dataDir, "search.bleve"))
@@ -137,6 +137,12 @@ func main() {
 	// Protected routes (auth required)
 	protected := api.Group("")
 	protected.Use(authmw.JWTAuth())
+	registry, err := notetools.Open(filepath.Join(dataDir, "plugins"))
+	if err != nil {
+		zap.L().Error("Note tools unavailable", zap.Error(err))
+	} else {
+		h.RegisterNoteTools(protected, registry)
+	}
 
 	// Auth endpoints
 	protected.GET("/auth/me", h.GetCurrentUser)
