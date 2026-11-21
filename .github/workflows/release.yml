@@ -109,6 +109,21 @@ jobs:
         if: matrix.platform == 'linux-amd64'
         run: go test -v ./...
 
+      - name: Set up ARMv7 emulation
+        if: matrix.platform == 'linux-armv7'
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm
+
+      - name: Test search indexing on ARMv7
+        if: matrix.platform == 'linux-armv7'
+        env:
+          GOOS: linux
+          GOARCH: arm
+          GOARM: '7'
+          CGO_ENABLED: '0'
+        run: go test -count=1 ./internal/search
+
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
