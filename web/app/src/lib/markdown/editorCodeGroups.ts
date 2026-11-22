@@ -4,7 +4,6 @@ import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import type { Node as ProseNode } from "@milkdown/kit/prose/model";
 import {
   attachCodeGroupTabs,
-  extractCodeGroupSources,
   renderCodeGroup,
   type CodeGroupBlock,
   type CodeGroupSourceBlock,
@@ -64,8 +63,8 @@ function topLevelBlocks(doc: ProseNode): TopLevelBlock[] {
   return blocks;
 }
 
-function codeGroupSourceID(group: CodeGroupSourceBlock): string {
-  return `smarticky-code-group-source-${group.startLine}-${group.endLine}-${hashString(group.raw)}-${hashString(JSON.stringify(group.items))}`;
+function codeGroupSourceID(group: CodeGroupSourceBlock, index: number): string {
+  return `smarticky-code-group-source-${index}-${hashString(group.raw)}-${hashString(JSON.stringify(group.items))}`;
 }
 
 function createCodeGroupPreview(
@@ -200,12 +199,9 @@ function createCodeGroupPreview(
 
 function createCodeGroupDecorations(
   state: EditorState,
-  markdown: string,
+  groups: CodeGroupSourceBlock[],
   replaceSource: ReplaceCodeGroupSource,
 ): DecorationSet {
-  const groups = extractCodeGroupSources(markdown).filter((group) =>
-    Boolean(renderCodeGroup(group.items)),
-  );
   if (groups.length === 0) return DecorationSet.empty;
 
   const blocks = topLevelBlocks(state.doc);
@@ -214,7 +210,7 @@ function createCodeGroupDecorations(
   const decorations: Decoration[] = [];
   let cursor = 0;
 
-  for (const group of groups) {
+  for (const [index, group] of groups.entries()) {
     const openerIndex = blocks.findIndex(
       (block, index) => index >= cursor && isCodeGroupOpener(block.text, group),
     );
@@ -229,10 +225,10 @@ function createCodeGroupDecorations(
     }
 
     const opener = blocks[openerIndex];
-    const sourceID = codeGroupSourceID(group);
+    const sourceID = codeGroupSourceID(group, index);
     decorations.push(
       Decoration.widget(opener.pos, () => createCodeGroupPreview(group, sourceID, replaceSource), {
-        key: `smarticky-code-group-${group.startLine}-${group.endLine}-${hashString(group.raw)}-${hashString(JSON.stringify(group.items))}`,
+        key: sourceID,
         side: -1,
         ignoreSelection: true,
         destroy: (node: Node) => {
@@ -273,7 +269,7 @@ function createCodeGroupDecorations(
 }
 
 export function createCodeGroupEditorPlugin(
-  getMarkdown: () => string,
+  getGroups: () => CodeGroupSourceBlock[],
   replaceSource: ReplaceCodeGroupSource,
 ) {
   return $prose(
@@ -282,7 +278,7 @@ export function createCodeGroupEditorPlugin(
         key: codeGroupPluginKey,
         props: {
           decorations(state) {
-            return createCodeGroupDecorations(state, getMarkdown(), replaceSource);
+            return createCodeGroupDecorations(state, getGroups(), replaceSource);
           },
         },
       }),

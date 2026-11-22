@@ -228,6 +228,7 @@ export function renderCodeGroup(items: CodeGroupItem[]): string {
 }
 
 export function extractCodeGroupSources(markdown: string): CodeGroupSourceBlock[] {
+  if (!markdown.includes(":::")) return [];
   const lines = markdown.split(/\r?\n/);
   const groups: CodeGroupSourceBlock[] = [];
   let index = 0;
@@ -273,10 +274,27 @@ export function extractCodeGroupSources(markdown: string): CodeGroupSourceBlock[
   return groups;
 }
 
-export function extractCodeGroups(markdown: string): CodeGroupBlock[] {
+export function extractCodeGroups(markdown: string): CodeGroupSourceBlock[] {
   return extractCodeGroupSources(markdown).filter((group) =>
     Boolean(renderCodeGroup(group.items)),
   );
+}
+
+export function updateCodeGroupPreviews(current: CodeGroupSourceBlock[], markdown: string): CodeGroupSourceBlock[] {
+  const next = extractCodeGroups(markdown);
+  let changed = next.length !== current.length;
+  // Open source editors use these live line numbers when the user saves.
+  next.forEach((source, i) => {
+    const existing = current[i];
+    if (existing?.raw === source.raw) {
+      existing.startLine = source.startLine;
+      existing.endLine = source.endLine;
+      next[i] = existing;
+    } else {
+      changed = true;
+    }
+  });
+  return changed ? next : current;
 }
 
 export function isEditableCodeGroupSource(markdown: string): boolean {

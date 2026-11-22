@@ -5,6 +5,7 @@ import {
   isEditableCodeGroupSource,
   preserveCodeGroups,
   replaceCodeGroupSource,
+  updateCodeGroupPreviews,
 } from "./codeGroups";
 import { renderMarkdown, stripMarkdown } from "./render";
 import { protectedImagePlaceholderSrc, protectedImageRuntime } from "./protectedImages";
@@ -340,6 +341,19 @@ describe("renderMarkdown code groups", () => {
 
     expect(newIndex).toBeGreaterThanOrEqual(0);
     expect(oldIndex).toBeGreaterThan(newIndex);
+  });
+
+  it("keeps previews mounted when typing moves their source and refreshes changed contents", () => {
+    const group = ["::: code-group", "```sh [CLI]", "hello", "```", ":::"].join("\n");
+    const empty = extractCodeGroupSources("");
+    expect(updateCodeGroupPreviews(empty, "/")).toBe(empty);
+    const previews = updateCodeGroupPreviews(empty, group);
+    expect(previews).toHaveLength(1);
+    expect(updateCodeGroupPreviews(previews, group + "\n\n/")).toBe(previews);
+    expect(updateCodeGroupPreviews(previews, "\n" + group)).toBe(previews);
+    expect(previews[0].startLine).toBe(1);
+    expect(updateCodeGroupPreviews(previews, group.replace("CLI", "Shell"))[0].items[0].label).toBe("Shell");
+    expect(updateCodeGroupPreviews(previews, "ordinary text")).toEqual([]);
   });
 
   it("replaces one code-group source block without touching siblings", () => {

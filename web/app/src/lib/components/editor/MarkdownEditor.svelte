@@ -19,8 +19,10 @@
   import type { UUID } from "../../api/types";
   import type { MarkdownEditorHandle } from "../../editor/markdown";
   import {
+    extractCodeGroups,
     preserveCodeGroups,
     replaceCodeGroupSource,
+    updateCodeGroupPreviews,
     type CodeGroupSourceEditRequest,
   } from "../../markdown/codeGroups";
   import { createCodeGroupEditorPlugin } from "../../markdown/editorCodeGroups";
@@ -41,6 +43,7 @@
   let crepe: CrepeBuilder | null = null;
   let applyingExternalValue = false;
   let lastMarkdown = value;
+  let codeGroups = extractCodeGroups(value);
   let lastDocument: ProseNode | null = null;
   let activePreviewTheme = "light";
   let pendingCodeGroupSources: string[] = [];
@@ -138,6 +141,9 @@
   }
 
   function refreshCodeGroupDecorations(): void {
+    const next = updateCodeGroupPreviews(codeGroups, lastMarkdown);
+    if (next === codeGroups) return;
+    codeGroups = next;
     crepe?.editor.action(forceUpdate());
   }
 
@@ -229,7 +235,7 @@
       .addFeature(table)
       .addFeature(latex);
 
-    crepe.editor.use(createCodeGroupEditorPlugin(() => lastMarkdown, replaceLocalCodeGroupSource));
+    crepe.editor.use(createCodeGroupEditorPlugin(() => codeGroups, replaceLocalCodeGroupSource));
     crepe.editor.use(createEditorTocPlugin());
 
     const editorNoteID = ownerNoteID;
