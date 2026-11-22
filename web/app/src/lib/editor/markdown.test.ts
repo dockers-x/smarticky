@@ -1,8 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEditorDraft } from "../components/editor/draftSave";
-import { captureEditorMarkdown, type MarkdownEditorHandle } from "./markdown";
+import { captureEditorMarkdown, captureRichTextEscape, type MarkdownEditorHandle } from "./markdown";
 
 const initial = { title: "A quiet page", content: "First line" };
+
+describe("rich text Escape", () => {
+  it("lets the pane handle a physical Escape before ProseMirror suppresses its default", () => {
+    const pane = document.createElement("section");
+    const body = pane.appendChild(document.createElement("div"));
+    body.className = "ProseMirror";
+    body.addEventListener("keydown", event => event.preventDefault());
+    const onEscape = vi.fn((event: KeyboardEvent) => expect(event.defaultPrevented).toBe(false));
+    const action = captureRichTextEscape(pane, onEscape);
+    const escape = () => new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true, cancelable: true });
+
+    const physicalKey = escape();
+    body.dispatchEvent(physicalKey);
+    expect(onEscape).toHaveBeenCalledOnce();
+    expect(physicalKey.defaultPrevented).toBe(true);
+
+    const dismissedMenu = escape();
+    dismissedMenu.preventDefault();
+    body.dispatchEvent(dismissedMenu);
+    body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true }));
+    body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 229, bubbles: true }));
+    body.appendChild(document.createElement("input")).dispatchEvent(escape());
+    action.destroy();
+    body.dispatchEvent(escape());
+    expect(onEscape).toHaveBeenCalledTimes(1);
+  });
+});
 
 function mockEditor(noteID: string, readMarkdown: () => string) {
   return {

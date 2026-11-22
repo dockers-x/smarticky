@@ -34,7 +34,7 @@
     type EncryptedNotePayload,
   } from "../../crypto/noteEncryption";
   import { downloadMarkdownFile } from "../../editor/exportMarkdown";
-  import { captureEditorMarkdown, type MarkdownEditorHandle } from "../../editor/markdown";
+  import { captureEditorMarkdown, captureRichTextEscape, type MarkdownEditorHandle } from "../../editor/markdown";
   import {
     createMermaidDiagramFence,
     mermaidDiagramVariants,
@@ -770,7 +770,7 @@
 
   function handleEditorKeydown(event: KeyboardEvent): void {
     if (event.key === "Tab") focusBodyFor = "";
-    if (!note || event.defaultPrevented || event.isComposing || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    if (!note || event.defaultPrevented || event.isComposing || event.keyCode === 229 || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
     if (event.key === "Escape" && focusMode && !actionMenuOpen && !diagramMenuOpen && !tagMenuOpen && !folderMenuOpen) {
       event.preventDefault();
       void finishEditing();
@@ -1069,6 +1069,7 @@
 <svelte:window on:pointerdown={() => (focusBodyFor = "")} on:keydown={handleEditorKeydown} on:beforeunload={handleBeforeUnload} />
 
 <section
+  use:captureRichTextEscape={handleEditorKeydown}
   class:focus-mode={focusMode}
   class:showing-details={detailsOpen && !focusMode}
   class:has-note={Boolean(note)}

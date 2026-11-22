@@ -141,7 +141,7 @@ http://localhost:8080
 
 ### 二进制安装与升级
 
-从 GitHub Releases 下载对应平台的压缩包。支持 Linux amd64、arm64、ARMv7，macOS Intel 和 Apple Silicon，以及 Windows amd64。停止旧进程后替换可执行文件，以原来的 `SMARTICKY_DATA_DIR` 启动即可。v0.9.1 继续使用 `github.com/lib-x/entsqlite`，首次启动会自动添加笔记查询索引。 [下载正式版](https://github.com/dockers-x/smarticky/releases/latest)
+从 GitHub Releases 下载对应平台的压缩包。支持 Linux amd64、arm64、ARMv7，macOS Intel 和 Apple Silicon，以及 Windows amd64。停止旧进程后替换可执行文件，以原来的 `SMARTICKY_DATA_DIR` 启动即可。v0.9.2 继续使用 `github.com/lib-x/entsqlite`，首次启动会自动添加笔记查询索引。 [下载正式版](https://github.com/dockers-x/smarticky/releases/latest)
 
 ### 本地运行
 
